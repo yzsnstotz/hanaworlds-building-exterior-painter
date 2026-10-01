@@ -1,0 +1,39 @@
+{
+  "name": "hanaworlds-building-exterior-painter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "HanaWorlds Stage 1 Building Exterior Painter (P3 picture-blocks): confirmed image-plus-text intent to BUILD/V2 or clarification, without world mutation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yzsnstotz/hanaworlds-building-exterior-painter.git"
+  },
+  "engines": {
+    "node": ">=24.13.1 <25"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "GADGET.md",
+    "LICENSE_AUDIT.md",
+    "NOTICE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.2",
+    "canonicalize": "5.1.0",
+    "hanaworlds-contracts": "https://codeload.github.com/yzsnstotz/hanaworlds-contracts/tar.gz/5ecfce1ba47530b42bba60a674bd16f7bc39c665"
+  }
+}
