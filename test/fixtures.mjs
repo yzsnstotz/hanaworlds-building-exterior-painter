@@ -126,20 +126,26 @@ export function trustedFixtureFacts() {
     protection: { protectedPositions: [] }, body: { bodyOccupiedPositions: [[0, 5, 0]] } };
 }
 
-/** 5x3x5 empty site at [10,0,10] with portal "front" at the south wall cell
- * [12,0,10]; entrance connectivity required for a 1x2x1 avatar. */
-export function entranceRequest({ refs = ['front'], portals = [{ portalRef: 'front', positions: [[12, 0, 10]] }], unit = 'node' } = {}) {
-  return request({ facts: targetFacts({ occupied: [], unknown: [], max: [14, 2, 14], portals }),
+/** 5x4x5 site at [10,0,10]: occupied ground layer y=0, empty above. Portal
+ * "front" is the 1x2 south doorway plane [12,1..2,10]; entrance connectivity
+ * required for a 1x2x1 avatar. */
+export function entranceRequest({ refs = ['front'], portals = [{ portalRef: 'front', positions: [[12, 1, 10], [12, 2, 10]] }],
+  unit = 'node', unknown = [] } = {}) {
+  const ground = [];
+  for (let x = 10; x <= 14; x++) for (let z = 10; z <= 14; z++) ground.push([x, 0, z]);
+  return request({ facts: targetFacts({ occupied: ground, unknown, max: [14, 3, 14], portals }),
     safety: safetyProfile({ entrance: true, unit }), entrancePortalRefs: refs });
 }
 
-/** Four 2-high walls around a 3x3 interior; `door` cuts the portal cell. */
-export function hut({ door = true } = {}) {
+/** On the ground: four 2-high walls around a 3x3 interior, a roof at local
+ * y=3 unless `roof` is false; `door` cuts the 1x2 portal plane. */
+export function hut({ door = true, roof = true } = {}) {
   const boxes = [
-    { min: [0, 0, 0], max: [4, 1, 0], materialRef: 'wall' }, { min: [0, 0, 4], max: [4, 1, 4], materialRef: 'wall' },
-    { min: [0, 0, 0], max: [0, 1, 4], materialRef: 'wall' }, { min: [4, 0, 0], max: [4, 1, 4], materialRef: 'wall' },
+    { min: [0, 1, 0], max: [4, 2, 0], materialRef: 'wall' }, { min: [0, 1, 4], max: [4, 2, 4], materialRef: 'wall' },
+    { min: [0, 1, 0], max: [0, 2, 4], materialRef: 'wall' }, { min: [4, 1, 0], max: [4, 2, 4], materialRef: 'wall' },
   ];
-  if (door) boxes.push({ min: [2, 0, 0], max: [2, 1, 0], materialRef: 'gap' });
+  if (roof) boxes.push({ min: [0, 3, 0], max: [4, 3, 4], materialRef: 'wall' });
+  if (door) boxes.push({ min: [2, 1, 0], max: [2, 2, 0], materialRef: 'gap' });
   return JSON.stringify({ decision: 'BUILD', materials: { wall: { nodeName: 'fixture:wood', param2: 0 },
     gap: { nodeName: 'air', param2: 0 } }, boxes });
 }

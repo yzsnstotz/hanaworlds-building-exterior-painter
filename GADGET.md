@@ -84,15 +84,21 @@ text-only. There are no other settings, caps, timeouts or retries.
    - A usable cell is one whose whole avatar clearance box
      (ceil width × height × depth) is passable: `walkable: false`, no collision
      box, and within the hazard policy.
-   - Every confirmed entrance portal must reach the interior (usable cells
-     strictly inside the structure's horizontal footprint) by a six-neighbour
-     usable path. If not, the result is `BUILD_INVALID`.
+   - The interior is a cavity, following CONTRACT_RULES ("天空不冒充室内").
+     Treat the confirmed entrance planes as temporarily sealed and find each
+     6-connected group of passable cells. A group counts as interior only if
+     none of its cells borders an open side. An open side is a cell outside the
+     sampled facts (sky or outside the world) or an unknown cell. Occupied
+     cells count as solid sides and are never passable.
+   - A roofless or leaking enclosure therefore has no interior. Every confirmed
+     portal must reach usable interior cells by a six-neighbour usable path;
+     otherwise the result is `BUILD_INVALID`.
    - No confirmed portal gives `INTENT_UNCONFIRMED`. A portal missing from the
      target facts gives `TARGET_FACTS_INCOMPLETE`.
    - Each portal produces an `ENTRANCE_CONNECTIVITY` witness. The HAZARD
      witness also covers every entrance use and path cell.
-   - The definition of "interior" and the clearance-only rule (no floor-support
-     check) are the worker's engineering reading of the contract's x-rules.
+   - The clearance-only rule (no floor-support predicate) is the worker's
+     engineering reading of the contract's x-rules.
 7. PROTECTION and BODY_CLEARANCE witnesses require provider-verified evidence.
    Missing evidence is a typed rejection, never a default "safe" claim.
 8. Replay: a request with the same `sessionRef + requestId` and the exact same

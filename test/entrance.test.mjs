@@ -16,11 +16,12 @@ test('a doorway connects the confirmed portal to the enclosed interior by a six-
   const body = F.entranceRequest();
   const [entrance] = planEntrances({ request: body, geometry: geometryFor(body, F.hut()) });
   assert.equal(entrance.portalRef, 'front');
-  assert.deepEqual(entrance.path, [[12, 0, 10], [12, 0, 11]]);
+  assert.deepEqual(entrance.path, [[12, 1, 10], [12, 1, 11]]);
   const usable = new Set(entrance.usablePositions.map(p => p.join(',')));
   for (const p of entrance.path) assert.ok(usable.has(p.join(',')));
   // wall cells and cells without 2-high clearance are not usable
-  assert.ok(!usable.has('10,0,10') && !usable.has('12,2,12'));
+  // wall/ground cells and cells without 2-high clearance under the roof are not usable
+  assert.ok(!usable.has('10,1,10') && !usable.has('12,0,12') && !usable.has('12,2,12'));
 });
 
 test('FIXTURE: assembled BUILD with entrance witness passes schema, domain path rules and witness coherence', () => {
@@ -36,6 +37,25 @@ test('FIXTURE: assembled BUILD with entrance witness passes schema, domain path 
   assert.ok(hazard.facts.positions.length > geometry.effects.length);
   assert.equal(validateWitnessCoherence({ build, finalEffects, targetFacts: body.targetFacts,
     safetyProfile: body.safetyProfile, catalogue: body.catalogue }).coherent, true);
+});
+
+test('roofless walls are open sky, not an interior (CONTRACT_RULES: 天空不冒充室内)', async () => {
+  const body = F.entranceRequest();
+  assert.equal(outcome(() => planEntrances({ request: body, geometry: geometryFor(body, F.hut({ roof: false })) })),
+    'BUILD_INVALID/INVALID_GEOMETRY');
+  const response = await painter(F.hut({ roof: false })).call('CreateBuildPlan', F.entranceRequest());
+  assert.deepEqual([response.error.code, response.error.reason], ['BUILD_INVALID', 'INVALID_GEOMETRY']);
+});
+
+test('a cavity that leaks through an unsealed opening or an unknown cell is not interior', () => {
+  // the portal plane covers only the lower door cell; the upper door cell leaks outside
+  const leaky = F.entranceRequest({ portals: [{ portalRef: 'front', positions: [[12, 1, 10]] }] });
+  assert.equal(outcome(() => planEntrances({ request: leaky, geometry: geometryFor(leaky, F.hut()) })),
+    'BUILD_INVALID/INVALID_GEOMETRY');
+  // an unknown cell inside the hut means enclosure is not proven
+  const unknown = F.entranceRequest({ unknown: [[13, 2, 13]] });
+  assert.equal(outcome(() => planEntrances({ request: unknown, geometry: geometryFor(unknown, F.hut()) })),
+    'BUILD_INVALID/INVALID_GEOMETRY');
 });
 
 test('entrance negatives: closed doorway, unknown portal, no confirmed portal, unconvertible avatar unit', () => {
@@ -63,6 +83,19 @@ test('production path decides entrance before assembly; model is told the portal
   // connected; still blocked only by CONTRACT_GAP-EXT-01/02
   assert.deepEqual([open.error.code, open.error.reason], ['TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN']);
   const text = promptText(F.entranceRequest());
-  assert.match(text, /"entrance":\{"required":true,"avatarCells":\[1,2,1\],"portals":\[\{"portalRef":"front","cells":\[\[2,0,0\]\]\}\]\}/);
+  assert.match(text, /"entrance":\{"required":true,"avatarCells":\[1,2,1\],"portals":\[\{"portalRef":"front","cells":\[\[2,1,0\],\[2,2,0\]\]\}\]\}/);
   assert.match(text, /"nodeName":"air"/);
+});
+
+test('SPEC recheck counterexample at 94d763d (roofless walls, no ground, portal [12,0,10]) is refused', () => {
+  const body = F.request({ facts: F.targetFacts({ occupied: [], unknown: [], max: [14, 2, 14],
+    portals: [{ portalRef: 'front', positions: [[12, 0, 10]] }] }),
+  safety: F.safetyProfile({ entrance: true }), entrancePortalRefs: ['front'] });
+  const roofless = JSON.stringify({ decision: 'BUILD', materials: { wall: { nodeName: 'fixture:wood', param2: 0 },
+    gap: { nodeName: 'air', param2: 0 } }, boxes: [
+    { min: [0, 0, 0], max: [4, 1, 0], materialRef: 'wall' }, { min: [0, 0, 4], max: [4, 1, 4], materialRef: 'wall' },
+    { min: [0, 0, 0], max: [0, 1, 4], materialRef: 'wall' }, { min: [4, 0, 0], max: [4, 1, 4], materialRef: 'wall' },
+    { min: [2, 0, 0], max: [2, 1, 0], materialRef: 'gap' }] });
+  assert.equal(outcome(() => planEntrances({ request: body, geometry: geometryFor(body, roofless) })),
+    'BUILD_INVALID/INVALID_GEOMETRY');
 });

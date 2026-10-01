@@ -134,9 +134,8 @@ function passable(capability, hazardPolicy) {
  * policy and the actual avatar dimensions. A usable position is a sampled cell
  * whose whole avatar clearance box (ceil(width) x ceil(height) x ceil(depth)
  * grid cells, anchored at its minimum corner) is passable. The declared use
- * space is the usable cells strictly inside the structure's horizontal
- * footprint. Each confirmed entrance portal must reach it by a six-neighbor
- * path over usable positions. Returns [] when the safety profile does not
+ * space is the usable cells of an enclosed cavity (see below). Each confirmed
+ * entrance portal must reach it by a six-neighbor path over usable positions. Returns [] when the safety profile does not
  * require entrance connectivity.
  */
 export function planEntrances({ request, geometry }) {
@@ -149,6 +148,9 @@ export function planEntrances({ request, geometry }) {
   const span = [Math.ceil(avatar.width), Math.ceil(avatar.height), Math.ceil(avatar.depth)];
   const finalNode = new Map(targetFacts.knownEmptyCells.map(p => [key(p), 'air']));
   for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
+  // Occupied cells are never passable ("walkable=false plants are not empty")
+  // but they are known solid sides of a cavity.
+  const occupied = new Set(targetFacts.occupiedCells.map(c => key(c.position)));
   const open = k => finalNode.has(k) && passable(catalogue.nodes[finalNode.get(k)], safetyProfile.hazardPolicy);
   const usable = new Map();
   for (const k of finalNode.keys()) {
@@ -158,16 +160,40 @@ export function planEntrances({ request, geometry }) {
       for (let dz = 0; clear && dz < span[2]; dz++) clear = open(key([p[0] + dx, p[1] + dy, p[2] + dz]));
     if (clear) usable.set(k, p);
   }
-  const { min, max } = geometry.declaredBounds;
-  const inside = p => p[0] > min[0] && p[0] < max[0] && p[2] > min[2] && p[2] < max[2] &&
-    p[1] >= min[1] && p[1] <= max[1];
-  const useSpace = new Set([...usable].filter(([, p]) => inside(p)).map(([k]) => k));
-  if (useSpace.size === 0) fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
-  const usablePositions = [...usable.values()].sort(comparePosition);
   const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-  return refs.map(portalRef => {
+  const portals = refs.map(portalRef => {
     const portal = targetFacts.portals.find(x => x.portalRef === portalRef);
     if (!portal) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+    return portal;
+  });
+  // Cavity (CONTRACT_RULES §TargetFacts): with the confirmed entrance planes
+  // temporarily sealed, a 6-connected component of passable cells is interior
+  // only if no member touches an open side: a cell outside the sampled facts
+  // (sky, outside world) or an unknown cell. Sky never counts as interior.
+  const sealed = new Set(portals.flatMap(x => x.positions.map(key)));
+  const cavity = new Set();
+  const visited = new Set();
+  for (const start of finalNode.keys()) {
+    if (visited.has(start) || sealed.has(start) || !open(start)) continue;
+    const component = [start];
+    visited.add(start);
+    let enclosed = true;
+    for (let i = 0; i < component.length; i++) {
+      const p = component[i].split(',').map(Number);
+      for (const d of steps) {
+        const n = key([p[0] + d[0], p[1] + d[1], p[2] + d[2]]);
+        if (sealed.has(n)) continue;
+        if (occupied.has(n)) continue;
+        if (!finalNode.has(n)) { enclosed = false; continue; } // unknown or outside the sampled facts
+        if (open(n) && !visited.has(n)) { visited.add(n); component.push(n); }
+      }
+    }
+    if (enclosed) for (const k of component) cavity.add(k);
+  }
+  const useSpace = new Set([...usable.keys()].filter(k => cavity.has(k)));
+  if (useSpace.size === 0) fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
+  const usablePositions = [...usable.values()].sort(comparePosition);
+  return portals.map(({ portalRef, ...portal }) => {
     const starts = portal.positions.map(key).filter(k => usable.has(k));
     const previous = new Map(starts.map(k => [k, null]));
     const queue = [...starts];
