@@ -5,7 +5,7 @@ import canonicalize from 'canonicalize';
 import {
   ContractError, publicError, admitRequest, validateRequest, validateResponse,
   digestValue, decodeRawJSON,
-} from 'hanaworlds-contracts';
+} from '#contracts';
 import { PAINTER_ID, parseProposal, planGeometry, assembleBuild } from './planner.mjs';
 import { invokeModel, PainterHostError } from './model.mjs';
 

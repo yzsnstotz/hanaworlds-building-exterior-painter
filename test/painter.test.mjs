@@ -2,19 +2,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import {
   ContractError, validateType, validateWitnessCoherence, digestValue,
-} from 'hanaworlds-contracts';
-import * as Painter from 'hanaworlds-contracts/painter/v2';
-import * as Build from 'hanaworlds-contracts/BUILD/V2';
+} from '#contracts';
+import * as Painter from '#contracts/painter/v2';
+import * as Build from '#contracts/BUILD/V2';
 import { ExteriorPainterV2, PainterHostError, planGeometry, assembleBuild, parseProposal } from '../src/index.mjs';
 import * as F from './fixtures.mjs';
 
 const painter = (over = {}) => new ExteriorPainterV2({ authority: F.authority(), llm: F.llm(),
   attachments: F.attachments(), ...over });
-const require = createRequire(import.meta.url);
-const wireRequest = async id => JSON.parse(await readFile(require.resolve('hanaworlds-contracts/fixtures/wire-inputs'), 'utf8'))
+const wireRequest = async id => JSON.parse(await readFile(new URL('../vendor/hanaworlds-contracts/fixtures/candidate/wire-inputs.json', import.meta.url), 'utf8'))
   .requests.find(r => r.id === id).request;
 const errorOf = response => { assert.equal(response.result, null); return response.error; };
 

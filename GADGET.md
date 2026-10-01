@@ -117,9 +117,20 @@ npm test
 npm pack --ignore-scripts
 ```
 
-`private: true` guards against registry publication. Runtime dependencies come
-from public npm and from the public Contracts commit tarball on codeload. There
-are no `file:` paths and no sibling checkouts.
+`private: true` guards against registry publication. The runtime dependencies
+are registry packages only: `canonicalize@5.1.0` and
+`@deepseek-ai/schemastery@3.18.2`. There are no `file:` paths and no sibling
+checkouts.
+
+Contracts supply is vendored. DSH installs plugins with pnpm 11, and pnpm 11
+refuses URL or git subdependencies by default (`ERR_PNPM_EXOTIC_SUBDEP`). This
+was observed when installing the earlier commit d31ad83 into a clean profile.
+`hanaworlds-contracts` is not on a registry. The painter therefore imports an
+unmodified subset of the admitted 0.2.1 bytes from `vendor/hanaworlds-contracts/`
+through package `imports` (`#contracts`, `#contracts/painter/v2`,
+`#contracts/BUILD/V2`). Every vendored file's sha256 is pinned in `VENDOR.json`
+and checked by `npm test`. This is the worker's engineering choice and is
+reported to the PM.
 
 ## Install, rollback, residue
 

@@ -1,7 +1,7 @@
 // FIXTURE-only builders. Every identity, digest source, model answer and
 // host service here is synthetic; none of it is runtime or product evidence.
 import { createHash } from 'node:crypto';
-import { digestValue, comparePosition } from 'hanaworlds-contracts';
+import { digestValue, comparePosition } from '#contracts';
 
 export const IMAGE_SHA = createHash('sha256').update('fixture-image-bytes').digest('hex');
 

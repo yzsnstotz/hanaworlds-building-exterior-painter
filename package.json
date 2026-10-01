@@ -15,8 +15,14 @@
   "exports": {
     ".": "./src/index.mjs"
   },
+  "imports": {
+    "#contracts": "./vendor/hanaworlds-contracts/dist/index.mjs",
+    "#contracts/painter/v2": "./vendor/hanaworlds-contracts/dist/bindings/painter-v2.mjs",
+    "#contracts/BUILD/V2": "./vendor/hanaworlds-contracts/dist/bindings/BUILD-V2.mjs"
+  },
   "files": [
     "src",
+    "vendor",
     "cordis.patch.yml",
     "GADGET.md",
     "LICENSE_AUDIT.md",
@@ -33,7 +39,6 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
-    "canonicalize": "5.1.0",
-    "hanaworlds-contracts": "https://codeload.github.com/yzsnstotz/hanaworlds-contracts/tar.gz/5ecfce1ba47530b42bba60a674bd16f7bc39c665"
+    "canonicalize": "5.1.0"
   }
 }

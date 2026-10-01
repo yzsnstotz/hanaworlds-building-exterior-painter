@@ -3,7 +3,7 @@
 | Component | Version | License | Source | Use | Copied into this repo? |
 |---|---|---|---|---|---|
 | HanaWorlds Exterior Painter source (`src/`, `test/`) | 0.1.0 | MIT | this repository | plugin | original work |
-| hanaworlds-contracts | 0.2.1 @ 5ecfce1b | MIT | github.com/yzsnstotz/hanaworlds-contracts | painter/v2, ReferenceBrief/v2, BUILD/V2 validation and digests | no (dependency) |
+| hanaworlds-contracts | 0.2.1 @ 5ecfce1b | MIT (own LICENSE/NOTICE kept) | github.com/yzsnstotz/hanaworlds-contracts | painter/v2, ReferenceBrief/v2, BUILD/V2 validation and digests | yes: unmodified `dist/` subset + LICENSE/NOTICE/licenses + one fixture under `vendor/hanaworlds-contracts/`, digest-pinned by `VENDOR.json` to admitted tgz d91b8950… |
 | canonicalize | 5.1.0 | Apache-2.0 | npm / github.com/erdtman/canonicalize | JCS for replay identity | no (dependency) |
 | @deepseek-ai/schemastery | 3.18.2 | MIT | npm / github.com/deepseek-ai/deepseek-harness | visible DSH Config schema | no (dependency) |
 | @deepseek-ai/cosmokit | 1.8.5 | MIT | npm / deepseek-harness | transitive | no |

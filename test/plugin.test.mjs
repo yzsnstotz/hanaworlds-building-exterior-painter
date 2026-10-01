@@ -45,7 +45,7 @@ test('apply provides the painter service and resolves host services per call', a
 
 test('source imports only the contracts package, canonicalize, schemastery and node:crypto', async () => {
   const dir = new URL('../src/', import.meta.url);
-  const allowed = new Set(['hanaworlds-contracts', 'canonicalize', '@deepseek-ai/schemastery', 'node:crypto',
+  const allowed = new Set(['#contracts', '#contracts/painter/v2', 'canonicalize', '@deepseek-ai/schemastery', 'node:crypto',
     './planner.mjs', './model.mjs', './service.mjs']);
   for (const file of await readdir(dir)) {
     const source = await readFile(new URL(file, dir), 'utf8');

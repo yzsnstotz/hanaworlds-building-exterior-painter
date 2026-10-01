@@ -3,7 +3,7 @@
 import {
   ContractError, decodeRawJSON, digestValue, validateType, validateStaticMaterials,
   comparePosition, compareUTF16,
-} from 'hanaworlds-contracts';
+} from '#contracts';
 
 export const PAINTER_ID = 'picture-blocks';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
