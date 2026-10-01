@@ -18,6 +18,8 @@ export function catalogue() {
       'fixture:wood': node(),
       'fixture:chest': node({ hasCallbacks: true, hasPersistentState: true }),
       'fixture:lava': node({ liquidType: 'source', damagePerSecond: 4 }),
+      // non-air, non-colliding: not empty, and not a cavity side either
+      'fixture:vine': node({ walkable: false, collisionBoxes: [] }),
     } };
 }
 
@@ -130,22 +132,24 @@ export function trustedFixtureFacts() {
  * "front" is the 1x2 south doorway plane [12,1..2,10]; entrance connectivity
  * required for a 1x2x1 avatar. */
 export function entranceRequest({ refs = ['front'], portals = [{ portalRef: 'front', positions: [[12, 1, 10], [12, 2, 10]] }],
-  unit = 'node', unknown = [] } = {}) {
+  unit = 'node', unknown = [], groundNode = () => 'fixture:stone' } = {}) {
   const ground = [];
   for (let x = 10; x <= 14; x++) for (let z = 10; z <= 14; z++) ground.push([x, 0, z]);
-  return request({ facts: targetFacts({ occupied: ground, unknown, max: [14, 3, 14], portals }),
+  const facts = targetFacts({ occupied: ground, unknown, max: [14, 3, 14], portals });
+  facts.occupiedCells = facts.occupiedCells.map(c => ({ ...c, nodeName: groundNode(c.position) }));
+  return request({ facts,
     safety: safetyProfile({ entrance: true, unit }), entrancePortalRefs: refs });
 }
 
 /** On the ground: four 2-high walls around a 3x3 interior, a roof at local
  * y=3 unless `roof` is false; `door` cuts the 1x2 portal plane. */
-export function hut({ door = true, roof = true } = {}) {
+export function hut({ door = true, roof = true, roofNode = 'fixture:wood', doorNode = 'air' } = {}) {
   const boxes = [
     { min: [0, 1, 0], max: [4, 2, 0], materialRef: 'wall' }, { min: [0, 1, 4], max: [4, 2, 4], materialRef: 'wall' },
     { min: [0, 1, 0], max: [0, 2, 4], materialRef: 'wall' }, { min: [4, 1, 0], max: [4, 2, 4], materialRef: 'wall' },
   ];
-  if (roof) boxes.push({ min: [0, 3, 0], max: [4, 3, 4], materialRef: 'wall' });
+  if (roof) boxes.push({ min: [0, 3, 0], max: [4, 3, 4], materialRef: 'roof' });
   if (door) boxes.push({ min: [2, 1, 0], max: [2, 2, 0], materialRef: 'gap' });
   return JSON.stringify({ decision: 'BUILD', materials: { wall: { nodeName: 'fixture:wood', param2: 0 },
-    gap: { nodeName: 'air', param2: 0 } }, boxes });
+    roof: { nodeName: roofNode, param2: 0 }, gap: { nodeName: doorNode, param2: 0 } }, boxes });
 }

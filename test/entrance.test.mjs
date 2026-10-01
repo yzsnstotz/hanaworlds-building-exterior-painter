@@ -19,6 +19,10 @@ test('a doorway connects the confirmed portal to the enclosed interior by a six-
   assert.deepEqual(entrance.path, [[12, 1, 10], [12, 1, 11]]);
   const usable = new Set(entrance.usablePositions.map(p => p.join(',')));
   for (const p of entrance.path) assert.ok(usable.has(p.join(',')));
+  // every use/path cell is verified empty air in the final state
+  const written = new Map(geometryFor(body, F.hut()).effects.map(e => [e.position.join(','), e.nodeName]));
+  const emptyCells = new Set(body.targetFacts.knownEmptyCells.map(p => p.join(',')));
+  for (const k of usable) assert.ok(written.has(k) ? written.get(k) === 'air' : emptyCells.has(k), k);
   // wall cells and cells without 2-high clearance are not usable
   // wall/ground cells and cells without 2-high clearance under the roof are not usable
   assert.ok(!usable.has('10,1,10') && !usable.has('12,0,12') && !usable.has('12,2,12'));
@@ -56,6 +60,23 @@ test('a cavity that leaks through an unsealed opening or an unknown cell is not 
   const unknown = F.entranceRequest({ unknown: [[13, 2, 13]] });
   assert.equal(outcome(() => planEntrances({ request: unknown, geometry: geometryFor(unknown, F.hut()) })),
     'BUILD_INVALID/INVALID_GEOMETRY');
+});
+
+test('passable non-air cells are neither empty use/path cells nor cavity sides (SPEC recheck at 43620dd)', async () => {
+  const body = F.entranceRequest();
+  // a non-colliding vine roof does not enclose: sky leaks through it
+  assert.equal(outcome(() => planEntrances({ request: body, geometry: geometryFor(body, F.hut({ roofNode: 'fixture:vine' })) })),
+    'BUILD_INVALID/INVALID_GEOMETRY');
+  // a doorway filled with a passable non-air node is not an empty entrance path
+  assert.equal(outcome(() => planEntrances({ request: body, geometry: geometryFor(body, F.hut({ doorNode: 'fixture:vine' })) })),
+    'BUILD_INVALID/INVALID_GEOMETRY');
+  // an existing occupied non-colliding node in the floor leaks to unsampled ground
+  const plantFloor = F.entranceRequest({ groundNode: p => p[0] === 12 && p[2] === 12 ? 'fixture:vine' : 'fixture:stone' });
+  assert.equal(outcome(() => planEntrances({ request: plantFloor, geometry: geometryFor(plantFloor, F.hut()) })),
+    'BUILD_INVALID/INVALID_GEOMETRY');
+  // the production path applies the same rule before assembly
+  const response = await painter(F.hut({ roofNode: 'fixture:vine' })).call('CreateBuildPlan', F.entranceRequest());
+  assert.deepEqual([response.error.code, response.error.reason], ['BUILD_INVALID', 'INVALID_GEOMETRY']);
 });
 
 test('entrance negatives: closed doorway, unknown portal, no confirmed portal, unconvertible avatar unit', () => {

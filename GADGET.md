@@ -81,15 +81,20 @@ text-only. There are no other settings, caps, timeouts or retries.
    `requireEntranceConnectivity`. It is recomputed only from bound facts: the
    final state, the catalogue, the hazard policy and the actual avatar size
    (`unit: "node"`; any other unit is `TARGET_FACTS_INCOMPLETE`).
-   - A usable cell is one whose whole avatar clearance box
-     (ceil width × height × depth) is passable: `walkable: false`, no collision
-     box, and within the hazard policy.
+   - A usable (use or path) cell is one whose whole avatar clearance box
+     (ceil width × height × depth) is verified empty air in the final state,
+     and air must satisfy the hazard policy. A non-air node is never empty,
+     even if it is passable (for example `walkable: false` with no collision).
    - The interior is a cavity, following CONTRACT_RULES ("天空不冒充室内").
-     Treat the confirmed entrance planes as temporarily sealed and find each
-     6-connected group of passable cells. A group counts as interior only if
-     none of its cells borders an open side. An open side is a cell outside the
-     sampled facts (sky or outside the world) or an unknown cell. Occupied
-     cells count as solid sides and are never passable.
+     Treat the confirmed entrance planes as temporarily sealed, then flood
+     6-adjacently from usable cells through every cell that is not a proven
+     collision. A proven collision is a final node with `walkable: true` or a
+     non-empty `collisionBoxes`.
+   - The flood passes through non-colliding non-air nodes (plants, vines,
+     liquids) and through nodes whose collision is unknown, because sky and
+     the outside leak through them.
+   - A component counts as interior only if the flood never reaches an
+     unknown or unsampled cell.
    - A roofless or leaking enclosure therefore has no interior. Every confirmed
      portal must reach usable interior cells by a six-neighbour usable path;
      otherwise the result is `BUILD_INVALID`.

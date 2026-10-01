@@ -129,11 +129,11 @@ function passable(capability, hazardPolicy) {
 
 /**
  * ENTRANCE_CONNECTIVITY for a new exterior, recomputed only from bound facts:
- * the final state (written effects over known-empty cells; occupied and
- * unknown cells are never passable), catalogue capabilities, the bound hazard
- * policy and the actual avatar dimensions. A usable position is a sampled cell
- * whose whole avatar clearance box (ceil(width) x ceil(height) x ceil(depth)
- * grid cells, anchored at its minimum corner) is passable. The declared use
+ * the final state (written effects over sampled known cells), catalogue
+ * capabilities, the bound hazard policy and the actual avatar dimensions. A
+ * usable position is a sampled cell whose whole avatar clearance box
+ * (ceil(width) x ceil(height) x ceil(depth) grid cells, anchored at its
+ * minimum corner) is verified empty air that the hazard policy allows. The declared use
  * space is the usable cells of an enclosed cavity (see below). Each confirmed
  * entrance portal must reach it by a six-neighbor path over usable positions. Returns [] when the safety profile does not
  * require entrance connectivity.
@@ -146,18 +146,27 @@ export function planEntrances({ request, geometry }) {
   const avatar = safetyProfile.avatarDimensions;
   if (avatar.unit !== 'node') fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
   const span = [Math.ceil(avatar.width), Math.ceil(avatar.height), Math.ceil(avatar.depth)];
+  // Final state of every sampled known cell: empty cells are 'air', occupied
+  // cells keep their node, written effects replace either. Unknown and
+  // unsampled cells are absent.
   const finalNode = new Map(targetFacts.knownEmptyCells.map(p => [key(p), 'air']));
+  for (const c of targetFacts.occupiedCells) finalNode.set(key(c.position), c.nodeName);
   for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
-  // Occupied cells are never passable ("walkable=false plants are not empty")
-  // but they are known solid sides of a cavity.
-  const occupied = new Set(targetFacts.occupiedCells.map(c => key(c.position)));
-  const open = k => finalNode.has(k) && passable(catalogue.nodes[finalNode.get(k)], safetyProfile.hazardPolicy);
+  // Use and path cells must be verified EMPTY and passable ("walkable=false
+  // plants are not empty"): final node 'air' whose catalogue capability passes.
+  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, safetyProfile.hazardPolicy);
+  // Only a proven collision seals a cavity side. A non-colliding non-air node
+  // (plant, vine, liquid) or a node with unknown collision lets sky through.
+  const blocks = k => {
+    const c = catalogue.nodes[finalNode.get(k)];
+    return !!c && (c.walkable === true || (Array.isArray(c.collisionBoxes) && c.collisionBoxes.length > 0));
+  };
   const usable = new Map();
   for (const k of finalNode.keys()) {
     const p = k.split(',').map(Number);
     let clear = true;
     for (let dx = 0; clear && dx < span[0]; dx++) for (let dy = 0; clear && dy < span[1]; dy++)
-      for (let dz = 0; clear && dz < span[2]; dz++) clear = open(key([p[0] + dx, p[1] + dy, p[2] + dz]));
+      for (let dz = 0; clear && dz < span[2]; dz++) clear = empty(key([p[0] + dx, p[1] + dy, p[2] + dz]));
     if (clear) usable.set(k, p);
   }
   const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
@@ -167,14 +176,14 @@ export function planEntrances({ request, geometry }) {
     return portal;
   });
   // Cavity (CONTRACT_RULES §TargetFacts): with the confirmed entrance planes
-  // temporarily sealed, a 6-connected component of passable cells is interior
-  // only if no member touches an open side: a cell outside the sampled facts
-  // (sky, outside world) or an unknown cell. Sky never counts as interior.
+  // temporarily sealed, flood every non-blocking cell 6-adjacently. A
+  // component is interior only if it never reaches an unknown or unsampled
+  // cell (sky, outside world) and is bounded only by proven collision.
   const sealed = new Set(portals.flatMap(x => x.positions.map(key)));
   const cavity = new Set();
   const visited = new Set();
-  for (const start of finalNode.keys()) {
-    if (visited.has(start) || sealed.has(start) || !open(start)) continue;
+  for (const start of usable.keys()) {
+    if (visited.has(start) || sealed.has(start)) continue;
     const component = [start];
     visited.add(start);
     let enclosed = true;
@@ -182,10 +191,10 @@ export function planEntrances({ request, geometry }) {
       const p = component[i].split(',').map(Number);
       for (const d of steps) {
         const n = key([p[0] + d[0], p[1] + d[1], p[2] + d[2]]);
-        if (sealed.has(n)) continue;
-        if (occupied.has(n)) continue;
+        if (sealed.has(n) || visited.has(n)) continue;
         if (!finalNode.has(n)) { enclosed = false; continue; } // unknown or outside the sampled facts
-        if (open(n) && !visited.has(n)) { visited.add(n); component.push(n); }
+        if (blocks(n)) continue;
+        visited.add(n); component.push(n);
       }
     }
     if (enclosed) for (const k of component) cavity.add(k);
