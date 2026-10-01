@@ -26,8 +26,8 @@ export const frame = () => ({ profileVersion: 'frame/v2', frameId: 'fixture-fram
   transformRevision: 'fixture-transform-1' });
 
 /** Inspected 4x3x4 region at [10,0,10]; one occupied cell and one unknown cell. */
-export function targetFacts({ occupied = [[13, 0, 13]], unknown = [[13, 2, 13]] } = {}) {
-  const min = [10, 0, 10], max = [13, 2, 13];
+export function targetFacts({ occupied = [[13, 0, 13]], unknown = [[13, 2, 13]], max = [13, 2, 13], portals = [] } = {}) {
+  const min = [10, 0, 10];
   const all = [];
   for (let x = min[0]; x <= max[0]; x++) for (let y = min[1]; y <= max[1]; y++)
     for (let z = min[2]; z <= max[2]; z++) all.push([x, y, z]);
@@ -44,15 +44,15 @@ export function targetFacts({ occupied = [[13, 0, 13]], unknown = [[13, 2, 13]] 
     occupiedCells: occupied.map(position => ({ position, nodeName: 'fixture:stone', param2: 0 })),
     knownEmptyCells: all.filter(p => !blocked.has(k(p))).sort(comparePosition),
     unknownCells: unknown.map(position => ({ position, reason: 'UNLOADED' })),
-    portals: [],
+    portals,
     usableVolume: unknown.length ? null : { emptyCellCount: all.length - occupied.length,
       physicalVolume: null, standingArea: null, unit: 'node' },
   };
 }
 
-export const safetyProfile = () => ({ profileVersion: 'safety-profile/v2',
-  avatarDimensions: { width: 1, height: 2, depth: 1, unit: 'node' }, connectivity: 6,
-  requireProtectedClearance: true, requireBodyClearance: true, requireEntranceConnectivity: false,
+export const safetyProfile = ({ entrance = false, unit = 'node' } = {}) => ({ profileVersion: 'safety-profile/v2',
+  avatarDimensions: { width: 1, height: 2, depth: 1, unit }, connectivity: 6,
+  requireProtectedClearance: true, requireBodyClearance: true, requireEntranceConnectivity: entrance,
   hazardPolicy: { forbidLiquid: true, maximumDamagePerSecond: 0 }, optionalLightRule: null });
 
 export function brief({ media = true, text = '照这张图搭一个小木屋' } = {}) {
@@ -66,15 +66,16 @@ export function brief({ media = true, text = '照这张图搭一个小木屋' } 
 
 /** A complete, digest-coherent CreateBuildPlanRequest. `patch` replaces fields
  * after digests are computed; `briefOptions`/`facts`/`kind` shape the inputs. */
-export function request({ patch = {}, briefOptions, facts, kind = 'BUILD_STRUCTURE', confirmedText } = {}) {
+export function request({ patch = {}, briefOptions, facts, kind = 'BUILD_STRUCTURE', confirmedText,
+  safety, entrancePortalRefs = [] } = {}) {
   const b = brief(briefOptions);
   const bDigest = digestValue('reference-brief', b).sha256;
   const intent = { contractVersion: 'session/v2', referenceBriefDigest: bDigest,
     confirmedIntent: { kind, text: confirmedText ?? b.text, purpose: 'small cabin', dimensions: null,
-      entrancePortalRefs: [], confirmedTurnRevision: 'fixture-turn-1' },
+      entrancePortalRefs, confirmedTurnRevision: 'fixture-turn-1' },
     intendedWorldRef: 'fixture-world', orderedTargetRefs: ['fixture-site'] };
   const tf = facts ?? targetFacts();
-  const sp = safetyProfile();
+  const sp = safety ?? safetyProfile();
   return { contractVersion: 'painter/v2', actorRef: 'fixture-actor', sessionRef: 'fixture-session',
     requestId: 'fixture-request-1', authorizationRef: 'fixture-auth', worldRef: 'fixture-world',
     turnRevision: 'fixture-turn-1', painterId: 'picture-blocks', invocationId: 'fixture-invocation-1',
@@ -123,4 +124,22 @@ export function trustedFixtureFacts() {
     evidence: { providerRef: 'FIXTURE-adapter', sourceRevision: 'fixture-evidence-1',
       worldRef: 'fixture-world', worldRevision: 'fixture-world-1' },
     protection: { protectedPositions: [] }, body: { bodyOccupiedPositions: [[0, 5, 0]] } };
+}
+
+/** 5x3x5 empty site at [10,0,10] with portal "front" at the south wall cell
+ * [12,0,10]; entrance connectivity required for a 1x2x1 avatar. */
+export function entranceRequest({ refs = ['front'], portals = [{ portalRef: 'front', positions: [[12, 0, 10]] }], unit = 'node' } = {}) {
+  return request({ facts: targetFacts({ occupied: [], unknown: [], max: [14, 2, 14], portals }),
+    safety: safetyProfile({ entrance: true, unit }), entrancePortalRefs: refs });
+}
+
+/** Four 2-high walls around a 3x3 interior; `door` cuts the portal cell. */
+export function hut({ door = true } = {}) {
+  const boxes = [
+    { min: [0, 0, 0], max: [4, 1, 0], materialRef: 'wall' }, { min: [0, 0, 4], max: [4, 1, 4], materialRef: 'wall' },
+    { min: [0, 0, 0], max: [0, 1, 4], materialRef: 'wall' }, { min: [4, 0, 0], max: [4, 1, 4], materialRef: 'wall' },
+  ];
+  if (door) boxes.push({ min: [2, 0, 0], max: [2, 1, 0], materialRef: 'gap' });
+  return JSON.stringify({ decision: 'BUILD', materials: { wall: { nodeName: 'fixture:wood', param2: 0 },
+    gap: { nodeName: 'air', param2: 0 } }, boxes });
 }

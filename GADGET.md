@@ -77,9 +77,25 @@ text-only. There are no other settings, caps, timeouts or retries.
 5. Only static catalogue materials are offered and accepted: no callbacks, no
    persistent state, and an allowed `param2`. Anything else is
    `UNSUPPORTED_MATERIAL`.
-6. PROTECTION and BODY_CLEARANCE witnesses require provider-verified evidence.
+6. Entrance connectivity applies when the safety profile sets
+   `requireEntranceConnectivity`. It is recomputed only from bound facts: the
+   final state, the catalogue, the hazard policy and the actual avatar size
+   (`unit: "node"`; any other unit is `TARGET_FACTS_INCOMPLETE`).
+   - A usable cell is one whose whole avatar clearance box
+     (ceil width × height × depth) is passable: `walkable: false`, no collision
+     box, and within the hazard policy.
+   - Every confirmed entrance portal must reach the interior (usable cells
+     strictly inside the structure's horizontal footprint) by a six-neighbour
+     usable path. If not, the result is `BUILD_INVALID`.
+   - No confirmed portal gives `INTENT_UNCONFIRMED`. A portal missing from the
+     target facts gives `TARGET_FACTS_INCOMPLETE`.
+   - Each portal produces an `ENTRANCE_CONNECTIVITY` witness. The HAZARD
+     witness also covers every entrance use and path cell.
+   - The definition of "interior" and the clearance-only rule (no floor-support
+     check) are the worker's engineering reading of the contract's x-rules.
+7. PROTECTION and BODY_CLEARANCE witnesses require provider-verified evidence.
    Missing evidence is a typed rejection, never a default "safe" claim.
-7. Replay: a request with the same `sessionRef + requestId` and the exact same
+8. Replay: a request with the same `sessionRef + requestId` and the exact same
    payload returns the original domain response. Current authorization is
    checked first. A changed payload is `REPLAY_MISMATCH`. Host failures are not
    recorded, so they can be retried.

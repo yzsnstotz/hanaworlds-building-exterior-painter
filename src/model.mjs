@@ -29,6 +29,8 @@ const SYSTEM = [
   '- Use only the offered materials, with an offered param2 value.',
   '- Boxes are applied in order; a later box overwrites earlier cells (use this to cut openings',
   '  with "air" only if "air" is offered).',
+  '- If entrance.required is true, leave a walk-through opening at every listed portal cell into an',
+  '  enclosed interior large enough for avatarCells (x,y,z), e.g. by cutting it with "air".',
   '- If the image, the text, or their combination does not determine the structure well enough,',
   '  do not guess: ask ONE short question in the user\'s language.',
   'Answer with exactly one JSON object and nothing else, in one of these two forms:',
@@ -50,6 +52,13 @@ export function promptText(request) {
       unknownCells: region.unknown },
     offeredMaterials: offeredMaterials(request.catalogue),
     imageCount: brief.media.length,
+    entrance: request.safetyProfile.requireEntranceConnectivity ? {
+      required: true,
+      avatarCells: ['width', 'height', 'depth'].map(k => Math.ceil(request.safetyProfile.avatarDimensions[k])),
+      portals: request.targetFacts.portals
+        .filter(x => intent.confirmedIntent.entrancePortalRefs.includes(x.portalRef))
+        .map(x => ({ portalRef: x.portalRef, cells: x.positions.map(p => p.map((v, i) => v - request.targetFacts.sampledBounds.min[i])) })),
+    } : { required: false },
   };
   return `Confirmed request facts (JSON):\n${JSON.stringify(facts)}`;
 }

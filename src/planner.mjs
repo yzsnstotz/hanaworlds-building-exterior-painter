@@ -30,7 +30,7 @@ export function describeRegion(targetFacts) {
 export function offeredMaterials(catalogue) {
   return Object.keys(catalogue.nodes).sort(compareUTF16).filter(name => {
     const c = catalogue.nodes[name];
-    return name !== 'air' && c.hasCallbacks === false && c.hasPersistentState === false &&
+    return c.hasCallbacks === false && c.hasPersistentState === false &&
       Array.isArray(c.allowedParam2) && c.allowedParam2.length > 0 && c.definitionRevision !== null;
   }).map(name => ({ nodeName: name, allowedParam2: [...catalogue.nodes[name].allowedParam2],
     walkable: catalogue.nodes[name].walkable }));
@@ -117,20 +117,89 @@ export function planGeometry({ proposal, catalogue, targetFacts }) {
   return { materials, operations, effects, declaredBounds };
 }
 
+/** Whether a final-state node lets the avatar occupy its cell: explicitly
+ * non-walkable, no collision box and within the bound hazard policy. Any
+ * unknown (null) capability is not passable. */
+function passable(capability, hazardPolicy) {
+  return !!capability && capability.walkable === false && Array.isArray(capability.collisionBoxes) &&
+    capability.collisionBoxes.length === 0 && capability.liquidType !== null && capability.damagePerSecond !== null &&
+    (!hazardPolicy.forbidLiquid || capability.liquidType === 'none') &&
+    capability.damagePerSecond <= hazardPolicy.maximumDamagePerSecond;
+}
+
+/**
+ * ENTRANCE_CONNECTIVITY for a new exterior, recomputed only from bound facts:
+ * the final state (written effects over known-empty cells; occupied and
+ * unknown cells are never passable), catalogue capabilities, the bound hazard
+ * policy and the actual avatar dimensions. A usable position is a sampled cell
+ * whose whole avatar clearance box (ceil(width) x ceil(height) x ceil(depth)
+ * grid cells, anchored at its minimum corner) is passable. The declared use
+ * space is the usable cells strictly inside the structure's horizontal
+ * footprint. Each confirmed entrance portal must reach it by a six-neighbor
+ * path over usable positions. Returns [] when the safety profile does not
+ * require entrance connectivity.
+ */
+export function planEntrances({ request, geometry }) {
+  const { catalogue, targetFacts, safetyProfile, intent } = request;
+  if (!safetyProfile.requireEntranceConnectivity) return [];
+  const refs = intent.confirmedIntent.entrancePortalRefs;
+  if (refs.length === 0) fail('INTENT_UNCONFIRMED', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  const avatar = safetyProfile.avatarDimensions;
+  if (avatar.unit !== 'node') fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  const span = [Math.ceil(avatar.width), Math.ceil(avatar.height), Math.ceil(avatar.depth)];
+  const finalNode = new Map(targetFacts.knownEmptyCells.map(p => [key(p), 'air']));
+  for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
+  const open = k => finalNode.has(k) && passable(catalogue.nodes[finalNode.get(k)], safetyProfile.hazardPolicy);
+  const usable = new Map();
+  for (const k of finalNode.keys()) {
+    const p = k.split(',').map(Number);
+    let clear = true;
+    for (let dx = 0; clear && dx < span[0]; dx++) for (let dy = 0; clear && dy < span[1]; dy++)
+      for (let dz = 0; clear && dz < span[2]; dz++) clear = open(key([p[0] + dx, p[1] + dy, p[2] + dz]));
+    if (clear) usable.set(k, p);
+  }
+  const { min, max } = geometry.declaredBounds;
+  const inside = p => p[0] > min[0] && p[0] < max[0] && p[2] > min[2] && p[2] < max[2] &&
+    p[1] >= min[1] && p[1] <= max[1];
+  const useSpace = new Set([...usable].filter(([, p]) => inside(p)).map(([k]) => k));
+  if (useSpace.size === 0) fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
+  const usablePositions = [...usable.values()].sort(comparePosition);
+  const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  return refs.map(portalRef => {
+    const portal = targetFacts.portals.find(x => x.portalRef === portalRef);
+    if (!portal) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+    const starts = portal.positions.map(key).filter(k => usable.has(k));
+    const previous = new Map(starts.map(k => [k, null]));
+    const queue = [...starts];
+    let goal = null;
+    while (queue.length && goal === null) {
+      const k = queue.shift();
+      if (useSpace.has(k)) { goal = k; break; }
+      const p = usable.get(k);
+      for (const d of steps) {
+        const n = key([p[0] + d[0], p[1] + d[1], p[2] + d[2]]);
+        if (usable.has(n) && !previous.has(n)) { previous.set(n, k); queue.push(n); }
+      }
+    }
+    if (goal === null) fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
+    const path = [];
+    for (let k = goal; k !== null; k = previous.get(k)) path.unshift(usable.get(k));
+    return { portalRef, usablePositions, path };
+  });
+}
+
 /**
  * Assemble the complete BuildProjection. `trusted` must come from a public,
  * provider-verified source: the exact coordinate Frame whose digest equals
  * targetFacts.frameDigest and Adapter evidence for protection and body
  * occupancy. Missing trusted facts are a typed rejection, never a default.
  */
-export function assembleBuild({ request, geometry, documentId, trusted }) {
+export function assembleBuild({ request, geometry, documentId, trusted, entrances = planEntrances({ request, geometry }) }) {
   const { catalogue, targetFacts, safetyProfile } = request;
   if (!trusted?.frame || !trusted.evidence || !trusted.protection || !trusted.body)
     fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
   if (digestValue('frame', trusted.frame).sha256 !== targetFacts.frameDigest)
     fail('TARGET_FACTS_STALE', 'validate', 'REVISION_CHANGED');
-  if (safetyProfile.requireEntranceConnectivity)
-    fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
   const catalogueDigest = digestValue('catalogue', catalogue).sha256;
   const finalEffects = { profileVersion: 'final-effects/v2', frameDigest: targetFacts.frameDigest,
     catalogueDigest, effects: geometry.effects };
@@ -153,6 +222,9 @@ export function assembleBuild({ request, geometry, documentId, trusted }) {
       c.damagePerSecond <= safetyProfile.hazardPolicy.maximumDamagePerSecond;
   });
   if (!hazardOk) fail('UNSUPPORTED_MATERIAL', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  const hazardCells = new Map(positions.map(p => [key(p), p]));
+  for (const entrance of entrances) for (const p of entrance.usablePositions) hazardCells.set(key(p), p);
+  const hazardPositions = [...hazardCells.values()].sort(comparePosition);
   const witnesses = [
     { witnessId: 'w1-coverage', predicate: 'COVERAGE', ...bound, facts: { evidence, positions } },
     { witnessId: 'w2-protection', predicate: 'PROTECTION', ...bound,
@@ -161,10 +233,15 @@ export function assembleBuild({ request, geometry, documentId, trusted }) {
     { witnessId: 'w3-body', predicate: 'BODY_CLEARANCE', ...bound,
       facts: { evidence, positions, bodyOccupiedPositions: trusted.body.bodyOccupiedPositions,
         avatarDimensions: safetyProfile.avatarDimensions } },
+    // Hazard is recomputed at every written cell and every entrance use/path cell.
     { witnessId: 'w4-hazard', predicate: 'HAZARD', ...bound,
-      facts: { evidence, positions, forbidLiquid: safetyProfile.hazardPolicy.forbidLiquid,
+      facts: { evidence, positions: hazardPositions, forbidLiquid: safetyProfile.hazardPolicy.forbidLiquid,
         maximumDamagePerSecond: safetyProfile.hazardPolicy.maximumDamagePerSecond } },
-  ];
+    ...entrances.map(entrance => ({ witnessId: `w5-entrance-${entrance.portalRef}`,
+      predicate: 'ENTRANCE_CONNECTIVITY', ...bound,
+      facts: { evidence, portalRef: entrance.portalRef, usablePositions: entrance.usablePositions,
+        path: entrance.path, avatarDimensions: safetyProfile.avatarDimensions } })),
+  ].sort((a, b) => compareUTF16(a.witnessId, b.witnessId));
   const build = validateType('BuildProjection', {
     contractVersion: 'BUILD/V2', documentId, coordinateFrame: trusted.frame, catalogueDigest,
     targetFactsDigest: request.targetFactsDigest, safetyProfileDigest: request.safetyProfileDigest,

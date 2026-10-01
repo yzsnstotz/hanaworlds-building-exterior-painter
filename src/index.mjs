@@ -5,7 +5,7 @@ import { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
 
 export { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
 export { PainterHostError, buildMessages, promptText } from './model.mjs';
-export { PAINTER_ID, parseProposal, planGeometry, assembleBuild, offeredMaterials } from './planner.mjs';
+export { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, offeredMaterials } from './planner.mjs';
 
 export const name = 'hanaworlds-building-exterior-painter';
 export const inject = [];

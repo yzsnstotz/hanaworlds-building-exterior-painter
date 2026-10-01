@@ -6,7 +6,7 @@ import {
   ContractError, publicError, admitRequest, validateRequest, validateResponse,
   digestValue, decodeRawJSON,
 } from '#contracts';
-import { PAINTER_ID, parseProposal, planGeometry, assembleBuild } from './planner.mjs';
+import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild } from './planner.mjs';
 import { invokeModel, PainterHostError } from './model.mjs';
 
 export const WIRE = 'painter/v2';
@@ -22,6 +22,7 @@ export const INVARIANTS = Object.freeze([
   'Structure intent requires at least one bound user image and non-empty text.',
   'The model route must resolve to an image-capable model; a text-only route is refused, never degraded.',
   'Written cells must be sampled known-empty target cells; occupied cells are never replaced and unknown cells are never written.',
+  'When the safety profile requires entrance connectivity, every confirmed entrance portal must reach the enclosed interior by a six-neighbor path of cells with full avatar clearance, recomputed from bound facts; otherwise BUILD_INVALID.',
   'PROTECTION/BODY_CLEARANCE witnesses require provider-verified evidence; absent evidence is a typed TARGET_FACTS_INCOMPLETE rejection, never a default safe claim.',
   'Same requestId with the same exact payload returns the original response after current authorization; a changed payload is REPLAY_MISMATCH.',
 ]);
@@ -170,10 +171,12 @@ export class ExteriorPainterV2 {
       });
     }
     const geometry = planGeometry({ proposal, catalogue: body.catalogue, targetFacts });
+    // Entrance connectivity depends only on bound facts, so it is decided now.
+    const entrances = planEntrances({ request: body, geometry });
     // No public port supplies the target Frame or Adapter protection/body
     // evidence to painter/v2 (CONTRACT_GAP-EXT-01/02): typed rejection.
     const { build, buildDigest } = assembleBuild({ request: body, geometry,
-      documentId: `exterior-${body.invocationId}`, trusted: null });
+      documentId: `exterior-${body.invocationId}`, trusted: null, entrances });
     return validateResponse(WIRE, OPERATION, { contractVersion: WIRE, requestId: body.requestId,
       result: { invocationId: body.invocationId, build, buildDigest }, error: null });
   }
