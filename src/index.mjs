@@ -4,6 +4,8 @@ import Schema from '@deepseek-ai/schemastery';
 import { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
 
 export { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
+/** ContractHandshake this provider advertises: exactly the admitted contracts@0.3.0 set. */
+export { contractHandshake } from '#contracts';
 export { PainterHostError, buildMessages, promptText } from './model.mjs';
 export { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, offeredMaterials } from './planner.mjs';
 

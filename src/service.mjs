@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import {
   ContractError, publicError, admitRequest, validateRequest, validateBoundRequest, validateResponse,
-  digestValue, decodeRawJSON,
+  digestValue, decodeRawJSON, contractHandshake,
 } from '#contracts';
 import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, trustedFromRegion,
   checkEntranceFacing } from './planner.mjs';
@@ -65,7 +65,14 @@ export class ExteriorPainterV2 {
     this.attachments = attachments;
     this.route = Object.freeze({ provider: route.provider, model: route.model });
     this.receipts = new Map(); // invocation receipts only; no world or Session state
+    // ContractHandshake advertised before any request (CONTRACT_RULES "Compatibility
+    // (rc.7)"): exactly the vendored admitted contracts@0.3.0 advertisement, never
+    // a painter-synthesized set. Consumers check it with checkContractHandshake.
+    Object.defineProperty(this, 'contractHandshake', { value: contractHandshake, enumerable: true });
   }
+
+  /** The ContractHandshake this provider advertises (contracts@0.3.0). */
+  handshake() { return contractHandshake; }
 
   describe() {
     return {

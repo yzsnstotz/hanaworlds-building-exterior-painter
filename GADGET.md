@@ -44,8 +44,25 @@ It provides `hanaworldsPainterV2PictureBlocks`, an `ExteriorPainterV2` with:
 - `call('CreateBuildPlan', raw)`. `raw` is either UTF-8 bytes/string, which go
   through strict raw admission, or decoded pure JSON. The return value is
   validated by `hanaworlds-contracts` v4 `painter/v3` `response()`.
+- `contractHandshake` (read-only property) and `handshake()`. Both are the
+  `ContractHandshake` this provider advertises before any request: exactly the
+  vendored admitted contracts@0.3.0 `contractHandshake` value
+  (`{contracts: "hanaworlds-contracts@0.3.0", wireVersions: [BUILD/V2,
+  ReferenceBrief/v2, canvas/v4, interaction-surface/v3, painter/v3, session/v2,
+  world-adapter/v4], compiledOperationsVersion: "operations/v2", factProfiles:
+  [target-facts/v2, target-facts/v3]}`). The painter does not compose its own
+  set. The module also exports it as `contractHandshake`, as admitted Brush
+  0.2.0 does.
+  - A consumer checks it with contracts `checkContractHandshake`
+    (for Workshop: `{wires: [painter/v3], factProfiles: [target-facts/v3]}`).
+  - A missing or incompatible advertisement (for example the contracts@0.2.1
+    painter/v2 peer) fails with `UNSUPPORTED_VERSION/decode/VERSION_UNSUPPORTED`
+    before any request.
+  - Revision `8220f21` did not advertise a handshake. That was the composition
+    defect EXTERIOR-V4-CONTRACT-HANDSHAKE-MISSING.
 - `describe()`, which returns the painter id, ports, current and default
-  settings, fixed invariants and which host services are present.
+  settings, fixed invariants and which host services are present. It is
+  unchanged and is not a handshake.
 
 It consumes these host services. Each one is resolved at every call and is never
 cached:
