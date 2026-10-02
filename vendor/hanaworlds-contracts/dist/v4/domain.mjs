@@ -1,11 +1,14 @@
 import { schemaBundle, contractMetadata } from './generated/contracts.mjs';
-import { fail, requireFact } from './errors.mjs';
-import { compareUTF16, comparePosition, assertBox, inside, unionBounds } from './geometry.mjs';
-import { validateNameSyntax } from './names.mjs';
+import { fail, requireFact } from '../errors.mjs';
+import { compareUTF16, comparePosition, assertBox, inside, unionBounds } from '../geometry.mjs';
+import { validateNameSyntax } from '../names.mjs';
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const geometry = ok => requireFact(ok, 'SCHEMA_INVALID', 'INVALID_GEOMETRY');
 const shape = ok => requireFact(ok, 'SCHEMA_INVALID', 'INVALID_SHAPE');
 const positionKey = p => JSON.stringify(p);
+// rc.6/rc.7 rules whose approved oracle names a decode-phase shape rejection.
+const decodeShape = ok => requireFact(ok, 'SCHEMA_INVALID', 'INVALID_SHAPE', 'decode');
+const PLACEMENT_OPTION_ORDER = ['NAME_PLAYER', 'PICK_WORLD_POINT'];
 function arrayCompare(name, order) {
   if (order === 'numeric ascending') return (a, b) => a - b;
   if (order === 'UTF16 ascending') return compareUTF16;
@@ -14,6 +17,7 @@ function arrayCompare(name, order) {
   if (order === 'portalRef UTF16 ascending') return (a, b) => compareUTF16(a.portalRef, b.portalRef);
   if (order === 'witnessId UTF16 ascending') return (a, b) => compareUTF16(a.witnessId, b.witnessId);
   if (order === 'resourceId UTF16 ascending') return (a, b) => compareUTF16(a.resourceId, b.resourceId);
+  if (order === 'fixed NAME_PLAYER then PICK_WORLD_POINT') return (a, b) => PLACEMENT_OPTION_ORDER.indexOf(a) - PLACEMENT_OPTION_ORDER.indexOf(b);
   if (order === 'creationSequence numeric then objectRef UTF16') return (a, b) => (a.creationSequence - b.creationSequence) || compareUTF16(a.objectRef, b.objectRef);
   if (order === 'limitKind,source UTF16' || order === 'adapterId,connectionRef,worldRef UTF16') {
     const keys = order.split(' ')[0].split(',');
@@ -38,8 +42,15 @@ export function validateArrayOrder(name, v, parent) {
 function targetFacts(v) {
   const actual = ['worldRef', 'objectRef', 'worldRevision', 'objectRevision'];
   const planned = ['buildDigest', 'planRevision'];
-  shape(actual.every(k => (v[k] !== null) === (v.source === 'INSPECTED')));
-  shape(planned.every(k => (v[k] !== null) === (v.source === 'PLANNED')));
+  // rc.7: target-facts/v3 iff REGION_INSPECTED; INSPECTED and PLANNED keep target-facts/v2.
+  decodeShape((v.source === 'REGION_INSPECTED') === (v.profileVersion === 'target-facts/v3'));
+  if (v.source === 'REGION_INSPECTED') {
+    decodeShape(v.worldRef !== null && v.worldRevision !== null);
+    decodeShape(['objectRef', 'objectRevision', ...planned].every(k => v[k] === null));
+  } else {
+    shape(actual.every(k => (v[k] !== null) === (v.source === 'INSPECTED')));
+    shape(planned.every(k => (v[k] !== null) === (v.source === 'PLANNED')));
+  }
   const positions = [...v.occupiedCells.map(x => x.position), ...v.knownEmptyCells, ...v.unknownCells.map(x => x.position)];
   shape(new Set(positions.map(positionKey)).size === positions.length);
   geometry(positions.every(p => inside(p, v.sampledBounds)));
@@ -86,7 +97,26 @@ export function validateDomain(visits) {
     } else if (name === 'MediaBinding') shape((v.projectionVariantId === null) === (v.projectionBytesDigest === null));
     else if (name === 'ReceiptProjection') receipt(v);
     else if (name === 'BeforeImage' || name === 'ReadbackProjection') shape(same(v.coveredPositions, v.records.map(x => x.position)));
-    else if (name === 'PreparedTransaction') shape(v.beforeImageDigest === v.payload.beforeImageDigest);
+    else if (name === 'PreparedTransaction' || name === 'PreparedTransactionResult') shape(v.beforeImageDigest === v.payload.beforeImageDigest);
+    else if (name === 'ActionDescriptor') decodeShape((v.choices !== null) === v.inputKinds.includes('SELECT_CHOICE'));
+    else if (name === 'PlacementChoiceRequired') {
+      shape((v.candidatePlayerNames !== null) === v.reasons.includes('MULTIPLE_ONLINE_PLAYERS'));
+      // rc.9 (Q2 user decision): NAME_PLAYER only for MULTIPLE_ONLINE_PLAYERS; every other reason offers PICK_WORLD_POINT only.
+      shape(same(v.options, v.reasons.includes('MULTIPLE_ONLINE_PLAYERS') ? PLACEMENT_OPTION_ORDER : ['PICK_WORLD_POINT']));
+    } else if (name === 'RegionInspection') {
+      decodeShape(v.targetFacts.source === 'REGION_INSPECTED');
+      shape(v.evidence.worldRef === v.targetFacts.worldRef && v.evidence.worldRevision === v.targetFacts.worldRevision);
+      shape(v.evidence.sourceRevision === v.frame.transformRevision);
+      geometry([...v.protectedPositions, ...v.bodyOccupiedPositions].every(p => inside(p, v.targetFacts.sampledBounds)));
+    } else if (name === 'PlacementRegionInspection') {
+      shape((v.unavailableSettings !== null) === (v.error !== null && v.error.code === 'CAPABILITY_UNAVAILABLE' && v.error.reason === 'POLICY_UNAVAILABLE'));
+    } else if (name === 'CreateBuildPlanRequest') {
+      // Payload-decidable painter/v3 rules in the approved order; digest coherence is in validateBoundRequest.
+      if (v.targetFacts.source === 'REGION_INSPECTED') {
+        requireFact(v.painterId === 'picture-blocks', 'TARGET_REQUIRED', 'SCOPE_DENIED');
+        requireFact(v.regionInspection !== null, 'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+      } else decodeShape(v.regionInspection === null);
+    }
     else if (name === 'NameObjectRequest' || name === 'RenameObjectRequest') validateNameSyntax(v.name);
     else if (name === 'ObjectNameReceipt') shape(validateNameSyntax(v.displayName) === v.displayName);
     else if (name === 'SavedResourceReceipt') requireFact(v.durable === true, 'SAVED_RESOURCE_UNAVAILABLE', 'RESOURCE_MISSING');

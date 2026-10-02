@@ -1,5 +1,5 @@
 import { schemaBundle } from './generated/contracts.mjs';
-import { fail, requireFact } from './errors.mjs';
+import { fail, requireFact } from '../errors.mjs';
 export { schemaBundle };
 const invalid = () => fail('SCHEMA_INVALID', 'decode', 'INVALID_SHAPE');
 /** Interpreter for the generated Draft7 schema subset, not for the source DSL.
@@ -16,7 +16,11 @@ export function validateShape(typeName, value) {
       if (!s) throw new TypeError('Broken generated schema reference');
     }
     if (s.anyOf) {
-      const selected = v === null ? s.anyOf.find(x => x.type === 'null') : s.anyOf.find(x => x.type !== 'null');
+      // A union of several constants (TargetFacts.profileVersion) selects the matching constant;
+      // otherwise the first is checked so a mismatch reports exactly as a single constant would.
+      const choices = s.anyOf.filter(x => x.type !== 'null');
+      const selected = v === null ? s.anyOf.find(x => x.type === 'null')
+        : choices.length > 1 && choices.every(x => Object.hasOwn(x, 'const')) ? (choices.find(x => x.const === v) ?? choices[0]) : choices[0];
       if (!selected) invalid(); work.push({ ...entry, s: selected }); continue;
     }
     const name = s['x-typeName'] ?? entry.parent;

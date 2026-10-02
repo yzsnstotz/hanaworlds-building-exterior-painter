@@ -5,14 +5,14 @@ import { readFile } from 'node:fs/promises';
 import {
   ContractError, validateType, validateWitnessCoherence, digestValue,
 } from '#contracts';
-import * as Painter from '#contracts/painter/v2';
+import * as Painter from '#contracts/painter/v3';
 import * as Build from '#contracts/BUILD/V2';
 import { ExteriorPainterV2, PainterHostError, planGeometry, assembleBuild, parseProposal } from '../src/index.mjs';
 import * as F from './fixtures.mjs';
 
 const painter = (over = {}) => new ExteriorPainterV2({ authority: F.authority(), llm: F.llm(),
   attachments: F.attachments(), ...over });
-const wireRequest = async id => JSON.parse(await readFile(new URL('../vendor/hanaworlds-contracts/fixtures/candidate/wire-inputs.json', import.meta.url), 'utf8'))
+const wireRequest = async id => JSON.parse(await readFile(new URL('../vendor/hanaworlds-contracts/fixtures/v4/candidate/wire-inputs-v4.json', import.meta.url), 'utf8'))
   .requests.find(r => r.id === id).request;
 const errorOf = response => { assert.equal(response.result, null); return response.error; };
 
@@ -55,7 +55,7 @@ test('FIXTURE: with trusted facts the assembled BUILD/V2 is schema-valid, witnes
     safetyProfile: body.safetyProfile, catalogue: body.catalogue }),
   { coherent: true, authenticityVerified: false, providerAuthorization: 'NOT_RUN', worldWrites: 0 });
   assert.equal(buildDigest, digestValue('build', build).sha256);
-  Painter.response('CreateBuildPlan', { contractVersion: 'painter/v2', requestId: body.requestId,
+  Painter.response('CreateBuildPlan', { contractVersion: 'painter/v3', requestId: body.requestId,
     result: { invocationId: body.invocationId, build, buildDigest }, error: null });
   // Brush-side BUILD/V2 request shape accepts the same projection.
   const wire = await wireRequest('WIRE-BUILD-V2');
@@ -120,16 +120,20 @@ test('interior painterId is an ownership violation for this painter', async () =
   assert.deepEqual([errorOf(response).code, errorOf(response).reason], ['PERMISSION_DENIED', 'OWNERSHIP_VIOLATION']);
 });
 
-test('media binding not addressed by its stored digest is refused before the model', async () => {
+test('media binding is passed to the host attachment route as given (Core owns media authorization/integrity)', async () => {
+  // 0.1.0 also required attachmentRef === "sha256:"+storedBytesDigest; that was a
+  // worker-only rule, and the approved painter/v3 chain uses "fixture-attachment".
+  const model = F.llm({ answers: [JSON.stringify({ decision: 'CLARIFY',
+    clarification: { code: 'AMBIGUOUS_INTENT', question: '要几层？' } })] });
   const body = F.request();
   const b = structuredClone(body.referenceBrief);
-  b.media[0].attachmentRef = 'sha256:' + 'f'.repeat(64);
-  const patched = F.request();
+  b.media[0].attachmentRef = 'core-attachment-7';
   const bDigest = digestValue('reference-brief', b).sha256;
-  const intent = { ...patched.intent, referenceBriefDigest: bDigest };
-  const response = await painter().call('CreateBuildPlan', { ...patched, referenceBrief: b,
+  const intent = { ...body.intent, referenceBriefDigest: bDigest };
+  const response = await painter({ llm: model }).call('CreateBuildPlan', { ...body, referenceBrief: b,
     referenceBriefDigest: bDigest, intent, intentDigest: digestValue('intent', intent).sha256 });
-  assert.deepEqual([errorOf(response).code, errorOf(response).reason], ['IMAGE_REQUIRED', 'MEDIA_CORRUPT']);
+  assert.equal(response.code, 'AMBIGUOUS_INTENT');
+  assert.equal(model.requests[0].messages[0].content[1].attachment.attachmentId, 'core-attachment-7');
 });
 
 test('carried digests must bind their projections', async () => {
@@ -238,12 +242,23 @@ test('strict raw admission: unknown field, wrong version, duplicate decoded key 
   assert.equal(errorOf(viaBytes).code, 'TARGET_FACTS_INCOMPLETE');
 });
 
-test('contracts WIRE-painter-v2 fixture admits and is evaluated by this provider (zero world writes)', async () => {
+test('contracts v4 WIRE-painter-v2 (a painter/v3 envelope since rc.7) admits; INSPECTED facts carry no trusted evidence', async () => {
   const wire = await wireRequest('WIRE-painter-v2');
+  assert.equal(wire.contractVersion, 'painter/v3');
   Painter.validate('CreateBuildPlan', wire);
-  const response = await painter().call('CreateBuildPlan', wire);
-  // Fixture attachmentRef is not a Core content address: refused before the model.
-  assert.deepEqual([errorOf(response).code, errorOf(response).reason], ['IMAGE_REQUIRED', 'MEDIA_CORRUPT']);
+  const block = JSON.stringify({ decision: 'BUILD', materials: { stone: { nodeName: 'fixture:stone', param2: 0 } },
+    boxes: [{ min: [0, 0, 0], max: [0, 0, 0], materialRef: 'stone' }] });
+  const response = await painter({ llm: F.llm({ answers: [block] }) }).call('CreateBuildPlan', wire);
+  assert.deepEqual([errorOf(response).code, errorOf(response).reason], ['TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN']);
+});
+
+test('a painter/v2 envelope is refused at decode, never served by fallback', async () => {
+  const wire = { ...(await wireRequest('WIRE-painter-v2')), contractVersion: 'painter/v2' };
+  const model = F.llm();
+  const response = await painter({ llm: model }).call('CreateBuildPlan', wire);
+  assert.equal(errorOf(response).phase, 'decode');
+  assert.ok(['UNSUPPORTED_VERSION', 'SCHEMA_INVALID', 'UNKNOWN_REQUIRED_FIELD'].includes(errorOf(response).code), errorOf(response).code);
+  assert.equal(model.requests.length, 0);
 });
 
 test('public errors never project input values', async () => {

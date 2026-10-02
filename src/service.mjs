@@ -1,15 +1,16 @@
-// painter/v2 provider for painterId "picture-blocks". Planning only: no world,
+// painter/v3 provider for painterId "picture-blocks". Planning only: no world,
 // Canvas, Adapter or Brush call exists in this module.
 import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
 import {
-  ContractError, publicError, admitRequest, validateRequest, validateResponse,
+  ContractError, publicError, admitRequest, validateRequest, validateBoundRequest, validateResponse,
   digestValue, decodeRawJSON,
 } from '#contracts';
-import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild } from './planner.mjs';
+import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, trustedFromRegion,
+  checkEntranceFacing } from './planner.mjs';
 import { invokeModel, PainterHostError } from './model.mjs';
 
-export const WIRE = 'painter/v2';
+export const WIRE = 'painter/v3';
 export const OPERATION = 'CreateBuildPlan';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -23,7 +24,10 @@ export const INVARIANTS = Object.freeze([
   'The model route must resolve to an image-capable model; a text-only route is refused, never degraded.',
   'Written cells must be sampled known-empty target cells; occupied cells are never replaced and unknown cells are never written.',
   'When the safety profile requires entrance connectivity, every confirmed entrance portal must reach the enclosed interior by a six-neighbor path of cells with full avatar clearance, recomputed from bound facts; otherwise BUILD_INVALID.',
-  'PROTECTION/BODY_CLEARANCE witnesses require provider-verified evidence; absent evidence is a typed TARGET_FACTS_INCOMPLETE rejection, never a default safe claim.',
+  'A first new building uses only the Canvas-relayed Adapter regionInspection: BUILD.coordinateFrame = regionInspection.frame and PROTECTION/BODY_CLEARANCE witnesses carry regionInspection.evidence; the painter never inspects the world, chooses or relocates a placement.',
+  'With a usable interior, a first building has its entrance on the footprint face whose outward normal is regionInspection.entranceFacing and on no other face; otherwise BUILD_INVALID.',
+  'PROTECTION/BODY_CLEARANCE witnesses require provider-verified evidence; absent evidence or frame (INSPECTED facts carry none in painter/v3) is a typed TARGET_FACTS_INCOMPLETE rejection, never a default safe claim.',
+  'PLANNED facts are rejected (TARGET_REQUIRED) because painter/v3 carries no proof of a real preceding plan.',
   'Same requestId with the same exact payload returns the original response after current authorization; a changed payload is REPLAY_MISMATCH.',
 ]);
 
@@ -66,7 +70,7 @@ export class ExteriorPainterV2 {
   describe() {
     return {
       painterId: PAINTER_ID, wire: WIRE, operations: [OPERATION],
-      consumes: ['painter/v2', 'ReferenceBrief/v2'], emits: ['BUILD/V2', 'ClarificationNeed'],
+      consumes: ['painter/v3', 'ReferenceBrief/v2'], factProfiles: ['target-facts/v2', 'target-facts/v3'], emits: ['BUILD/V2', 'ClarificationNeed'],
       settings: { modelProvider: this.route.provider, modelId: this.route.model },
       settingDefaults: { modelProvider: DEFAULT_ROUTE.provider, modelId: DEFAULT_ROUTE.model },
       invariants: INVARIANTS, worldWrites: 0,
@@ -130,7 +134,8 @@ export class ExteriorPainterV2 {
   }
 
   async #plan(body, proof, signal) {
-    // Digest coherence of every carried projection before any provider query.
+    // Painter-scoped digest coherence of every carried projection before any
+    // provider query (the generic contract codes are not painter/v3 failure codes).
     for (const [field, digestField, kind, code] of BOUND)
       if (digestValue(kind, body[field]).sha256 !== body[digestField]) fail(code, 'validate', 'PAYLOAD_CHANGED');
     if (body.painterId !== PAINTER_ID) fail('PERMISSION_DENIED', 'authorize', 'OWNERSHIP_VIOLATION');
@@ -146,17 +151,21 @@ export class ExteriorPainterV2 {
       fail('INTENT_UNCONFIRMED', 'validate', 'PAYLOAD_CHANGED');
     if (brief.media.length === 0) fail('IMAGE_REQUIRED', 'validate', 'MEDIA_NOT_REFERENCED');
     if (!brief.text.trim()) fail('INTENT_UNCONFIRMED', 'validate', 'REQUIRED_FACT_UNKNOWN');
-    for (const media of brief.media)
-      if (media.attachmentRef !== `sha256:${media.storedBytesDigest}`)
-        fail('IMAGE_REQUIRED', 'validate', 'MEDIA_CORRUPT');
     // catalogue facts and target source/revision
     if (targetFacts.catalogueDigest !== digestValue('catalogue', body.catalogue).sha256)
       fail('TARGET_FACTS_STALE', 'validate', 'REVISION_CHANGED');
-    if (targetFacts.source === 'INSPECTED') {
-      if (targetFacts.worldRef !== body.worldRef) fail('TARGET_REQUIRED', 'validate', 'SCOPE_DENIED');
-      if (typeof proof.currentWorldRevision === 'string' && proof.currentWorldRevision !== targetFacts.worldRevision)
-        fail('TARGET_FACTS_STALE', 'validate', 'REVISION_CHANGED');
-    }
+    if (targetFacts.source === 'PLANNED')
+      fail('TARGET_REQUIRED', 'validate', 'REQUIRED_FACT_UNKNOWN');
+    if (targetFacts.worldRef !== body.worldRef)
+      fail(targetFacts.source === 'REGION_INSPECTED' ? 'TARGET_FACTS_STALE' : 'TARGET_REQUIRED', 'validate',
+        targetFacts.source === 'REGION_INSPECTED' ? 'REVISION_CHANGED' : 'SCOPE_DENIED');
+    if (typeof proof.currentWorldRevision === 'string' && proof.currentWorldRevision !== targetFacts.worldRevision)
+      fail('TARGET_FACTS_STALE', 'validate', 'REVISION_CHANGED');
+    // regionInspection binding (REGION_INSPECTED only): contracts v4 coherence of
+    // the relayed RegionInspection with the request facts, digest and frame.
+    validateBoundRequest(WIRE, OPERATION, body);
+    const region = body.regionInspection;
+    const trusted = region === null ? null : trustedFromRegion(region);
     if (targetFacts.knownEmptyCells.length === 0) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
 
     const answer = await invokeModel({ llm: this.llm, attachments: this.attachments,
@@ -171,12 +180,13 @@ export class ExteriorPainterV2 {
       });
     }
     const geometry = planGeometry({ proposal, catalogue: body.catalogue, targetFacts });
-    // Entrance connectivity depends only on bound facts, so it is decided now.
+    // Entrance rules depend only on bound facts, so they are decided now.
     const entrances = planEntrances({ request: body, geometry });
-    // No public port supplies the target Frame or Adapter protection/body
-    // evidence to painter/v2 (CONTRACT_GAP-EXT-01/02): typed rejection.
+    if (region !== null) checkEntranceFacing({ request: body, geometry, entranceFacing: region.entranceFacing });
+    // Only REGION_INSPECTED facts carry trusted frame/evidence in painter/v3;
+    // any other source is a typed rejection at assembly.
     const { build, buildDigest } = assembleBuild({ request: body, geometry,
-      documentId: `exterior-${body.invocationId}`, trusted: null, entrances });
+      documentId: `exterior-${body.invocationId}`, trusted, entrances });
     return validateResponse(WIRE, OPERATION, { contractVersion: WIRE, requestId: body.requestId,
       result: { invocationId: body.invocationId, build, buildDigest }, error: null });
   }

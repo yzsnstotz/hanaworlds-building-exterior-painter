@@ -224,10 +224,73 @@ export function planEntrances({ request, geometry }) {
 }
 
 /**
+ * The trusted assembleBuild input for a first new building: exactly the
+ * Adapter-produced RegionInspection relayed by Canvas (painter/v3). Nothing is
+ * defaulted; a missing part is a typed rejection.
+ */
+export function trustedFromRegion(regionInspection) {
+  const ri = regionInspection;
+  if (!ri?.frame || !ri.evidence || !Array.isArray(ri.protectedPositions) || !Array.isArray(ri.bodyOccupiedPositions))
+    fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  return { frame: ri.frame, evidence: ri.evidence,
+    protection: { protectedPositions: ri.protectedPositions }, body: { bodyOccupiedPositions: ri.bodyOccupiedPositions } };
+}
+
+const HORIZONTAL_FACES = new Set(['+X', '-X', '+Z', '-Z']);
+
+/**
+ * HW-A028 painter side: a first building's entrance faces the anchor player.
+ * A doorway is a usable cell (full avatar clearance over verified empty air,
+ * the same rule as planEntrances) on a side face of the structure's footprint
+ * that is 6-adjacent to a usable cell strictly inside the footprint. When the
+ * structure has a usable interior, it must have a doorway on the face whose
+ * outward normal is `entranceFacing`, and no doorway on any other side face.
+ * A structure without a usable interior (e.g. a solid block) has no entrance.
+ * Returns the doorway cells (sorted).
+ */
+export function checkEntranceFacing({ request, geometry, entranceFacing }) {
+  if (!HORIZONTAL_FACES.has(entranceFacing)) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  const { catalogue, targetFacts, safetyProfile } = request;
+  const avatar = safetyProfile.avatarDimensions;
+  if (avatar.unit !== 'node') fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  const span = [Math.ceil(avatar.width), Math.ceil(avatar.height), Math.ceil(avatar.depth)];
+  const finalNode = new Map(targetFacts.knownEmptyCells.map(p => [key(p), 'air']));
+  for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
+  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, safetyProfile.hazardPolicy);
+  const usable = new Set();
+  for (const k of finalNode.keys()) {
+    const p = k.split(',').map(Number);
+    let clear = true;
+    for (let dx = 0; clear && dx < span[0]; dx++) for (let dy = 0; clear && dy < span[1]; dy++)
+      for (let dz = 0; clear && dz < span[2]; dz++) clear = empty(key([p[0] + dx, p[1] + dy, p[2] + dz]));
+    if (clear) usable.add(k);
+  }
+  const { min, max } = geometry.declaredBounds;
+  const inY = p => p[1] >= min[1] && p[1] <= max[1];
+  const strictlyInside = p => inY(p) && p[0] > min[0] && p[0] < max[0] && p[2] > min[2] && p[2] < max[2];
+  const faceOf = p => {
+    if (!inY(p) || p[0] < min[0] || p[0] > max[0] || p[2] < min[2] || p[2] > max[2] || strictlyInside(p)) return null;
+    if (p[2] === min[2]) return '-Z';
+    if (p[2] === max[2]) return '+Z';
+    return p[0] === min[0] ? '-X' : '+X';
+  };
+  const interior = [...usable].map(k => k.split(',').map(Number)).filter(strictlyInside);
+  if (interior.length === 0) return [];
+  const interiorKeys = new Set(interior.map(key));
+  const steps = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
+  const doorways = [...usable].map(k => k.split(',').map(Number)).filter(p => faceOf(p) !== null &&
+    steps.some(d => interiorKeys.has(key([p[0] + d[0], p[1], p[2] + d[2]]))));
+  if (!doorways.some(p => faceOf(p) === entranceFacing) || doorways.some(p => faceOf(p) !== entranceFacing))
+    fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
+  return doorways.sort(comparePosition);
+}
+
+/**
  * Assemble the complete BuildProjection. `trusted` must come from a public,
  * provider-verified source: the exact coordinate Frame whose digest equals
  * targetFacts.frameDigest and Adapter evidence for protection and body
- * occupancy. Missing trusted facts are a typed rejection, never a default.
+ * occupancy (painter/v3: trustedFromRegion). Missing trusted facts are a typed
+ * rejection, never a default.
  */
 export function assembleBuild({ request, geometry, documentId, trusted, entrances = planEntrances({ request, geometry }) }) {
   const { catalogue, targetFacts, safetyProfile } = request;
@@ -246,6 +309,7 @@ export function assembleBuild({ request, geometry, documentId, trusted, entrance
   const positions = geometry.effects.map(e => e.position);
   const written = new Set(positions.map(key));
   const evidence = trusted.evidence;
+  const restrict = list => list.filter(p => written.has(key(p)));
   if (trusted.protection.protectedPositions.some(p => written.has(key(p))))
     fail('PERMISSION_DENIED', 'authorize', 'SCOPE_DENIED');
   if (trusted.body.bodyOccupiedPositions.some(p => written.has(key(p))))
@@ -261,18 +325,20 @@ export function assembleBuild({ request, geometry, documentId, trusted, entrance
   for (const entrance of entrances) for (const p of entrance.usablePositions) hazardCells.set(key(p), p);
   const hazardPositions = [...hazardCells.values()].sort(comparePosition);
   const witnesses = [
-    { witnessId: 'w1-coverage', predicate: 'COVERAGE', ...bound, facts: { evidence, positions } },
-    { witnessId: 'w2-protection', predicate: 'PROTECTION', ...bound,
-      // Protected cells intersecting the written set; non-empty already rejected.
-      facts: { evidence, positions, protectedPositions: [] } },
-    { witnessId: 'w3-body', predicate: 'BODY_CLEARANCE', ...bound,
-      facts: { evidence, positions, bodyOccupiedPositions: trusted.body.bodyOccupiedPositions,
+    { witnessId: 'w1', predicate: 'COVERAGE', ...bound, facts: { evidence, positions } },
+    // Protected and body-occupied lists are the trusted lists restricted to the
+    // witness positions (canvas/v4 Apply binding rule); any overlap was rejected
+    // above, so both restrictions are empty.
+    { witnessId: 'w2', predicate: 'PROTECTION', ...bound,
+      facts: { evidence, positions, protectedPositions: restrict(trusted.protection.protectedPositions) } },
+    { witnessId: 'w3', predicate: 'BODY_CLEARANCE', ...bound,
+      facts: { evidence, positions, bodyOccupiedPositions: restrict(trusted.body.bodyOccupiedPositions),
         avatarDimensions: safetyProfile.avatarDimensions } },
     // Hazard is recomputed at every written cell and every entrance use/path cell.
-    { witnessId: 'w4-hazard', predicate: 'HAZARD', ...bound,
+    { witnessId: 'w4', predicate: 'HAZARD', ...bound,
       facts: { evidence, positions: hazardPositions, forbidLiquid: safetyProfile.hazardPolicy.forbidLiquid,
         maximumDamagePerSecond: safetyProfile.hazardPolicy.maximumDamagePerSecond } },
-    ...entrances.map(entrance => ({ witnessId: `w5-entrance-${entrance.portalRef}`,
+    ...entrances.map(entrance => ({ witnessId: `w5-${entrance.portalRef}`,
       predicate: 'ENTRANCE_CONNECTIVITY', ...bound,
       facts: { evidence, portalRef: entrance.portalRef, usablePositions: entrance.usablePositions,
         path: entrance.path, avatarDimensions: safetyProfile.avatarDimensions } })),

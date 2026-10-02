@@ -5,7 +5,7 @@ import { describeRegion, offeredMaterials } from './planner.mjs';
 
 export const PLUGIN_NAME = 'hanaworlds-building-exterior-painter';
 
-/** Host-capability failure outside the painter/v2 response envelope. The
+/** Host-capability failure outside the painter/v3 response envelope. The
  * frozen CreateBuildPlan failure list has no model/capability code, so this is
  * raised to the caller instead of being disguised as a domain result. */
 export class PainterHostError extends Error {
@@ -31,6 +31,9 @@ const SYSTEM = [
   '  with "air" only if "air" is offered).',
   '- If entrance.required is true, leave a walk-through opening at every listed portal cell into an',
   '  enclosed interior large enough for avatarCells (x,y,z), e.g. by cutting it with "air".',
+  '- If firstBuilding is set, the region is the exact free footprint chosen for this new building; build',
+  '  inside it only. If the building has a walkable interior, put its only entrance on the side whose outward',
+  '  direction is firstBuilding.entranceFacing (e.g. "-Z" = the side at local z = 0), facing the player.',
   '- If the image, the text, or their combination does not determine the structure well enough,',
   '  do not guess: ask ONE short question in the user\'s language.',
   'Answer with exactly one JSON object and nothing else, in one of these two forms:',
@@ -59,6 +62,11 @@ export function promptText(request) {
         .filter(x => intent.confirmedIntent.entrancePortalRefs.includes(x.portalRef))
         .map(x => ({ portalRef: x.portalRef, cells: x.positions.map(p => p.map((v, i) => v - request.targetFacts.sampledBounds.min[i])) })),
     } : { required: false },
+    firstBuilding: request.regionInspection ? {
+      // The footprint is chosen by Adapter/Canvas; it is never moved by the painter.
+      footprintIsFixed: true,
+      entranceFacing: request.regionInspection.entranceFacing,
+    } : null,
   };
   return `Confirmed request facts (JSON):\n${JSON.stringify(facts)}`;
 }

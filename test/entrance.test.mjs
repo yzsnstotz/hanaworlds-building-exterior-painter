@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateType, validateWitnessCoherence } from '#contracts';
-import * as Painter from '#contracts/painter/v2';
+import * as Painter from '#contracts/painter/v3';
 import { ExteriorPainterV2, planGeometry, planEntrances, assembleBuild, parseProposal, promptText } from '../src/index.mjs';
 import * as F from './fixtures.mjs';
 
@@ -35,7 +35,7 @@ test('FIXTURE: assembled BUILD with entrance witness passes schema, domain path 
     trusted: F.trustedFixtureFacts() });
   validateType('BuildProjection', build);
   const witness = build.witnesses.find(w => w.predicate === 'ENTRANCE_CONNECTIVITY');
-  assert.equal(witness.witnessId, 'w5-entrance-front');
+  assert.equal(witness.witnessId, 'w5-front');
   assert.equal(JSON.stringify(witness.facts.avatarDimensions), JSON.stringify(body.safetyProfile.avatarDimensions));
   const hazard = build.witnesses.find(w => w.predicate === 'HAZARD');
   assert.ok(hazard.facts.positions.length > geometry.effects.length);

@@ -1,14 +1,14 @@
 {
   "evidence": "FIXTURE",
   "runtime": "NOT_RUN",
-  "note": "Concrete complete requests to frozen source schemas. All identities/principals/facts/provider results are synthetic; integrity/permission predicates are oracle inputs, not existing runtime outcomes.",
+  "note": "Concrete complete requests to frozen source schemas. All identities/principals/facts/provider results are synthetic; integrity/permission predicates are oracle inputs, not existing runtime outcomes. Candidate v3 envelopes; nested legacy digest projections keep their exact v2 contractVersion and canonical bytes.",
   "requests": [
     {
       "id": "WIRE-interaction-surface-v2",
-      "wire": "interaction-surface/v2",
+      "wire": "interaction-surface/v3",
       "operation": "InvokeAction",
       "request": {
-        "contractVersion": "interaction-surface/v2",
+        "contractVersion": "interaction-surface/v3",
         "actorRef": "fixture-actor",
         "sessionRef": "fixture-session",
         "requestId": "fixture-request",
@@ -42,11 +42,11 @@
       "requestType": "InvokeActionRequest"
     },
     {
-      "id": "WIRE-world-adapter-v2",
-      "wire": "world-adapter/v2",
+      "id": "WIRE-world-adapter-v4",
+      "wire": "world-adapter/v4",
       "operation": "ApplyCompiledTransaction",
       "request": {
-        "contractVersion": "world-adapter/v2",
+        "contractVersion": "world-adapter/v4",
         "actorRef": "fixture-actor",
         "sessionRef": "fixture-session",
         "requestId": "fixture-request",
@@ -136,11 +136,11 @@
       "requestType": "ApplyCompiledTransactionRequest"
     },
     {
-      "id": "WIRE-canvas-v2",
-      "wire": "canvas/v2",
+      "id": "WIRE-canvas-v3",
+      "wire": "canvas/v4",
       "operation": "NameObject",
       "request": {
-        "contractVersion": "canvas/v2",
+        "contractVersion": "canvas/v4",
         "actorRef": "fixture-actor",
         "sessionRef": "fixture-session",
         "requestId": "fixture-request",
@@ -189,10 +189,10 @@
     },
     {
       "id": "WIRE-painter-v2",
-      "wire": "painter/v2",
+      "wire": "painter/v3",
       "operation": "CreateBuildPlan",
       "request": {
-        "contractVersion": "painter/v2",
+        "contractVersion": "painter/v3",
         "actorRef": "fixture-actor",
         "sessionRef": "fixture-session",
         "requestId": "fixture-request",
@@ -354,7 +354,8 @@
           },
           "optionalLightRule": null
         },
-        "safetyProfileDigest": "a4802e4cd0c2c372cd54919c6d1341502b695626a2605fa6e62ff6654c52262b"
+        "safetyProfileDigest": "a4802e4cd0c2c372cd54919c6d1341502b695626a2605fa6e62ff6654c52262b",
+        "regionInspection": null
       },
       "requestType": "CreateBuildPlanRequest"
     },
@@ -703,5 +704,7 @@
       },
       "requestType": "BuildDocumentRequest"
     }
-  ]
+  ],
+  "rc6Note": "rc.6 added the required nullable field CreateBuildPlanRequest.regionInspection=null to WIRE-painter-v2 (INSPECTED facts); no other byte change.",
+  "rc7Note": "rc.7 renamed the WIRE-interaction-surface-v2 and WIRE-painter-v2 envelopes to interaction-surface/v3 and painter/v3 (ids kept as labels); nested ActionProjection keeps interaction-surface/v2."
 }

@@ -1,6 +1,6 @@
 {
   "name": "hanaworlds-building-exterior-painter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -16,9 +16,9 @@
     ".": "./src/index.mjs"
   },
   "imports": {
-    "#contracts": "./vendor/hanaworlds-contracts/dist/index.mjs",
-    "#contracts/painter/v2": "./vendor/hanaworlds-contracts/dist/bindings/painter-v2.mjs",
-    "#contracts/BUILD/V2": "./vendor/hanaworlds-contracts/dist/bindings/BUILD-V2.mjs"
+    "#contracts": "./vendor/hanaworlds-contracts/dist/v4/index.mjs",
+    "#contracts/painter/v3": "./vendor/hanaworlds-contracts/dist/v4/bindings/painter-v3.mjs",
+    "#contracts/BUILD/V2": "./vendor/hanaworlds-contracts/dist/v4/bindings/BUILD-V2.mjs"
   },
   "files": [
     "src",

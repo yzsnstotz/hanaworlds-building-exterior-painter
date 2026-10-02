@@ -78,13 +78,13 @@ export function request({ patch = {}, briefOptions, facts, kind = 'BUILD_STRUCTU
     intendedWorldRef: 'fixture-world', orderedTargetRefs: ['fixture-site'] };
   const tf = facts ?? targetFacts();
   const sp = safety ?? safetyProfile();
-  return { contractVersion: 'painter/v2', actorRef: 'fixture-actor', sessionRef: 'fixture-session',
+  return { contractVersion: 'painter/v3', actorRef: 'fixture-actor', sessionRef: 'fixture-session',
     requestId: 'fixture-request-1', authorizationRef: 'fixture-auth', worldRef: 'fixture-world',
     turnRevision: 'fixture-turn-1', painterId: 'picture-blocks', invocationId: 'fixture-invocation-1',
     intent, intentDigest: digestValue('intent', intent).sha256, referenceBrief: b,
     referenceBriefDigest: bDigest, catalogue: catalogue(), targetFacts: tf,
     targetFactsDigest: digestValue('target-facts', tf).sha256, safetyProfile: sp,
-    safetyProfileDigest: digestValue('safety-profile', sp).sha256, ...patch };
+    safetyProfileDigest: digestValue('safety-profile', sp).sha256, regionInspection: null, ...patch };
 }
 
 export function authority({ current = true, allowed = ['CreateBuildPlan'], worldRevision = 'fixture-world-1' } = {}) {
