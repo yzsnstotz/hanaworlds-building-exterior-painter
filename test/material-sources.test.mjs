@@ -76,9 +76,9 @@ test('actual preserved texture bytes are measured under explicit public fixture 
  assert.equal(r.material.nodeName,'base:actual-texture-fixture');assert.equal(r.match.texture.bytesDigest,hash(imageBytes));
  assert.ok(r.match.rgb.every(c=>c>0&&c<255));assert.ok(!Object.hasOwn(r,'palette'));
 });
-test('exact 0.4.2 handshake and media-bearing proposal contract are available',async()=>{
+test('exact vendored 0.5.0 handshake and media-bearing proposal contract are available',async()=>{
  assert.equal(typeof painter().matchCurrentImageMaterials,'function');
- assert.equal(api.contractHandshake.contracts,'hanaworlds-contracts@0.4.2');
+ assert.equal(api.contractHandshake.contracts,'hanaworlds-contracts@0.5.0');
  const bytes=await pixels(),context=structuredClone(fixture.facts.sourceContext);
  context.referenceBrief.media=[{attachmentRef:'fixture-current-image',storedBytesDigest:hash(bytes),
   projectionVariantId:null,projectionBytesDigest:null,mediaType:'image/png',bytes:bytes.length,width:2,height:1}];
@@ -86,5 +86,5 @@ test('exact 0.4.2 handshake and media-bearing proposal contract are available',a
  context.intent.referenceBriefDigest=context.referenceBriefDigest;
  context.intentDigest=contracts.digestValue('intent',context.intent).sha256;
  assert.equal(contracts.validateType('BuildProposalContext',context).referenceBrief.media.length,1);
- assert.equal(JSON.parse(readFileSync(resolve(root,'vendor/hanaworlds-contracts/package.json'))).version,'0.4.2');
+ assert.equal(JSON.parse(readFileSync(resolve(root,'vendor/hanaworlds-contracts/package.json'))).version,'0.5.0');
 });

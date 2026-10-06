@@ -1,176 +1,151 @@
-// Actual source/installed Painter on the original ValidateBuildProposal channel.
-// FIXTURE boundary: contracts region v1 port (region-contract-fixture.mjs),
-// Host current facts, inspected world cells and catalogue nodes. No world write.
+// Actual source/installed Painter, painter-region/v1 from the vendored real
+// hanaworlds-contracts@0.5.0. FIXTURE boundary: the contract's published
+// region scenario (Session/world/brief/catalogue) and the Host business port.
+// No world, Canvas, Adapter, Brush, model or attachment is reached.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createRegionContractFixture } from './region-contract-fixture.mjs';
-import { regionWorld, regionProposal, cellsOf, hostFacts, rebind } from './region-v1-fixtures.mjs';
 const root = process.env.PAINTER_TEST_PACKAGE ?? resolve(new URL('..', import.meta.url).pathname);
 const api = await import(pathToFileURL(resolve(root, 'vendor/hanaworlds-contracts/dist/local/index.mjs')));
 const Painter = await import(pathToFileURL(resolve(root, 'src/index.mjs')));
 const { ExteriorPainterV2 } = Painter;
-const fixture = JSON.parse(readFileSync(resolve(root, 'vendor/hanaworlds-contracts/fixtures/local/main.json')));
-const op = 'ValidateBuildProposal';
+const region = JSON.parse(readFileSync(resolve(root, 'vendor/hanaworlds-contracts/fixtures/local/region.json')));
+const main = JSON.parse(readFileSync(resolve(root, 'vendor/hanaworlds-contracts/fixtures/local/main.json')));
+const op = 'ValidateRegionProposal';
+const CAP = 'painter-region/v1:validate-region-proposal';
 const clone = structuredClone;
-const STONE = { nodeName: 'fixture:stone', param2: 0 }, AIR = { nodeName: 'air', param2: 0 };
-const forbidden = () => new Proxy({}, { get() { throw new Error('region entry touched model/media'); } });
+const forbidden = () => new Proxy({}, { get(t, k) { if (typeof k === 'symbol') return Reflect.get(t, k); throw new Error('region entry touched model/media'); } });
 
-function setup({ proposal, world = {}, contract = createRegionContractFixture(api), change, mutate } = {}) {
-  const request = regionWorld(api, fixture, world);
-  request.proposal = proposal;
-  if (mutate) { mutate(request); rebind(api, request); }
-  const state = { reads: 0, bodies: [], facts: hostFacts(fixture, request) };
+function rebind(r) {
+  r.referenceBriefDigest = api.digestValue('reference-brief', r.referenceBrief).sha256;
+  r.intent.referenceBriefDigest = r.referenceBriefDigest;
+  r.intentDigest = api.digestValue('intent', r.intent).sha256;
+  r.catalogueDigest = api.digestValue('catalogue', r.catalogue).sha256;
+  return r;
+}
+const hostFacts = r => ({ currentContext: clone(r.localContext), sessionRef: r.sessionRef, currentTurnRevision: r.turnRevision,
+  currentBriefDigest: r.referenceBriefDigest, requestState: 'ACTIVE', replay: 'NEW', priorRequestDigest: null });
+function setup({ mutate, change } = {}) {
+  const request = clone(region.proposalRequest);
+  if (mutate) { mutate(request); rebind(request); }
+  const state = { reads: 0, bodies: [], facts: hostFacts(request) };
   const localFacts = { async read(body, operation) {
-    assert.equal(operation, op); state.bodies.push(api.canonicalJSON(body));
-    state.reads++; if (change) await change(state); return clone(state.facts);
+    assert.equal(operation, op); state.bodies.push(api.canonicalJSON(body)); state.reads++;
+    if (change) await change(state); return clone(state.facts);
   } };
-  const painter = new ExteriorPainterV2({ localFacts, llm: forbidden(), attachments: forbidden(), regionContract: contract });
-  return { request, state, painter, contract };
+  return { request, state, painter: new ExteriorPainterV2({ localFacts, llm: forbidden(), attachments: forbidden() }) };
 }
 async function rejected(f, code, request = f.request, options) {
   const r = await f.painter.call(op, request, options);
-  assert.equal(r.result, null, JSON.stringify(r)); assert.equal(r.error.code, code);
+  assert.equal(r.result, null, JSON.stringify(r)); assert.equal(r.error.code, code, JSON.stringify(r.error));
   assert.equal(r.error.mutationState, 'NONE'); assert.equal(r.error.transactionRef, null);
   return r;
 }
-// Fill the empty y=2 layer with stone at x<2, leave x>=2 unspecified; y0/y1 unspecified.
-const fillProposal = () => regionProposal({ palette: [STONE],
-  cells: cellsOf([4, 3, 4], (x, y) => (y === 2 && x < 2 ? 0 : null)) });
-// Carve: dig dirt (y=1) and stone (y=0) at x=0,z=0 with explicit air; air on empty y=2 is unchanged.
-const carveProposal = () => regionProposal({ palette: [AIR],
-  cells: cellsOf([4, 3, 4], (x, y, z) => (x === 0 && z === 0 ? 0 : null)) });
+const block = (palette, indices, size = [4, 1, 1], origin = [0, 0, 0]) => api.encodeRegionBlock({ origin, size, palette, indices });
+const AIR = { nodeName: 'air', param2: 0 }, STONE = { nodeName: 'fixture:stone', param2: 0 };
 
-test('region fill: original channel emits region BUILD; unspecified cells untouched; fresh Host facts before/after', async () => {
-  const f = setup({ proposal: fillProposal() });
+test('fill + explicit air carve + unspecified: original Painter channel returns the block unchanged as region-build/v1', async () => {
+  const f = setup();
   const response = await f.painter.call(op, JSON.stringify(f.request));
   assert.equal(response.error, null, JSON.stringify(response.error));
-  f.contract.validateRegionResponse(f.request, response);
+  api.validateRegionProposalResponse(f.request, response);
   const { build, buildDigest } = response.result;
-  assert.equal(build.contractVersion, 'BUILD-REGION/v1');
-  assert.deepEqual(build.summary, { specified: 8, unspecified: 40, filled: 8, carved: 0, unchanged: 0 });
-  assert.deepEqual(build.region.min, [0, 0, 3]); assert.deepEqual(build.declaredBounds, { min: [0, 0, 3], max: [3, 2, 6] });
-  assert.equal(build.region.axisOrder, 'x-fastest,y,z');
-  assert.deepEqual(build.coordinateFrame, f.request.regionInspection.frame);
-  assert.deepEqual(build.evidence, f.request.regionInspection.evidence);
-  assert.equal(buildDigest, f.contract.regionBuildDigest(build));
-  assert.equal(f.state.reads, 2);
-  assert.ok(f.state.bodies.every(b => b === api.canonicalJSON(f.request)));
-  const d = f.painter.describe();
-  assert.equal(d.worldWrites, 0);
-  const tool = d.tools.find(t => t.name === 'BuildRegionProposal');
-  assert.equal(tool.availability.available, true); assert.equal(tool.operation, op);
-  assert.ok(tool.typicalUse && tool.preconditions.length >= 3); assert.equal(tool.modelCalls, 0);
-  assert.ok(d.tools.some(t => t.name === 'MatchCurrentImageMaterials'));
+  assert.deepEqual(build.block, f.request.proposal.block);
+  assert.equal(build.coordinateSpace, 'WORLD_NODE'); assert.equal(build.worldRef, f.request.worldRef);
+  assert.deepEqual(build.declaredBounds, { min: [-2, 0, -2], max: [17, 1, 0] });
+  assert.equal(buildDigest, api.digestValue('region-build', build).sha256);
+  const cells = api.expandRegionBlock(build.block);
+  const air = build.block.palette.findIndex(p => p.nodeName === 'air');
+  assert.ok(cells.indices.includes(-1) && cells.indices.includes(air)); // unspecified stays -1, carve stays explicit air
+  assert.equal(f.state.reads, 2); assert.ok(f.state.bodies.every(b => b === api.canonicalJSON(f.request)));
 });
 
-test('region carve: explicit air removes occupied stone/dirt; air over air is unchanged, not a write', async () => {
-  const f = setup({ proposal: carveProposal() });
-  const response = await f.painter.call(op, f.request);
-  assert.equal(response.error, null, JSON.stringify(response.error));
-  assert.deepEqual(response.result.build.summary, { specified: 3, unspecified: 45, filled: 0, carved: 2, unchanged: 1 });
-  const planned = Painter.planRegion({ proposal: Painter.parseRegionProposal(f.request.proposal), request: f.request });
-  assert.deepEqual(planned.effects, [{ position: [0, 0, 3], ...AIR }, { position: [0, 1, 3], ...AIR }]);
+test('unspecified is never carve: null and air stay distinct; all-null, ignore and air param2!=0 are refused before any build', async () => {
+  const f = setup({ mutate: r => { r.proposal.block = block([STONE, AIR], [0, -1, 1, -1]); } });
+  const ok = await f.painter.call(op, f.request);
+  assert.equal(ok.error, null, JSON.stringify(ok.error));
+  assert.deepEqual(Array.from(api.expandRegionBlock(ok.result.build.block).indices), [1, -1, 0, -1]); // palette sorted: air, stone
+  for (const bad of [
+    { ...block([STONE], [0, 0, 0, 0]), runs: [[4, null]], palette: [] },
+    { ...block([STONE], [0, 0, 0, 0]), palette: [{ nodeName: 'ignore', param2: 0 }] },
+    { ...block([STONE], [0, 0, 0, 0]), palette: [{ nodeName: 'air', param2: 1 }] },
+    { ...block([STONE], [0, 0, 0, 0]), runs: [[3, 0]] },
+  ]) await rejected(setup({ mutate: r => { r.proposal.block = bad; } }), 'SCHEMA_INVALID');
+  assert.equal(setup().state.reads, 0);
 });
 
-test('unspecified is never carve; carve without declared air-carve is refused', async () => {
-  const f = setup({ proposal: fillProposal() });
-  const planned = Painter.planRegion({ proposal: Painter.parseRegionProposal(f.request.proposal), request: f.request });
-  assert.ok(planned.effects.every(e => e.position[1] === 2 && e.nodeName === 'fixture:stone'));
-  const undeclared = carveProposal(); undeclared.format.requires = ['palette-v1'];
-  await rejected(setup({ proposal: undeclared }), 'BUILD_INVALID');
+test('palette legality against the current Catalogue (carve air included) is refused before Host facts or build', async () => {
+  for (const [name, mutate, code] of [
+    ['unknown node', r => { r.proposal.block = block([{ nodeName: 'fixture:missing', param2: 0 }], [0, 0, 0, 0]); }, 'CATALOGUE_MISMATCH'],
+    ['param2 not allowed', r => { r.proposal.block = block([{ nodeName: 'fixture:stone', param2: 3 }], [0, 0, 0, 0]); }, 'UNSUPPORTED_MUTATION_SEMANTICS'],
+    ['stateful node', r => { r.catalogue.nodes['fixture:chest'] = { ...r.catalogue.nodes['fixture:stone'], hasPersistentState: true };
+      r.proposal.block = block([{ nodeName: 'fixture:chest', param2: 0 }], [0, 0, 0, 0]); }, 'UNSUPPORTED_MUTATION_SEMANTICS'],
+    ['air missing from Catalogue', r => { delete r.catalogue.nodes.air; r.proposal.block = block([AIR], [0, 0, 0, 0]); }, 'CATALOGUE_MISMATCH'],
+  ]) { const f = setup({ mutate }); await rejected(f, code); assert.equal(f.state.reads, 0, name); }
 });
 
-test('protocol major compatibility: same major other minor/patch accepted, wrong major or missing capability refused', async () => {
-  const minor = fillProposal(); minor.format.version = '1.7.3';
-  const ok = setup({ proposal: minor, contract: createRegionContractFixture(api, { version: '1.4.0' }) });
-  assert.equal((await ok.painter.call(op, ok.request)).error, null);
-  const major = fillProposal(); major.format.version = '2.0.0';
-  await rejected(setup({ proposal: major }), 'UNSUPPORTED_VERSION');
-  const zero = fillProposal(); zero.format.version = '0.9.0';
-  await rejected(setup({ proposal: zero }), 'UNSUPPORTED_VERSION');
-  const unknownCap = fillProposal(); unknownCap.format.requires = ['palette-v1', 'entity-rigging'];
-  await rejected(setup({ proposal: unknownCap }), 'CAPABILITY_UNAVAILABLE');
-  const proto = fillProposal(); proto.format.protocol = 'other-voxels';
-  await rejected(setup({ proposal: proto }), 'UNSUPPORTED_VERSION');
-  // Contract port of a different major, or lacking a needed capability, is not consumed.
-  for (const port of [createRegionContractFixture(api, { version: '2.0.0' }),
-    createRegionContractFixture(api, { capabilities: ['palette-v1'] })]) {
-    const f = setup({ proposal: fillProposal(), contract: port });
-    const r = await f.painter.call(op, f.request);
-    assert.equal(r.result, null); assert.ok(['UNSUPPORTED_VERSION', 'CAPABILITY_UNAVAILABLE'].includes(r.error.code));
-    assert.equal(f.state.reads, 0); assert.equal(f.painter.describe().tools.find(t => t.name === 'BuildRegionProposal').availability.available, false);
-  }
-  assert.deepEqual(Painter.checkRegionCompatibility({ protocol: 'hanaworlds-region-voxels', version: '1.0.9', requires: [] }).major, 1);
+test('protocol major + capability: Painter handshake is consumable by same major with any provenance; wrong major/minor/capability refused', async () => {
+  const p = setup().painter, hs = p.protocolHandshake();
+  const need = [api.protocolRequirement('painter-region/v1', [CAP])];
+  assert.equal(api.checkProtocolCompatibility(hs, need).result, 'PROTOCOL_COMPATIBLE');
+  const otherPatch = { ...clone(hs), provenance: { ...hs.provenance, packageVersion: '0.4.9', artifactDigest: 'f'.repeat(64) } };
+  assert.equal(api.checkProtocolCompatibility(otherPatch, need).result, 'PROTOCOL_COMPATIBLE');
+  for (const [req, code] of [[api.protocolRequirement('painter-region/v2', [CAP]), 'UNSUPPORTED_VERSION'],
+    [api.protocolRequirement('painter-region/v1', [CAP], 1), 'UNSUPPORTED_VERSION'],
+    [api.protocolRequirement('painter-region/v1', ['painter-region/v1:other']), 'CAPABILITY_UNAVAILABLE']])
+    assert.throws(() => api.checkProtocolCompatibility(hs, [req]), e => e.code === code);
+  const v2 = setup({ mutate: r => { r.contractVersion = 'painter-region/v2'; } });
+  await rejected(v2, 'UNSUPPORTED_VERSION'); assert.equal(v2.state.reads, 0);
+  const d = p.describe();
+  assert.ok(d.operations.includes(op)); assert.equal(d.worldWrites, 0);
+  const tool = d.tools.find(t => t.name === op);
+  assert.equal(tool.capability, CAP); assert.ok(tool.typicalScale && tool.preconditions.length >= 3);
+  assert.ok(!Object.keys(tool).some(k => /threshold|max|limit/i.test(k)));
 });
 
-for (const [name, make, code, world] of [
-  ['out of inspected bounds', () => regionProposal({ min: [1, 0, 0], palette: [STONE], cells: cellsOf([4, 3, 4], () => null).map((c, i) => (i === 0 ? 0 : c)) }), 'BUILD_INVALID'],
-  ['unknown (unloaded) specified cell', () => regionProposal({ palette: [STONE], cells: cellsOf([4, 3, 4], (x, y, z) => (x === 3 && y === 2 && z === 3 ? 0 : null)) }), 'TARGET_FACTS_INCOMPLETE', { unknown: [[3, 2, 6]] }],
-  ['cell count not size product', () => { const p = fillProposal(); p.region.cells.pop(); return p; }, 'BUILD_INVALID'],
-  ['palette index out of range', () => { const p = fillProposal(); p.region.cells[0] = 5; return p; }, 'BUILD_INVALID'],
-  ['node not in catalogue', () => regionProposal({ palette: [{ nodeName: 'fixture:missing', param2: 0 }], cells: cellsOf([4, 3, 4], (x, y) => (y === 2 ? 0 : null)) }), 'UNSUPPORTED_MATERIAL'],
-  ['param2 not allowed', () => regionProposal({ palette: [{ nodeName: 'fixture:stone', param2: 3 }], cells: cellsOf([4, 3, 4], (x, y) => (y === 2 ? 0 : null)) }), 'UNSUPPORTED_MATERIAL'],
-  ['stateful node in palette', () => regionProposal({ palette: [{ nodeName: 'fixture:chest', param2: 0 }], cells: cellsOf([4, 3, 4], (x, y) => (y === 2 ? 0 : null)) }), 'UNSUPPORTED_MATERIAL'],
-  ['replacing existing stateful node', () => carveProposal(), 'UNSUPPORTED_MUTATION_SEMANTICS', { chest: [0, 1, 3] }],
-  ['liquid against hazard policy', () => regionProposal({ palette: [{ nodeName: 'fixture:lava', param2: 0 }], cells: cellsOf([4, 3, 4], (x, y) => (y === 2 && x === 0 ? 0 : null)) }), 'SAFETY_INVARIANT_FAILED'],
-  ['duplicate palette entries', () => regionProposal({ palette: [STONE, STONE], cells: cellsOf([4, 3, 4], (x, y) => (y === 2 ? 1 : null)) }), 'NON_CANONICAL_AMBIGUITY'],
-  ['other axis order', () => { const p = fillProposal(); p.region.axisOrder = 'z-fastest,y,x'; return p; }, 'BUILD_INVALID'],
-  ['nothing specified', () => regionProposal({ palette: [STONE], cells: cellsOf([4, 3, 4], () => null) }), 'BUILD_INVALID'],
-  ['fractional origin', () => { const p = fillProposal(); p.region.min = [0.5, 0, 0]; return p; }, 'BUILD_INVALID'],
-  ['extra proposal field', () => ({ ...fillProposal(), actorRef: 'forged' }), 'UNKNOWN_REQUIRED_FIELD'],
-]) test('region rejects before any BUILD: ' + name, async () => {
-  const f = setup({ proposal: make(), world });
-  await rejected(f, code);
+test('same Session/turn/intent/brief/world as text path: incoherent request refused before Host facts', async () => {
+  for (const [mutate, code] of [
+    [r => { r.referenceBrief.sessionRef = 'other'; }, 'SCHEMA_INVALID'], // contract domain rule
+    [r => { r.intent.confirmedIntent.confirmedTurnRevision = 'other'; }, 'INTENT_UNCONFIRMED'],
+    [r => { r.intent.intendedWorldRef = 'other-world'; }, 'CURRENT_WORLD_MISMATCH'],
+    [r => { r.localContext.worldRef = 'other-world'; }, 'CURRENT_WORLD_MISMATCH'],
+  ]) { const f = setup({ mutate }); await rejected(f, code); assert.equal(f.state.reads, 0); }
+  const forged = setup(); await rejected(forged, 'UNKNOWN_REQUIRED_FIELD', { ...forged.request, actorRef: 'forged' });
 });
 
-test('fill into the avatar body is refused; carving body air is unchanged', async () => {
-  const f = setup({ proposal: fillProposal(), mutate: r => { r.regionInspection.bodyOccupiedPositions = [[0, 2, 3]]; } });
-  await rejected(f, 'BUILD_INVALID');
-});
-
-test('same Session/world/connection/brief as text path: live world, connection, brief or media change refuses after await', async () => {
+test('current Host facts before and after: live world/connection, brief (incl. image media) change or cancel refuses; verified image brief passes', async () => {
   for (const field of ['worldRef', 'connectionIncarnationRef']) {
-    const f = setup({ proposal: fillProposal(), change: s => { s.facts.requestFacts.currentContext[field] = 'changed'; } });
+    const f = setup({ change: s => { s.facts.currentContext[field] = 'changed'; } });
     await rejected(f, 'CURRENT_WORLD_MISMATCH');
   }
-  const late = setup({ proposal: fillProposal(), change: s => { if (s.reads === 2) s.facts.currentContext.referenceBrief.briefRevision = 'changed'; } });
-  await rejected(late, 'TARGET_FACTS_STALE');
-  const image = setup({ proposal: fillProposal(), world: { media: true } });
-  const ok = await image.painter.call(op, image.request);
-  assert.equal(ok.error, null); assert.equal(image.request.referenceBrief.media.length, 1);
-  const swapped = setup({ proposal: fillProposal(), world: { media: true },
-    change: s => { if (s.reads === 2) s.facts.currentContext.referenceBrief.media[0].storedBytesDigest = 'b'.repeat(64); } });
-  await rejected(swapped, 'TARGET_FACTS_STALE');
-  const cancel = setup({ proposal: fillProposal(), change: s => { if (s.reads === 2) s.facts.requestFacts.requestState = 'CANCELLED'; } });
+  const media = r => { r.referenceBrief.media = [{ attachmentRef: 'fixture-attachment-1', storedBytesDigest: 'a'.repeat(64),
+    projectionVariantId: null, projectionBytesDigest: null, mediaType: 'image/png', bytes: 1024, width: 16, height: 16 }]; };
+  const image = setup({ mutate: media });
+  assert.equal((await image.painter.call(op, image.request)).error, null);
+  const swapped = setup({ mutate: media, change: s => { if (s.reads === 2) s.facts.currentBriefDigest = 'b'.repeat(64); } });
+  await rejected(swapped, 'TRANSACTION_CONFLICT');
+  const cancel = setup({ change: s => { if (s.reads === 2) s.facts.requestState = 'CANCELLED'; } });
   await rejected(cancel, 'REQUEST_CANCELLED');
+  const abort = new AbortController(), late = setup({ change: s => { if (s.reads === 2) abort.abort(); } });
+  await rejected(late, 'REQUEST_CANCELLED', late.request, { signal: abort.signal });
+  const none = setup(), bare = new ExteriorPainterV2();
+  await rejected({ ...none, painter: bare }, 'CAPABILITY_UNAVAILABLE');
 });
 
 test('exact replay returns the original after fresh facts; changed payload is REPLAY_MISMATCH; deterministic digest', async () => {
-  const f = setup({ proposal: fillProposal() });
+  const f = setup();
   const first = await f.painter.call(op, f.request);
-  const again = await f.painter.call(op, JSON.stringify(f.request));
-  assert.deepEqual(again, first); assert.equal(f.state.reads, 4);
-  const changed = clone(f.request); changed.proposal.region.cells[0] = 0;
-  const r = await f.painter.call(op, changed); assert.equal(r.error.code, 'REPLAY_MISMATCH');
-  const other = setup({ proposal: fillProposal() });
+  assert.deepEqual(await f.painter.call(op, JSON.stringify(f.request)), first); assert.equal(f.state.reads, 4);
+  const changed = clone(f.request); changed.proposal.block = block([STONE], [0, 0, 0, 0]); rebind(changed);
+  assert.equal((await f.painter.call(op, changed)).error.code, 'REPLAY_MISMATCH');
+  const other = setup();
   assert.equal((await other.painter.call(op, other.request)).result.buildDigest, first.result.buildDigest);
 });
 
-test('without a contracts region v1 port (vendored 0.4.2): region refused and self-described; text path unchanged', async () => {
-  const f = setup({ proposal: fillProposal() });
-  const plain = new ExteriorPainterV2({ localFacts: { read: () => { throw new Error('must not read'); } } });
-  const r = await plain.call(op, f.request);
-  assert.equal(r.result, null); assert.equal(r.error.code, 'CAPABILITY_UNAVAILABLE');
-  const tool = plain.describe().tools.find(t => t.name === 'BuildRegionProposal');
-  assert.equal(tool.availability.available, false); assert.match(tool.availability.reason, /region v1/);
-  assert.equal(Painter.REGION_CONTRACT_STATUS.available, false);
-  // Original text proposal still produces the exact public fixture response.
-  const request = clone(fixture.request), facts = clone(fixture.facts);
-  const text = new ExteriorPainterV2({ localFacts: { async read() { return clone(facts); } }, llm: forbidden(), attachments: forbidden(),
-    regionContract: createRegionContractFixture(api) });
-  const response = await text.call(op, request);
-  assert.equal(api.canonicalJSON(response), api.canonicalJSON(fixture.response));
+test('text proposal on the same service still returns the exact public fixture response', async () => {
+  const facts = clone(main.facts);
+  const p = new ExteriorPainterV2({ localFacts: { async read() { return clone(facts); } }, llm: forbidden(), attachments: forbidden() });
+  assert.equal(api.canonicalJSON(await p.call('ValidateBuildProposal', clone(main.request))), api.canonicalJSON(main.response));
 });

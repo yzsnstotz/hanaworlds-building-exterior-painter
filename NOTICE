@@ -10,7 +10,7 @@ This package depends on the following packages and does not relicense them. Thei
   (transitive, via schemastery)
 - @standard-schema/spec 1.1.0 — MIT — https://github.com/standard-schema/standard-schema
   (transitive, via schemastery)
-- hanaworlds-contracts 0.4.2 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
+- hanaworlds-contracts 0.5.0 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
   (commit aad7c0ea2a4a9a93dfb13555c46cd98b9b5da777,
   pack sha256 c3528a4fc3f0cdf94245c4d2d8b1cfa5d28db96d1cd00ae74737bdbdfcd26ec6).
   The entire published package is vendored unmodified with its LICENSE/NOTICE;

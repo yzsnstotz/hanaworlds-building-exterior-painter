@@ -19,10 +19,10 @@ version=$(node -p "require('./package.json').version")
 npm ci --ignore-scripts --no-audit --no-fund > "$evidence/install.log" 2>&1
 node tools/vendor-contracts.mjs --check --package "$contracts" > "$evidence/vendor.log" 2>&1
 npm run build > "$evidence/build.log" 2>&1
-# Affected: region (new), text channel (shared entry), describe() tool list.
+# Affected: region (new), text channel (shared service), describe() tool list and vendored 0.5.0 handshake.
 node --test test/region-v1.test.mjs > "$evidence/source-region.log" 2>&1
 node --test test/local-world.test.mjs > "$evidence/source-text.log" 2>&1
-node --test --test-name-pattern='current-world public consumer' test/material-sources.test.mjs > "$evidence/source-describe.log" 2>&1
+node --test --test-name-pattern='current-world public consumer|exact vendored 0.5.0 handshake' test/material-sources.test.mjs > "$evidence/source-describe.log" 2>&1
 npm pack --ignore-scripts --pack-destination "$evidence/package" --json > "$evidence/pack.json"
 cd "$work/consumer"
 npm install --ignore-scripts --no-audit --no-fund "$evidence/package/hanaworlds-building-exterior-painter-$version.tgz" > "$evidence/consumer-install.log" 2>&1
@@ -30,7 +30,7 @@ installed="$work/consumer/node_modules/hanaworlds-building-exterior-painter"
 cd "$work/source"
 PAINTER_TEST_PACKAGE="$installed" node --test test/region-v1.test.mjs > "$evidence/packed-region.log" 2>&1
 PAINTER_TEST_PACKAGE="$installed" node --test test/local-world.test.mjs > "$evidence/packed-text.log" 2>&1
-PAINTER_TEST_PACKAGE="$installed" node --test --test-name-pattern='current-world public consumer' test/material-sources.test.mjs > "$evidence/packed-describe.log" 2>&1
+PAINTER_TEST_PACKAGE="$installed" node --test --test-name-pattern='current-world public consumer|exact vendored 0.5.0 handshake' test/material-sources.test.mjs > "$evidence/packed-describe.log" 2>&1
 node tools/gate-region-validate-runtime.mjs "$installed" "$app" "$evidence" > "$evidence/runtime.log" 2>&1
 node --input-type=module - "$installed" "$source_sha" "$evidence" "$work" "$version" "$contracts" <<'JS'
 import {readFileSync,writeFileSync} from 'node:fs';
@@ -48,6 +48,6 @@ const lock=JSON.parse(readFileSync('package-lock.json'));
 writeFileSync(join(evidence,'dependency-licenses.json'),JSON.stringify(Object.entries(lock.packages).map(([path,p])=>({path,version:p.version,license:p.license??'UNKNOWN',integrity:p.integrity??null})),null,2)+'\n');
 writeFileSync(join(evidence,'receipt.json'),JSON.stringify({sourceSha,painterVersion:version,contractsPackage:contracts,contractsSha256:hash(contracts),
  node:process.version,packageSha256:hash(join(evidence,'package',pack.filename)),shippedFiles:inventory.length,tests,gateExit:0,temporaryBuild,
- boundary:'real installed package/real Cordis; contracts region v1 port, Host facts, world cells/catalogue FIXTURE; real contracts region v1 bytes, App/model/world/Undo/UI NOT_RUN'},null,2)+'\n');
+ boundary:'real installed package/real Cordis/vendored real contracts 0.5.0; contract region scenario and Host facts FIXTURE; peer Brush/Canvas/Adapter, App/model/world/Undo/UI NOT_RUN'},null,2)+'\n');
 JS
 cat "$evidence/receipt.json"

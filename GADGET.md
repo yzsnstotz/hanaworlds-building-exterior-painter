@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.4.0-fixture.1 · region v1 proposals (fixture stage)
+# HanaWorlds Building Exterior Painter 0.4.0 · painter-region/v1 region proposals
 
 The plugin implements `painter/v4.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
@@ -40,11 +40,11 @@ fixture gate does not prove that full Host integration.
 
 ## Pinned bytes and settings
 
-The whole published 21-file contracts0.4.2 package is vendored unmodified:
+The whole published 24-file contracts0.5.0 package (c006a839, tar 7fb42f1e) is vendored unmodified:
 source `aad7c0ea2a4a9a93dfb13555c46cd98b9b5da777`, npm tar SHA256
 `c3528a4fc3f0cdf94245c4d2d8b1cfa5d28db96d1cd00ae74737bdbdfcd26ec6`.
 Root API only; no `/v4` binding or prior wire compatibility. Regenerate/check:
-`node tools/vendor-contracts.mjs [--check] --package <final0.4.2.tgz>`.
+`node tools/vendor-contracts.mjs [--check] --package <hanaworlds-contracts-0.5.0.tgz>`.
 VENDOR.json records per-file SHA256. Never edit generated vendor bytes.
 
 Config/describe retain modelProvider `openai-codex`, modelId `gpt-5.6-luna` and
@@ -73,7 +73,7 @@ The service `hanaworldsPainterV2PictureBlocks` and root export expose:
 ```js
 const hint = await painter.matchCurrentImageMaterials({
   imageBytes,       // actual Uint8Array for the Host-verified brief attachment
-  materialSources,  // contracts0.4.2 MaterialSources {snapshot, textures}
+  materialSources,  // contracts MaterialSources (unchanged in 0.5.0) {snapshot, textures}
   catalogue,        // fresh public Catalogue matching that source
   currentConnection: {worldRef, connectionRef, connectionIncarnationRef},
 })
@@ -172,59 +172,45 @@ exact commit, executes only these5 affected tests, packs/installs independently,
 and runs the new method in actual fixed Cordis with external public Catalogue
 fixtures. Historical text/geometry/route/admission gates are not rerun.
 
-## Region v1 proposal on the same channel (0.4.0-fixture.1)
+## Region proposal: painter-region/v1 ValidateRegionProposal (0.4.0)
 
-Same entry, same Host facts: `call('ValidateBuildProposal', request)` whose
-`proposal.decision` is `BUILD_REGION` takes the region path; every other
-proposal takes the unchanged text/image path (`proposal.mjs`, `planner.mjs`,
-`local-context.mjs` untouched). Host `hanaworldsPainterLocalFacts.read` is read
-before planning and again before release, exactly as for text proposals, so the
-current Session, world, connection incarnation, selection and reference brief
-(including verified image media) must still match. No model, attachment,
-compiler, Canvas, Adapter or world call.
+Same service and same Host business port as text/image proposals:
+`hanaworldsPainterV2PictureBlocks.call('ValidateRegionProposal', request, {signal})`
+with the contract's strict `ValidateRegionProposalRequest` (raw bytes or
+decoded JSON). The text/image path (`proposal.mjs`, `planner.mjs`,
+`local-context.mjs`, image modules) is unchanged.
 
-Proposal (region-local coordinates relative to `targetFacts.sampledBounds.min`):
+- Admission is the contract's `validateRegionProposalRequest`: region-voxels/v1
+  block in world node coordinates, `X_FASTEST_THEN_Y_THEN_Z`, canonical runs,
+  `null` = UNSPECIFIED (never written, never carve), carve only explicit
+  `{nodeName:"air",param2:0}`, `ignore` and all-null refused, overflow-safe
+  extent, and every palette entry (air included) a known static Catalogue node
+  with an allowed param2. Intent/brief/Catalogue digests are bound.
+- Painter adds: confirmed BUILD_STRUCTURE intent for this turn and world, brief
+  of the same Session/turn, `localContext.worldRef === worldRef`.
+- Host `hanaworldsPainterLocalFacts.read(request, 'ValidateRegionProposal',
+  {signal})` returns public `LocalRequestFacts`; Painter applies
+  `validateCurrentRequest('painter-region/v1', ...)` before planning and again
+  before release, so a changed world, connection incarnation, selection, turn,
+  brief (including verified image media) or cancellation refuses the result.
+- Result: `RegionBuildPlan` whose `build` is `region-build/v1` with the proposal
+  block unchanged, `declaredBounds = regionBlockBox(block)`, document
+  `region-<invocationId>`, digest domain `region-build`; checked by
+  `validateRegionProposalResponse`. Same requestId + same payload replays after
+  fresh facts; a changed payload is REPLAY_MISMATCH.
+- Not Painter's: whether cells are loaded/known (Adapter `ReadRegion` +
+  `requireKnownRegion`), snapshot/extras restore, transaction and whole-region
+  Undo (Canvas). No model, attachment, compiler or world call.
 
-```json
-{"decision":"BUILD_REGION",
- "format":{"protocol":"hanaworlds-region-voxels","version":"1.0.0","requires":["palette-v1","air-carve","unspecified-skip"]},
- "region":{"min":[0,0,0],"size":[sx,sy,sz],"axisOrder":"x-fastest,y,z",
-   "palette":[{"nodeName":"air","param2":0},{"nodeName":"base:stone","param2":0}],
-   "cells":[1,null,0, ...]}}
-```
+`protocolHandshake()` returns the contract `ProtocolHandshake`:
+painter 4.0 and painter-region 1.0, capability
+`painter-region/v1:validate-region-proposal`, package version as provenance
+only. Consumers decide with `checkProtocolCompatibility` (same major, minor,
+capabilities); a different patch or artifact digest is still compatible, a
+wrong major or missing capability is refused. The exact-package
+`handshake()`/ContractHandshake now advertises contracts@0.5.0; fixed K1/K2
+candidates keep their own pinned 0.3.x/0.4.2 packages.
 
-- `cells` has exactly sx*sy*sz entries; index = x + sx*(y + sy*z) (Luanti
-  VoxelArea / schematic order). `null` = unspecified: never written and never
-  carve. Carve is explicit `air` and must be declared with `air-carve`.
-- Palette entries are distinct static Catalogue nodes with allowed param2
-  (`validateStaticMaterials`); hazard policy applies to every entry.
-- Every specified cell must be KNOWN in the bound REGION_INSPECTED facts (empty
-  or occupied). Unknown or unsampled cells: TARGET_FACTS_INCOMPLETE. A loaded
-  region still has to be read back as known; loading alone is not permission.
-- Replacing an existing node requires a known static definition (no callbacks,
-  no persistent state), so node+param2 restore it: else
-  UNSUPPORTED_MUTATION_SEMANTICS. Non-air into the avatar body: BUILD_INVALID.
-- Compatibility: same protocol and major (major 0 also needs the same minor) and
-  every `requires` capability supported. Patch and package hashes never decide
-  it; wrong major is UNSUPPORTED_VERSION, a missing capability
-  CAPABILITY_UNAVAILABLE.
-
-Output `result.build` is a region BUILD for Brush: frame and evidence exactly
-from the relayed Adapter inspection, digests bound to the request, the world-frame
-region block + palette, declared bounds, counts (`specified/unspecified/filled/
-carved/unchanged`) and a final-effects digest over changed cells only.
-Canvas decides the transaction and the whole-region Undo.
-
-**Contracts region v1 port.** Vendored contracts@0.4.2 has no region wire, so
-`src/region-contract.mjs` exports no port: a region proposal is refused with
-CAPABILITY_UNAVAILABLE and `describe().tools` reports the tool unavailable and
-why. Admission, context coherence, build digest and response coherence come
-from that port (`validateRegionRequest`, `validateRegionContext`,
-`regionBuildDigest`, `validateRegionResponse`, `regionProtocol`). The current
-tests and runtime gate inject an explicit FIXTURE port
-(`test/region-contract-fixture.mjs`); field names, the region BUILD shape and
-its digest are replaced by the real contracts region v1 package when delivered.
-
-`describe().tools` self-describes `BuildRegionProposal` (purpose, typical use,
-preconditions, input, compatibility). Choosing region vs per-box proposals is
-the skill's decision; Painter sets no size threshold.
+`describe().tools` self-describes `ValidateRegionProposal` (purpose, typical
+scale in cells, preconditions). Choosing region vs per-box proposals is the
+skill's decision; Painter sets no size threshold.
