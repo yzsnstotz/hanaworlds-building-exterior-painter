@@ -1,8 +1,8 @@
 // Pure P3 picture-blocks planning: a validated model proposal plus bound facts
-// becomes BUILD/V2 geometry. Nothing here reads a world, a Session or a model.
+// becomes BUILD/V3 geometry. Nothing here reads a world, a Session or a model.
 import {
   ContractError, decodeRawJSON, digestValue, validateType, validateStaticMaterials,
-  comparePosition, compareUTF16,
+  comparePosition, compareUTF16, validateWitnessCoherence,
 } from '#contracts';
 
 export const PAINTER_ID = 'picture-blocks';
@@ -225,15 +225,15 @@ export function planEntrances({ request, geometry }) {
 
 /**
  * The trusted assembleBuild input for a first new building: exactly the
- * Adapter-produced RegionInspection relayed by Canvas (painter/v3). Nothing is
+ * Adapter-produced RegionInspection relayed by Canvas (painter/v4). Nothing is
  * defaulted; a missing part is a typed rejection.
  */
 export function trustedFromRegion(regionInspection) {
   const ri = regionInspection;
-  if (!ri?.frame || !ri.evidence || !Array.isArray(ri.protectedPositions) || !Array.isArray(ri.bodyOccupiedPositions))
+  if (!ri?.frame || !ri.evidence || !Array.isArray(ri.bodyOccupiedPositions))
     fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
   return { frame: ri.frame, evidence: ri.evidence,
-    protection: { protectedPositions: ri.protectedPositions }, body: { bodyOccupiedPositions: ri.bodyOccupiedPositions } };
+    body: { bodyOccupiedPositions: ri.bodyOccupiedPositions } };
 }
 
 const HORIZONTAL_FACES = new Set(['+X', '-X', '+Z', '-Z']);
@@ -288,13 +288,13 @@ export function checkEntranceFacing({ request, geometry, entranceFacing }) {
 /**
  * Assemble the complete BuildProjection. `trusted` must come from a public,
  * provider-verified source: the exact coordinate Frame whose digest equals
- * targetFacts.frameDigest and Adapter evidence for protection and body
- * occupancy (painter/v3: trustedFromRegion). Missing trusted facts are a typed
+ * targetFacts.frameDigest and Adapter evidence for body
+ * occupancy (painter/v4: trustedFromRegion). Missing trusted facts are a typed
  * rejection, never a default.
  */
 export function assembleBuild({ request, geometry, documentId, trusted, entrances = planEntrances({ request, geometry }) }) {
   const { catalogue, targetFacts, safetyProfile } = request;
-  if (!trusted?.frame || !trusted.evidence || !trusted.protection || !trusted.body)
+  if (!trusted?.frame || !trusted.evidence || !trusted.body)
     fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
   if (digestValue('frame', trusted.frame).sha256 !== targetFacts.frameDigest)
     fail('TARGET_FACTS_STALE', 'validate', 'REVISION_CHANGED');
@@ -310,8 +310,6 @@ export function assembleBuild({ request, geometry, documentId, trusted, entrance
   const written = new Set(positions.map(key));
   const evidence = trusted.evidence;
   const restrict = list => list.filter(p => written.has(key(p)));
-  if (trusted.protection.protectedPositions.some(p => written.has(key(p))))
-    fail('PERMISSION_DENIED', 'authorize', 'SCOPE_DENIED');
   if (trusted.body.bodyOccupiedPositions.some(p => written.has(key(p))))
     fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
   const hazardOk = geometry.effects.every(e => {
@@ -326,11 +324,7 @@ export function assembleBuild({ request, geometry, documentId, trusted, entrance
   const hazardPositions = [...hazardCells.values()].sort(comparePosition);
   const witnesses = [
     { witnessId: 'w1', predicate: 'COVERAGE', ...bound, facts: { evidence, positions } },
-    // Protected and body-occupied lists are the trusted lists restricted to the
-    // witness positions (canvas/v4 Apply binding rule); any overlap was rejected
-    // above, so both restrictions are empty.
-    { witnessId: 'w2', predicate: 'PROTECTION', ...bound,
-      facts: { evidence, positions, protectedPositions: restrict(trusted.protection.protectedPositions) } },
+    // Body overlap was rejected; the restricted occupancy list is empty.
     { witnessId: 'w3', predicate: 'BODY_CLEARANCE', ...bound,
       facts: { evidence, positions, bodyOccupiedPositions: restrict(trusted.body.bodyOccupiedPositions),
         avatarDimensions: safetyProfile.avatarDimensions } },
@@ -344,10 +338,11 @@ export function assembleBuild({ request, geometry, documentId, trusted, entrance
         path: entrance.path, avatarDimensions: safetyProfile.avatarDimensions } })),
   ].sort((a, b) => compareUTF16(a.witnessId, b.witnessId));
   const build = validateType('BuildProjection', {
-    contractVersion: 'BUILD/V2', documentId, coordinateFrame: trusted.frame, catalogueDigest,
+    contractVersion: 'BUILD/V3', documentId, coordinateFrame: trusted.frame, catalogueDigest,
     targetFactsDigest: request.targetFactsDigest, safetyProfileDigest: request.safetyProfileDigest,
     materials: geometry.materials, operations: geometry.operations,
     declaredBounds: geometry.declaredBounds, witnesses,
   });
+  validateWitnessCoherence({ build, finalEffects, targetFacts, safetyProfile, catalogue });
   return { build, buildDigest: digestValue('build', build).sha256, finalEffects };
 }

@@ -1,16 +1,14 @@
 // Deterministic public text proposal entry. No model, media, compiler or world service.
 import { ContractError, publicError, admitRequest, validateRequest, validateResponse,
-  validateType, decodeRawJSON, canonicalJSON, validateBuildProposalContext,
+  decodeRawJSON, canonicalJSON,
   validateBuildProposalResponse } from '#contracts';
 import { parseProposal, planGeometry, planEntrances, checkEntranceFacing, assembleBuild,
   trustedFromRegion } from './planner.mjs';
+import { readCurrentFacts } from './local-context.mjs';
 export const PROPOSAL_OPERATION = 'ValidateBuildProposal';
-const WIRE = 'painter/v3';
-const denied = () => { throw new ContractError('PERMISSION_DENIED', 'authorize', 'IDENTITY_UNVERIFIED'); };
+const WIRE = 'painter/v4';
 const envelope = (id, error) => validateResponse(WIRE, PROPOSAL_OPERATION,
   { contractVersion: WIRE, requestId: id, result: null, error: publicError(error) });
-const scope = facts => canonicalJSON({ binding: facts.originalBinding,
-  callerServiceRef: facts.callerServiceRef, expectedCallerServiceRef: facts.expectedCallerServiceRef });
 function requestId(raw) {
   try {
     const decoded = typeof raw === 'string' || raw instanceof Uint8Array
@@ -20,21 +18,11 @@ function requestId(raw) {
 }
 
 export class BuildProposalValidator {
-  constructor(getAuthority) { this.getAuthority = getAuthority; this.receipts = new Map(); }
-  // Existing host hanaworldsAuthority.verify port; for this operation it must
-  // return public BuildProposalProviderFacts captured by authenticated providers.
-  // These observations never come from call options or model JSON. The host is
-  // responsible for real Session/grant/caller provenance; pure equality is not authentication.
+  constructor(getLocalFacts) { this.getLocalFacts = getLocalFacts; this.receipts = new Map(); }
+  // Host reads source/current brief and actual current transport/selection.
+  // Pure contract correlation cannot itself establish live world facts.
   async fresh(body, signal, initial) {
-    if (signal?.aborted) denied();
-    const authority = this.getAuthority();
-    if (typeof authority?.verify !== 'function' || (initial && initial.authority !== authority)) denied();
-    const observed = await authority.verify(body, PROPOSAL_OPERATION, { signal });
-    if (signal?.aborted || this.getAuthority() !== authority) denied();
-    const facts = validateType('BuildProposalProviderFacts', observed);
-    validateBuildProposalContext(body, facts);
-    if (initial && scope(facts) !== initial.scope) denied();
-    return { authority, facts, scope: scope(facts) };
+    return readCurrentFacts(this.getLocalFacts, body, PROPOSAL_OPERATION, signal, initial);
   }
   async call(raw, { signal } = {}) {
     let body;
@@ -50,18 +38,18 @@ export class BuildProposalValidator {
     try {
       const initial = await this.fresh(body, signal);
       const identity = canonicalJSON(body); // equality of whole payload, no private wire digest
-      const key = `${initial.facts.liveSessionIncarnationRef}\u0000${body.sessionRef}\u0000${body.requestId}`;
+      const key = `${canonicalJSON(body.localContext)}\u0000${body.sessionRef}\u0000${body.requestId}`;
       const prior = this.receipts.get(key);
       if (prior) {
         if (prior.identity !== identity) throw new ContractError('REPLAY_MISMATCH', 'replay', 'PAYLOAD_CHANGED');
-        if (prior.scope !== initial.scope || prior.authority !== initial.authority) denied();
         const response = await prior.response;
         await this.fresh(body, signal, initial);
         return structuredClone(validateBuildProposalResponse(body, response));
       }
-      // Reserve before asynchronous final authorization so concurrent conflicting
-      // payloads cannot both own the same request identity. Receipts confer no writes.
-      const record = { identity, scope: initial.scope, authority: initial.authority };
+      if (initial.admission.disposition === 'RETURN_STORED')
+        throw new ContractError('REQUEST_NOT_ACTIVE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+      // Ephemeral planning receipts; never a durable world transaction or write.
+      const record = { identity };
       record.response = (async () => {
         let response;
         try {

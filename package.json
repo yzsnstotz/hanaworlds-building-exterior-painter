@@ -1,10 +1,10 @@
 {
   "name": "hanaworlds-building-exterior-painter",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "license": "MIT",
-  "description": "HanaWorlds Stage 1 Building Exterior Painter (P3 picture-blocks): confirmed image-plus-text intent to BUILD/V2 or clarification, without world mutation",
+  "description": "HanaWorlds local-world Painter: confirmed proposals to BUILD/V3 without world mutation",
   "repository": {
     "type": "git",
     "url": "https://github.com/yzsnstotz/hanaworlds-building-exterior-painter.git"
@@ -16,9 +16,7 @@
     ".": "./src/index.mjs"
   },
   "imports": {
-    "#contracts": "./vendor/hanaworlds-contracts/dist/v4/index.mjs",
-    "#contracts/painter/v3": "./vendor/hanaworlds-contracts/dist/v4/bindings/painter-v3.mjs",
-    "#contracts/BUILD/V2": "./vendor/hanaworlds-contracts/dist/v4/bindings/BUILD-V2.mjs"
+    "#contracts": "./vendor/hanaworlds-contracts/dist/local/index.mjs"
   },
   "files": [
     "src",
@@ -34,9 +32,9 @@
     }
   },
   "scripts": {
-    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs",
-    "test": "node --test test/*.test.mjs",
-    "test:proposal": "node --test test/proposal.test.mjs test/handshake.test.mjs test/vendor.test.mjs"
+    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs",
+    "test": "node --test test/local-world.test.mjs",
+    "test:local-world": "node --test test/local-world.test.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",

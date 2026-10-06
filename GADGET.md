@@ -1,75 +1,67 @@
-# HanaWorlds Building Exterior Painter 0.2.2 · controlled text proposal
+# HanaWorlds Building Exterior Painter 0.3.0 · local world
 
-The plugin retains the original image `CreateBuildPlan` path and adds public
-`painter/v3.ValidateBuildProposal`. Both return plans; Painter never compiles,
-commits, reads or writes the world. Canvas owns transactions, Brush compilation
-and Adapter transport remain separate origins.
+The plugin implements `painter/v4.ValidateBuildProposal` and retains image
+`CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
+Painter never compiles, decides a transaction, reads or writes the world.
+Canvas decides transactions, Brush compiles purely, Adapter transports.
 
-## Public entry
+## Public entry and host facts
 
 `hanaworldsPainterV2PictureBlocks.call('ValidateBuildProposal', request, {signal})`
-accepts the strict public `ValidateBuildProposalRequest` from admitted contracts
-0.3.10. Only `proposal` is model geometry: BUILD/materials/ordered local boxes.
-The trusted caller assembles the confirmed brief/context and authentic facts;
-model tools must not accept identities, grants, frame or witnesses from JSON.
-Text media must be empty. Skill handles understanding and clarification.
+accepts the root API's strict `ValidateBuildProposalRequest`. Only `proposal`
+contains model geometry. Workshop supplies the confirmed brief and bounded
+context; understanding/clarification belong to the skill. This entry calls no
+LLM or attachment service and reuses the existing pure geometry and BUILD code.
 
-The new entry reuses parseProposal, planGeometry, planEntrances,
-checkEntranceFacing and assembleBuild. It invokes no llm or attachments service.
-A valid response is the public BUILD plan envelope. Shape/digest/world/brief,
-region bounds/materials/known-empty/protection/body/hazard and entrance errors
-are typed NONE/null-transaction rejections. Unrecoverable malformed raw identity
-raises a ContractError rather than inventing a requestId.
+Host binds the internal `hanaworldsPainterLocalFacts.read(request, operation,
+{signal})` port. For ValidateBuildProposal return public
+`BuildProposalProviderFacts` `{sourceContext,currentContext,requestFacts}`.
+For CreateBuildPlan return public `LocalRequestFacts`. Workshop's source context
+must be captured before generation; the host reads current turn, brief, actual
+transport incarnation and Canvas world selection from their owning services.
+No permissions, actors, grants or INSPECT facts are read. Never manufacture a
+current connection incarnation or copy request fields as alleged live facts.
+No provider facts are accepted from model requests or call options.
 
-## Host provider obligation
+Painter runs the public current-context/proposal checks before planning and
+re-reads them after awaits before release, including its existing plan receipt
+cache. Cancellation, changed world/incarnation/selection/brief and provider
+replacement reject stale output. Missing host facts are CAPABILITY_UNAVAILABLE;
+no default grant or context exists. Request-shape, geometry, bounds, material,
+body and hazard errors are typed no-mutation outcomes. Coverage,
+BODY_CLEARANCE, HAZARD and required entrance witnesses use the new digest domain.
+PROTECTION and protected clearance are absent.
 
-The existing trusted `hanaworldsAuthority.verify(request, operation, {signal})`
-port must return public `BuildProposalProviderFacts` for ValidateBuildProposal.
-This is a provider-side host capability, not a model argument. Its implementation
-must authenticate the exact Workshop service/invocation, capture source context
-before generation, obtain the live Session/incarnation and original game grant,
-INSPECT action and fresh current context from actual public providers. Returning
-a coherent JSON object alone does not authenticate these facts.
+Receipts are ephemeral plan receipts, never durable transaction history. A public
+RETURN_STORED instruction requires an existing stored receipt and never triggers
+replanning. Workshop/Canvas own durable confirmed state and transaction storage.
+Host must bind this business port when assembling the new peer set; a component
+fixture gate does not prove that full Host integration.
 
-Painter checks the public context helper initially and after awaits before result
-or replay release. It also refuses local abort, authority replacement and changed
-original binding/caller during one call. Full payload equality includes proposal
-materials and ordered boxes. In-flight conflicting payloads cannot reserve the
-same Session/incarnation/requestId. Receipts are in-memory plan receipts, not
-world/transaction authorization or durable Workshop history. Caller must preserve
-its durable confirmed context and independently validate results before applying.
-No facts or permission are accepted from call options.
+## Pinned bytes and settings
 
-## Current advertisement and dependencies
+The whole published 20-file contracts0.4.0 package is vendored unmodified:
+source `8cfb18f8e13aa33d7a942f230ec6117914322cdd`, npm tar SHA256
+`d7b22e76de5e161abe7525596df608b3f00445fb4237808941cb5ef8328e9bc4`.
+Root API only; no `/v4` binding or prior wire compatibility. Regenerate/check:
+`node tools/vendor-contracts.mjs [--check] --package <final0.4.0.tgz>`.
+VENDOR.json records per-file SHA256. Never edit generated vendor bytes.
 
-The registered service exports exactly contracts0.3.10 ContractHandshake and
-advertises both operations. Consumers of the new entry use the public
-checkBuildProposalHandshake. This origin update does not repin other origins or
-the parallel fixed default0.3.9 chain, and adds no old-peer/profile adapters.
+Config/describe retain modelProvider `openai-codex`, modelId `gpt-5.6-luna` and
+read-only geometry invariants. Only the image path uses that route; image+text
+and a capable resolved model remain required. Image planning and optional fixed
+orchestration remain available; this component gate does not freeze them.
+The service/class names remain stable; their requests now accept only new wires.
 
-The unmodified 30-file contracts import/profile/fixture/license subset is derived
-from admitted source e66800964726b951a300eb9377b74c318641417f, actual npm tar
-SHA256 8624bd026815fcdafc5248b21d8bc611baa0569b7b492b66905d2d015a496ce1
-(1,031 package entries). Regenerate/check via
-`node tools/vendor-contracts.mjs [--check] --package <admitted0.3.10.tgz>`.
-VENDOR.json lists every copied byte's SHA. Never edit generated vendor files.
+## Evidence
 
-## Visible settings and retained capabilities
-
-modelProvider defaults openai-codex, modelId gpt-5.6-luna. They affect only the
-original image-model path; that path requires bound image+text and an image-capable
-resolved route. Config and describe expose these settings and fixed invariants.
-The text-proposal path uses no model route. Existing image planning, geometry,
-clearance, entrance connectivity/face, materials and BUILD assembly remain.
-Freeze fixed orchestration as optional only after the real skill closed loop;
-this component fixture gate does not trigger that decision.
-
-## Evidence and boundaries
-
-`npm run test:proposal` exercises the new entry and affected current handshake
-and vendor integrity. `tools/gate-proposal.sh` archives a committed source,
-checks exact admitted vendor bytes, packs/installs a fresh package, then exercises
-the installed entry and real Cordis provider lifecycle. Authority/LLM/media,
-world and Workshop facts are fixtures. Actual model/DSH full Host/GUI/world writes
-and Undo are NOT_RUN; current source/package/framework checks confer no product
-PASS, TO_TEST or owner ACCEPTED. Prior route gate and admission are not rerun.
+`npm test` / `npm run test:local-world` run the normal proposal and core new
+boundaries. `tools/gate-local-world.sh` archives a committed source, checks vendor,
+builds, tests, packs, installs in an independent consumer and loads the installed
+plugin in actual fixed Cordis. External business facts are public fixtures.
+Real model, full DSH Host, GUI/world/Undo are NOT_RUN. This never grants product
+PASS, TO_TEST or owner ACCEPTED. Prior route/admission and unchanged geometry
+gates are reused. Old test files/tools remain unchanged in source/Git, runnable
+at 8e96b57441a697f79a2cda17e8acb6538814630e with their protected old artifact;
+old permission, replay/concurrency and expanded negative matrices are deferred,
+not current npm-test requirements. Historical report/evidence remain protected.
