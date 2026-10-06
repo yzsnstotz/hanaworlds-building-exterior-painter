@@ -13,6 +13,9 @@ import { BuildProposalValidator, PROPOSAL_OPERATION } from './proposal.mjs';
 import { readCurrentFacts } from './local-context.mjs';
 import { matchImageMaterials } from './image-material.mjs';
 import { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
+import { RegionProposalValidator } from './region-proposal.mjs';
+import { REGION_PROPOSAL_TOOL, REGION_SUPPORT, isRegionRequest, checkRegionContract } from './region.mjs';
+import { regionContract as defaultRegionContract, REGION_CONTRACT_STATUS } from './region-contract.mjs';
 
 export const WIRE = 'painter/v4';
 export const OPERATION = 'CreateBuildPlan';
@@ -33,6 +36,8 @@ export const INVARIANTS = Object.freeze([
   'BODY_CLEARANCE witnesses require relayed inspection evidence; absent evidence or frame (INSPECTED facts carry none in painter/v4) is a typed TARGET_FACTS_INCOMPLETE rejection, never a default safe claim.',
   'PLANNED facts are rejected (TARGET_REQUIRED) because painter/v4 carries no proof of a real preceding plan.',
   'Same requestId with the same exact payload returns the original response after fresh current local facts; a changed payload is REPLAY_MISMATCH.',
+  'A region proposal (decision BUILD_REGION) writes only specified cells that the bound inspection proves KNOWN; a null cell is never written and never means carve; carve is explicit air; unknown, unsampled or stateful replaced cells are rejected; same Host current facts as text/image proposals.',
+  'Region protocol compatibility is protocol major (major 0 also needs the same minor) plus required capabilities; patch or package hash never decides it; a wrong major is UNSUPPORTED_VERSION.',
 ]);
 
 // Painter-scoped codes for a carried projection whose digest does not match.
@@ -63,12 +68,15 @@ export class ExteriorPainterV2 {
    * @param {object|undefined} deps.attachments host `attachments` service
    * @param {{provider: string, model: string}} deps.route model route
    */
-  constructor({ localFacts, llm, attachments, route = DEFAULT_ROUTE } = {}) {
+  constructor({ localFacts, llm, attachments, route = DEFAULT_ROUTE, regionContract = defaultRegionContract } = {}) {
     this.localFacts = localFacts;
     this.llm = llm;
     this.attachments = attachments;
     this.route = Object.freeze({ provider: route.provider, model: route.model });
     this.proposals = new BuildProposalValidator(() => this.localFacts);
+    // Public contracts region v1 port; null until that package is vendored.
+    this.regionContract = regionContract;
+    this.regions = new RegionProposalValidator(() => this.localFacts, () => this.regionContract);
     this.receipts = new Map(); // invocation receipts only; no world or Session state
     // ContractHandshake advertised before any request (CONTRACT_RULES "Compatibility
     // (rc.7)"): exactly the vendored admitted contracts@0.4.2 advertisement, never
@@ -88,7 +96,8 @@ export class ExteriorPainterV2 {
       settings: { modelProvider: this.route.provider, modelId: this.route.model },
       settingDefaults: { modelProvider: DEFAULT_ROUTE.provider, modelId: DEFAULT_ROUTE.model },
       invariants: INVARIANTS, worldWrites: 0,
-      tools: [CURRENT_IMAGE_MATERIAL_TOOL],
+      tools: [CURRENT_IMAGE_MATERIAL_TOOL, { ...REGION_PROPOSAL_TOOL, availability: this.regionAvailability() }],
+      regionSupport: REGION_SUPPORT,
       services: { localFacts: !!this.localFacts, llm: !!this.llm, attachments: !!this.attachments },
     };
   }
@@ -98,8 +107,19 @@ export class ExteriorPainterV2 {
    * return the contract-validated response: an envelope or ClarificationNeed.
    * Host capability failures throw PainterHostError.
    */
+  /** Whether the region proposal path can run, and what it needs if not. */
+  regionAvailability() {
+    if (this.regionContract === null || this.regionContract === undefined)
+      return { available: false, reason: REGION_CONTRACT_STATUS.reason };
+    try { checkRegionContract(this.regionContract); }
+    catch (error) { return { available: false, reason: `region contract port not consumable: ${error.code}` }; }
+    return { available: true, contracts: this.regionContract.contracts ?? null,
+      regionProtocol: { ...this.regionContract.regionProtocol } };
+  }
+
   async call(operation, raw, { signal } = {}) {
-    if (operation === PROPOSAL_OPERATION) return this.proposals.call(raw, { signal });
+    if (operation === PROPOSAL_OPERATION)
+      return isRegionRequest(raw) ? this.regions.call(raw, { signal }) : this.proposals.call(raw, { signal });
     if (operation !== OPERATION) fail('UNSUPPORTED_OPERATION', 'validate', 'INVALID_SHAPE');
     let body;
     try {

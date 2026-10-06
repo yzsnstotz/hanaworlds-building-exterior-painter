@@ -19,7 +19,7 @@ test('current-world public consumer measures actual pixels and supplied base:* t
  assert.equal(r.catalogueDigest,facts.materialSources.snapshot.catalogueDigest);
  assert.equal(r.sourceBasis,'SERVER_ASSET_ONLY');assert.equal(r.modelCalls,0);assert.equal(r.worldWrites,0);
  assert.ok(Object.isFrozen(r));assert.ok(Object.isFrozen(r.match.rgb));
- assert.equal(p.describe().tools.length,1);assert.equal(p.describe().tools[0].method,'matchCurrentImageMaterials');
+ const imageTools=p.describe().tools.filter(t=>typeof t.method==='string');assert.equal(imageTools.length,1);assert.equal(imageTools[0].method,'matchCurrentImageMaterials');assert.ok(!p.describe().tools.some(t=>t.method==='matchImageMaterials'));
 });
 test('deterministic node/param2 ties and changed sourceRevision never reuse an old colour',async()=>{
  const p=painter();assert.equal(typeof p.matchCurrentImageMaterials,'function');

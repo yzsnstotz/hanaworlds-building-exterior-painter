@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.3.2 · current image material sources
+# HanaWorlds Building Exterior Painter 0.4.0-fixture.1 · region v1 proposals (fixture stage)
 
 The plugin implements `painter/v4.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
@@ -171,3 +171,60 @@ protected default_stone.png bytes. `tools/gate-image-material.sh` archives the
 exact commit, executes only these5 affected tests, packs/installs independently,
 and runs the new method in actual fixed Cordis with external public Catalogue
 fixtures. Historical text/geometry/route/admission gates are not rerun.
+
+## Region v1 proposal on the same channel (0.4.0-fixture.1)
+
+Same entry, same Host facts: `call('ValidateBuildProposal', request)` whose
+`proposal.decision` is `BUILD_REGION` takes the region path; every other
+proposal takes the unchanged text/image path (`proposal.mjs`, `planner.mjs`,
+`local-context.mjs` untouched). Host `hanaworldsPainterLocalFacts.read` is read
+before planning and again before release, exactly as for text proposals, so the
+current Session, world, connection incarnation, selection and reference brief
+(including verified image media) must still match. No model, attachment,
+compiler, Canvas, Adapter or world call.
+
+Proposal (region-local coordinates relative to `targetFacts.sampledBounds.min`):
+
+```json
+{"decision":"BUILD_REGION",
+ "format":{"protocol":"hanaworlds-region-voxels","version":"1.0.0","requires":["palette-v1","air-carve","unspecified-skip"]},
+ "region":{"min":[0,0,0],"size":[sx,sy,sz],"axisOrder":"x-fastest,y,z",
+   "palette":[{"nodeName":"air","param2":0},{"nodeName":"base:stone","param2":0}],
+   "cells":[1,null,0, ...]}}
+```
+
+- `cells` has exactly sx*sy*sz entries; index = x + sx*(y + sy*z) (Luanti
+  VoxelArea / schematic order). `null` = unspecified: never written and never
+  carve. Carve is explicit `air` and must be declared with `air-carve`.
+- Palette entries are distinct static Catalogue nodes with allowed param2
+  (`validateStaticMaterials`); hazard policy applies to every entry.
+- Every specified cell must be KNOWN in the bound REGION_INSPECTED facts (empty
+  or occupied). Unknown or unsampled cells: TARGET_FACTS_INCOMPLETE. A loaded
+  region still has to be read back as known; loading alone is not permission.
+- Replacing an existing node requires a known static definition (no callbacks,
+  no persistent state), so node+param2 restore it: else
+  UNSUPPORTED_MUTATION_SEMANTICS. Non-air into the avatar body: BUILD_INVALID.
+- Compatibility: same protocol and major (major 0 also needs the same minor) and
+  every `requires` capability supported. Patch and package hashes never decide
+  it; wrong major is UNSUPPORTED_VERSION, a missing capability
+  CAPABILITY_UNAVAILABLE.
+
+Output `result.build` is a region BUILD for Brush: frame and evidence exactly
+from the relayed Adapter inspection, digests bound to the request, the world-frame
+region block + palette, declared bounds, counts (`specified/unspecified/filled/
+carved/unchanged`) and a final-effects digest over changed cells only.
+Canvas decides the transaction and the whole-region Undo.
+
+**Contracts region v1 port.** Vendored contracts@0.4.2 has no region wire, so
+`src/region-contract.mjs` exports no port: a region proposal is refused with
+CAPABILITY_UNAVAILABLE and `describe().tools` reports the tool unavailable and
+why. Admission, context coherence, build digest and response coherence come
+from that port (`validateRegionRequest`, `validateRegionContext`,
+`regionBuildDigest`, `validateRegionResponse`, `regionProtocol`). The current
+tests and runtime gate inject an explicit FIXTURE port
+(`test/region-contract-fixture.mjs`); field names, the region BUILD shape and
+its digest are replaced by the real contracts region v1 package when delivered.
+
+`describe().tools` self-describes `BuildRegionProposal` (purpose, typical use,
+preconditions, input, compatibility). Choosing region vs per-box proposals is
+the skill's decision; Painter sets no size threshold.
