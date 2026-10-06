@@ -22,7 +22,7 @@ test('plugin default export matches cordis plugin shape', () => {
 });
 
 test('Config declares every setting with its visible default', () => {
-  assert.deepEqual(Config({}), { modelProvider: 'codex-oauth', modelId: 'gpt-5.6-luna' });
+  assert.deepEqual(Config({}), { modelProvider: 'openai-codex', modelId: 'gpt-5.6-luna' });
   const json = JSON.stringify(Config.toJSON());
   assert.match(json, /must accept image input/);
   assert.match(json, /Fixed invariants/);

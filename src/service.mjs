@@ -17,7 +17,7 @@ const sha = text => createHash('sha256').update(text).digest('hex');
 
 /** Visible settings and invariants. Shown through the plugin's Config schema
  * and `describe()`; nothing else alters painter behaviour. */
-export const DEFAULT_ROUTE = Object.freeze({ provider: 'codex-oauth', model: 'gpt-5.6-luna' });
+export const DEFAULT_ROUTE = Object.freeze({ provider: 'openai-codex', model: 'gpt-5.6-luna' });
 export const INVARIANTS = Object.freeze([
   'No world, Canvas, Adapter or Brush call; output is a BUILD/V2 plan or a ClarificationNeed only.',
   'Structure intent requires at least one bound user image and non-empty text.',

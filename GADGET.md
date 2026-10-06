@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.2.0 candidate (exterior-v4)
+# HanaWorlds Building Exterior Painter 0.2.1 route candidate (exterior-v4)
 
 建筑外形画师 / P3 `picture-blocks` / 照片积木.
 
@@ -86,14 +86,15 @@ cached:
 
 | Setting | Default | Effect |
 |---|---|---|
-| `modelProvider` | `codex-oauth` | DSH route used for image+text planning |
+| `modelProvider` | `openai-codex` | DSH route used for image+text planning |
 | `modelId` | `gpt-5.6-luna` | exact model on that route |
 
-These defaults are the worker's choice, not a user decision. The user confirmed
-`gpt-5.6-luna` for image understanding. On the DSH OAuth plugin, image input for
-that model appears only on the `codex-oauth` route (pi-ai catalogue
-`input: ["text","image"]`). The OpenCode Go entry for the same model id is
-text-only. There are no other settings, caps, timeouts or retries.
+The default provider matches the registered `dsh-codex-subscription` provider
+and the HanaWorlds Desktop Host route: `openai-codex/gpt-5.6-luna`.
+This alignment is a source and fixture result. Live account/model/image usability
+has not been established by this route-only candidate. The existing image path
+still requires image modality at runtime. A skill-proposal entry is blocked on
+a public contracts input; this package does not advertise that capability.
 
 ## Fixed invariants (cannot be switched off; listed by `describe()` and in `Config`)
 
