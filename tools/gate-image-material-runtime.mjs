@@ -12,7 +12,7 @@ const {default:sharp}=await import(url(sharpFile));
 const cordisFile=join(app,'Contents/Resources/hanaworlds-dsh/node_modules/@deepseek-ai/cordis/lib/index.js');
 const {Context}=await import(url(cordisFile));
 const ctx=new Context();let forbiddenCalls=0;
-const forbidden=new Proxy({}, {get(){forbiddenCalls++;throw new Error('new material tool accessed model/legacy/world port');}});
+const forbidden=new Proxy({}, {get(target,key){if(typeof key==='symbol')return Reflect.get(target,key);forbiddenCalls++;throw new Error('new material tool accessed model/legacy/world port');}});
 for(const name of ['llm','attachments','hanaworldsPainterLocalFacts','world','canvas','adapter'])ctx.provide(name,forbidden);
 const fiber=ctx.plugin(pkg.default,pkg.Config({})),results=[];
 try {
