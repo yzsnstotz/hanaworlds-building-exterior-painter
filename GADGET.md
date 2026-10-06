@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.3.0 · local world
+# HanaWorlds Building Exterior Painter 0.3.1 · local world
 
 The plugin implements `painter/v4.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
@@ -65,3 +65,46 @@ gates are reused. Old test files/tools remain unchanged in source/Git, runnable
 at 8e96b57441a697f79a2cda17e8acb6538814630e with their protected old artifact;
 old permission, replay/concurrency and expanded negative matrices are deferred,
 not current npm-test requirements. Historical report/evidence remain protected.
+
+## One image material tool (0.3.1)
+
+The registered Painter service exposes `matchImageMaterials({imageBytes, catalogue})`
+and root exports `matchImageMaterials`, `IMAGE_MATERIAL_TOOL`, `ImageMaterialError`.
+This is an own-plugin computation method, not a new frozen painter/v4 operation.
+Host binds one skill tool `MatchImageMaterials` using this public descriptor:
+resolve the actual attachment bytes for the current brief and obtain the current
+public Catalogue, then call the method. Do not accept model-provided RGB/palette
+facts, URLs or local file paths. Host must correlate the result to that brief
+before using it. Workshop download/attachment and full Host binding are external.
+
+The tool accepts only non-empty Uint8Array PNG/JPEG/WebP raster bytes, at most
+32MiB and 16,777,216 pixels, one frame. sharp0.35.3 decodes oriented sRGB RGBA,
+without resize. Dominant colour uses 16 bins per channel, alpha-byte weight,
+largest-weight bin and lowest packed bin on a tie. Its representative RGB is the
+winning-bin alpha-weighted linear-light mean. Oklab distance uses the original
+picture-blocks palette transform; exact distance ties use UTF16 node name then
+smallest legal param2. Results are immutable and contain actual image dimensions,
+format/SHA, dominant colour, Catalogue digest, palette digest/provenance, selected
+material RGB/texture SHA/distance and count of legal materials with unknown colour.
+The returned `{nodeName,param2}` is a material hint for existing proposal.materials;
+ValidateBuildProposal/Brush/Canvas remain mandatory. No BUILD/world transaction
+is produced here, and neither old CreateBuildPlan nor any model is called.
+
+The original picture-blocks palette-data.ts at db87d6f8 has **63** actual rows,
+despite an old comment saying64. `tools/build-material-palette.mjs` remeasured all
+63 actual VoxeLibre0.92.3 textures in linear light, preserving existing node/texture
+associations and per-texture hashes. It does not guess RGB from names. This index
+is explicitly measured from that source; public Catalogue has no texture/RGB
+fields and cannot prove that today's world uses those same textures. Colours for
+other games/nodes remain UNKNOWN. There is no default invented colour/palette,
+no new special-block whitelist, and static legality uses existing offeredMaterials
+and validateStaticMaterials. Subsequent geometry/safety checks still apply.
+
+Missing bytes -> IMAGE_REQUIRED; unsupported/corrupt decode -> IMAGE_DECODE_FAILED;
+all-transparent -> NO_VISIBLE_PIXELS; no indexed static legal material ->
+NO_LEGAL_MATERIAL. No fallback model, forced material or world write occurs.
+`npm run test:image-material` requires PAINTER_IMAGE_TEXTURE pointing at actual
+protected default_stone.png bytes. `tools/gate-image-material.sh` archives the
+exact commit, executes only these5 affected tests, packs/installs independently,
+and runs the new method in actual fixed Cordis with external public Catalogue
+fixtures. Historical text/geometry/route/admission gates are not rerun.

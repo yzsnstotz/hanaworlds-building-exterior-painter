@@ -1,6 +1,6 @@
 {
   "name": "hanaworlds-building-exterior-painter",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -32,12 +32,14 @@
     }
   },
   "scripts": {
-    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs",
+    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs && node --check src/image-material.mjs && node --check src/pixels.mjs && node --check src/colour.mjs",
     "test": "node --test test/local-world.test.mjs",
-    "test:local-world": "node --test test/local-world.test.mjs"
+    "test:local-world": "node --test test/local-world.test.mjs",
+    "test:image-material": "node --test test/image-material.test.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
-    "canonicalize": "5.1.0"
+    "canonicalize": "5.1.0",
+    "sharp": "0.35.3"
   }
 }

@@ -11,6 +11,7 @@ import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, 
 import { invokeModel, PainterHostError } from './model.mjs';
 import { BuildProposalValidator, PROPOSAL_OPERATION } from './proposal.mjs';
 import { readCurrentFacts } from './local-context.mjs';
+import { matchImageMaterials, IMAGE_MATERIAL_TOOL } from './image-material.mjs';
 
 export const WIRE = 'painter/v4';
 export const OPERATION = 'CreateBuildPlan';
@@ -76,6 +77,7 @@ export class ExteriorPainterV2 {
 
   /** The ContractHandshake this provider advertises (contracts@0.4.0). */
   handshake() { return contractHandshake; }
+  matchImageMaterials(input) { return matchImageMaterials(input); }
 
   describe() {
     return {
@@ -84,6 +86,7 @@ export class ExteriorPainterV2 {
       settings: { modelProvider: this.route.provider, modelId: this.route.model },
       settingDefaults: { modelProvider: DEFAULT_ROUTE.provider, modelId: DEFAULT_ROUTE.model },
       invariants: INVARIANTS, worldWrites: 0,
+      tools: [IMAGE_MATERIAL_TOOL],
       services: { localFacts: !!this.localFacts, llm: !!this.llm, attachments: !!this.attachments },
     };
   }

@@ -22,3 +22,9 @@ At runtime the plugin uses the DSH host services `llm` and `attachments`
 whatever model provider plugin the user installs (for example
 dsh-coding-subscription-oauth, Apache-2.0 with NOTICE). None of their code is
 bundled here.
+
+- sharp0.35.3 — Apache-2.0 — https://github.com/lovell/sharp
+  External raster decoder, with native prebuilt/libvips notices retained by its packages.
+- Colour transform and node/texture associations reuse HanaWorlds picture-blocks
+  structure-painter db87d6f802d975f63144986ca56b979abfacaa23. Numeric material colours
+  are remeasured from actual VoxeLibre0.92.3 texture bytes; game images are not bundled.
