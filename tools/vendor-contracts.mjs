@@ -21,19 +21,30 @@ const vendor = join(root, 'vendor', 'hanaworlds-contracts');
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const work = mkdtempSync(join(process.env.PAINTER_VERIFY_TMP ?? tmpdir(), 'painter-contracts-'));
 try {
-  const response = await fetch(ADMITTED_CONTRACTS.sourceTarball);
-  if (!response.ok) throw new Error(`download failed: HTTP ${response.status}`);
-  writeFileSync(join(work, 'source.tar.gz'), Buffer.from(await response.arrayBuffer()));
-  mkdirSync(join(work, 'source'));
-  execFileSync('tar', ['-xzf', join(work, 'source.tar.gz'), '-C', join(work, 'source'), '--strip-components', '1']);
-  const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const [packed] = JSON.parse(execFileSync(npm, ['pack', join(work, 'source'), '--ignore-scripts', '--pack-destination', work, '--json'],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
-  const packSha256 = sha(readFileSync(join(work, packed.filename)));
+  const packageFlag = process.argv.indexOf('--package');
+  let packagePath, packed;
+  if (packageFlag !== -1) {
+    packagePath = process.argv[packageFlag + 1];
+    if (!packagePath) throw new Error('--package requires the admitted npm tarball');
+    const entries = execFileSync('tar', ['-tzf', packagePath], { encoding: 'utf8' }).trim().split('\n');
+    if (entries.some(p => !p.startsWith('package/') || p.includes('/../'))) throw new Error('unsafe pack path');
+    packed = { filename: packagePath, entryCount: entries.length };
+  } else {
+    const response = await fetch(ADMITTED_CONTRACTS.sourceTarball);
+    if (!response.ok) throw new Error(`download failed: HTTP ${response.status}`);
+    writeFileSync(join(work, 'source.tar.gz'), Buffer.from(await response.arrayBuffer()));
+    mkdirSync(join(work, 'source'));
+    execFileSync('tar', ['-xzf', join(work, 'source.tar.gz'), '-C', join(work, 'source'), '--strip-components', '1']);
+    const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    [packed] = JSON.parse(execFileSync(npm, ['pack', join(work, 'source'), '--ignore-scripts', '--pack-destination', work, '--json'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }));
+    packagePath = join(work, packed.filename);
+  }
+  const packSha256 = sha(readFileSync(packagePath));
   if (packSha256 !== ADMITTED_CONTRACTS.sha256) throw new Error(`pack ${packSha256} != admitted ${ADMITTED_CONTRACTS.sha256}`);
   if (packed.entryCount !== ADMITTED_CONTRACTS.entries) throw new Error(`pack entries ${packed.entryCount} != admitted ${ADMITTED_CONTRACTS.entries}`);
   mkdirSync(join(work, 'x'));
-  execFileSync('tar', ['-xzf', join(work, packed.filename), '-C', join(work, 'x')]);
+  execFileSync('tar', ['-xzf', packagePath, '-C', join(work, 'x')]);
   const pkg = join(work, 'x', 'package');
   const files = Object.fromEntries(VENDORED_FILES.map(f => [f, sha(readFileSync(join(pkg, f)))]));
   const manifest = { ...ADMITTED_CONTRACTS, packSha256, packEntries: packed.entryCount,

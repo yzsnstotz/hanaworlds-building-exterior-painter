@@ -1,3 +1,4 @@
+import { validateBuildProposalRequest } from './build-proposal.mjs';
 import canonicalize from 'canonicalize';
 import { createHash } from 'node:crypto';
 import { contractMetadata, schemaBundle } from './generated/contracts.mjs';
@@ -45,7 +46,9 @@ function operation(wire, operationName) {
   return result;
 }
 export function validateRequest(wire, operationName, value) {
-  return validateType(operation(wire, operationName).request, value);
+  const request = validateType(operation(wire, operationName).request, value);
+  if (wire === 'world-adapter/v5') validateScopedRequest(operationName, request);
+  return request;
 }
 export function admitRequest(wire, operationName, bytes) {
   // Raw admission precedes any operation-level/provider access.
@@ -59,7 +62,8 @@ export function validateResponse(wire, operationName, value) {
   // field in the frozen CreateBuildPlanResponse envelope.
   if (op.alternateResult && value !== null && typeof value === 'object' && Object.hasOwn(value, 'clarificationId')) return validateType(op.alternateResult, value);
   const response = validateType(op.response, value);
-  if (response.error !== null) requireFact(op.failureCodes.includes(response.error.code), 'SCHEMA_INVALID', 'INVALID_SHAPE');
+  if (Object.hasOwn(response, 'error') && response.error !== null)
+    requireFact(op.failureCodes.includes(response.error.code), 'SCHEMA_INVALID', 'INVALID_SHAPE');
   return response;
 }
 function safeCanonicalize(value) {
@@ -116,6 +120,44 @@ export function validateDigestBinding(kind, payload, providedDigest) {
 /** Referential coherence checks for payloads that actually carry both sides of
  * a binding. This is not a grant verifier and never claims provider authenticity. */
 const sameJSON = (a, b) => canonicalJSON(a) === canonicalJSON(b);
+function validateScopedRequest(operationName, request) {
+  if (operationName === 'QueryPreparedTransaction') return request;
+  validateDigestBinding('operations', request.operations, request.operationDigest);
+  validateDigestBinding('authorization-binding', request.authorizationBinding,
+    request.scope.authorizationBindingDigest);
+  validateDigestBinding('scoped-world', request.scope, request.scopeDigest);
+  requireFact(request.scope.authorizationBindingDigest ===
+    digestValue('authorization-binding', request.authorizationBinding).sha256,
+    'NON_CANONICAL_AMBIGUITY', 'PAYLOAD_CHANGED');
+  if (operationName === 'ApplyCompiledTransaction') {
+    const p = request.preparedTransaction;
+    validateDigestBinding('scoped-transaction-payload', p.payload, p.transactionPayloadDigest);
+    requireFact(p.scopeDigest === request.scopeDigest && p.payload.scopeDigest === request.scopeDigest,
+      'STALE_REVISION', 'REVISION_CHANGED');
+    requireFact(p.payload.worldRef === request.worldRef && p.payload.transactionId === request.transactionId &&
+      p.payload.operationDigest === request.operationDigest &&
+      p.payload.authorizationBindingDigest === request.scope.authorizationBindingDigest &&
+      p.guarantee === request.guarantee && sameJSON(p.stateProfile, request.scope.stateProfile),
+      'REPLAY_MISMATCH', 'PAYLOAD_CHANGED');
+    const effectPositions = request.operations.effects.map(effect => JSON.stringify(effect.position)).sort();
+    requireFact(sameJSON(p.protectedPositions.map(position => JSON.stringify(position)).sort(), effectPositions),
+      'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+  }
+  return request;
+}
+/** Pure cross-envelope check; the Adapter still authenticates reads and re-reads
+ * the same cells from the paired world immediately before the write barrier. */
+export function validateScopedTransition(prepareInput, applyInput) {
+  const prepare = validateRequest('world-adapter/v5', 'PrepareRecoverableTransaction', prepareInput);
+  const apply = validateRequest('world-adapter/v5', 'ApplyCompiledTransaction', applyInput);
+  requireFact(prepare.worldRef === apply.worldRef && prepare.transactionId === apply.transactionId &&
+    prepare.operationDigest === apply.operationDigest && prepare.scopeDigest === apply.scopeDigest &&
+    prepare.guarantee === apply.guarantee &&
+    sameJSON(prepare.authorizationBinding, apply.authorizationBinding) &&
+    sameJSON(prepare.operations, apply.operations) && sameJSON(prepare.scope, apply.scope),
+    'STALE_REVISION', 'REVISION_CHANGED');
+  return deepFreeze({ prepare, apply });
+}
 /** Payload-carried part of the canvas/v4 Apply region binding. The Canvas record
  * match (issued inspectionId, evidence/position lists, record revision) needs the
  * provider's durable record and is never decided here. */
@@ -139,6 +181,7 @@ function painterRegionCoherence(request) {
   stale(tf.worldRef === request.worldRef);
 }
 export function validateBoundRequest(wire, operationName, value) {
+  if (wire === 'painter/v3' && operationName === 'ValidateBuildProposal') return validateBuildProposalRequest(value);
   const request = validateRequest(wire, operationName, value);
   if (wire === 'canvas/v4' && operationName === 'ApplyRecoverableCommit') regionApplyBindingCoherence(request);
   if (wire === 'painter/v3' && operationName === 'CreateBuildPlan') painterRegionCoherence(request);
@@ -147,7 +190,7 @@ export function validateBoundRequest(wire, operationName, value) {
     ['targetFacts','targetFactsDigest','target-facts'],['safetyProfile','safetyProfileDigest','safety-profile'],['compilationConfig','compilationConfigDigest','compilation-config'],
     ['surfaceAction','surfaceActionDigest','surface-action'],['analysis','analysisDigest','affected-analysis'],['authorizationBinding','authorizationBindingDigest','authorization-binding'],['manifest','resourceManifestDigest','saved-work-resources']];
   for (const [field, hashField, kind] of pairs) if (Object.hasOwn(request, field) && Object.hasOwn(request, hashField)) validateDigestBinding(kind, request[field], request[hashField]);
-  if (request.preparedTransaction) {
+  if (request.preparedTransaction && wire !== 'world-adapter/v5') {
     const p = request.preparedTransaction;
     validateDigestBinding('transaction-payload', p.payload, p.transactionPayloadDigest);
     ambiguity(p.payload.transactionId === request.transactionId && p.payload.operationDigest === request.operationDigest);
@@ -159,7 +202,9 @@ export function validateBoundRequest(wire, operationName, value) {
     const auth = request.authorizationBinding;
     // world-adapter/v4 is called only by Canvas (InspectRegion "caller is Canvas only"; Prepare/Apply behind the
     // trusted Canvas domain), so its request actorRef names the calling principal, not the bound end-user actor.
-    const fields = wire === 'world-adapter/v4' ? ['sessionRef','worldRef','transactionId','operationDigest'] : ['actorRef','sessionRef','worldRef','transactionId','operationDigest'];
+    const fields = wire === 'world-adapter/v4' || wire === 'world-adapter/v5'
+      ? ['sessionRef','worldRef','transactionId','operationDigest']
+      : ['actorRef','sessionRef','worldRef','transactionId','operationDigest'];
     for (const field of fields) if (Object.hasOwn(request, field)) requireFact(auth[field] === request[field], 'CONNECTION_UNAUTHORIZED', 'SCOPE_DENIED', 'authorize');
   }
   if (wire === 'BUILD/V2' && operationName === 'BuildDocument') {
@@ -260,6 +305,12 @@ export function projectPreparedTransaction(value) {
   const fields = Object.keys(schemaBundle.definitions.PreparedTransaction.properties);
   return validateType('PreparedTransaction', Object.fromEntries(fields.map(field => [field, result[field]])));
 }
+export function projectScopedPreparedTransaction(value) {
+  const result = validateType('ScopedPreparedTransactionResult', value);
+  validateDigestBinding('scoped-transaction-payload', result.payload, result.transactionPayloadDigest);
+  const fields = Object.keys(schemaBundle.definitions.ScopedPreparedTransaction.properties);
+  return validateType('ScopedPreparedTransaction', Object.fromEntries(fields.map(field => [field, result[field]])));
+}
 /** ContractHandshake (rc.7): every required wire and fact profile must be advertised
  * exactly; otherwise UNSUPPORTED_VERSION before any request, with no fallback. */
 export function checkContractHandshake(advertisedInput, requiredInput) {
@@ -269,6 +320,151 @@ export function checkContractHandshake(advertisedInput, requiredInput) {
   const supported = required.wires.every(w => advertised.wireVersions.includes(w)) && required.factProfiles.every(f => advertised.factProfiles.includes(f));
   requireFact(supported, 'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
   return deepFreeze({ result: 'HANDSHAKE_VERSION_MATCH', advertised });
+}
+/** A session/v2 major match alone does not advertise the added readback
+ * operation. Reject an older package peer before issuing this operation. */
+export function checkSessionReadbackHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput, { wires: ['session/v2'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts &&
+    operationContracts['session/v2'].some(op => op.operation === 'ReadSessionTurnDetails'),
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+/** Undo requires the 0.3.2 package advertisement; a 0.3.1 peer's matching
+ * canvas/v4 and session/v2 majors do not advertise these added operations. */
+export function checkSessionUndoHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput, { wires: ['canvas/v4', 'session/v2'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts &&
+    ['ReadCurrentUndoStatus', 'UndoCurrentBuild'].every(name =>
+      operationContracts['session/v2'].some(op => op.operation === name)),
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+export function checkScopedWorldHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput, { wires: ['world-adapter/v5'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts &&
+    ['PrepareRecoverableTransaction', 'ApplyCompiledTransaction', 'QueryPreparedTransaction'].every(name =>
+      operationContracts['world-adapter/v5'].some(op => op.operation === name)),
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+/** Service recovery is a package capability in the existing session/v2 and
+ * canvas/v4 wires. The matching wire majors alone do not advertise it. */
+export function checkUndoRecoveryHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput,
+    { wires: ['canvas/v4', 'session/v2'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts &&
+    operationContracts['session/v2'].some(op => op.operation === 'RecoverPendingUndo') &&
+    ['RecoverPendingUndo', 'ReadPendingUndoResult'].every(name =>
+      operationContracts['canvas/v4'].some(op => op.operation === name)),
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+/** An unchanged session/v2 wire is insufficient to advertise this added action. */
+export function checkBuildEntryHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput,
+    { wires: ['session/v2'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts &&
+    operationContracts['session/v2'].some(op => op.operation === 'AdvanceCurrentBuild'),
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+/** A matching old session/v2 or Adapter wire cannot imply this Host/Adapter split. */
+export function checkSessionAuthorizationHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput,
+    { wires: ['session-authorization/v1'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts &&
+    ['ReadOriginalBinding', 'VerifyCurrentGrant'].every(name =>
+      operationContracts['session-authorization/v1'].some(op => op.operation === name)),
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+/** Correlation only; Host authenticates service caller and checks live Core Session. */
+export function validateOriginalBindingResponse(requestInput, responseInput) {
+  const request = validateRequest('session-authorization/v1', 'ReadOriginalBinding', requestInput);
+  const response = validateResponse('session-authorization/v1', 'ReadOriginalBinding', responseInput);
+  requireFact(response.requestId === request.requestId &&
+    response.result.sessionRef === request.sessionRef, 'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  if (response.result.status === 'CURRENT')
+    requireFact(response.result.binding.sessionRef === request.sessionRef,
+      'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  return response;
+}
+/** Correlation only; Adapter authenticates service caller and checks paired Luanti. */
+export function validateCurrentGrantResponse(requestInput, responseInput) {
+  const request = validateRequest('session-authorization/v1', 'VerifyCurrentGrant', requestInput);
+  const response = validateResponse('session-authorization/v1', 'VerifyCurrentGrant', responseInput);
+  requireFact(response.requestId === request.requestId &&
+    response.result.sessionRef === request.binding.sessionRef,
+    'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  if (response.result.status === 'CURRENT')
+    requireFact(Object.keys(request.binding).every(field =>
+      JSON.stringify(response.result.binding[field]) === JSON.stringify(request.binding[field])),
+      'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  return response;
+}
+/** Fixture coherence only. Providers obtain these facts from the authenticated host
+ * and their own durable stores, never from caller JSON. */
+export function validateBuildEntryContext(requestInput, providerFactsInput) {
+  const request = validateRequest('session/v2', 'AdvanceCurrentBuild', requestInput);
+  const facts = validateType('BuildEntryProviderFacts', providerFactsInput);
+  for (const field of ['actorRef', 'sessionRef', 'worldRef', 'authorizationRef'])
+    requireFact(request[field] === facts[field], 'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  requireFact(facts.grantStatus === 'CURRENT', 'AUTHORIZATION_REVOKED', 'GRANT_REVOKED', 'authorize');
+  requireFact(facts.turnStatus !== 'UNCONFIRMED', 'INTENT_UNCONFIRMED', 'REQUIRED_FACT_UNKNOWN');
+  requireFact(facts.turnStatus === 'CURRENT_CONFIRMED' &&
+    request.expectedTurnRevision === facts.currentTurnRevision,
+    'TURN_REVISION_MISMATCH', 'REVISION_CHANGED');
+  requireFact(facts.replay !== 'CONFLICT', 'TRANSACTION_CONFLICT', 'REVISION_CHANGED');
+  return deepFreeze({ request, replay: facts.replay, stage: facts.stage });
+}
+/** Correlation only; the provider must verify the durable phase and Canvas receipt. */
+export function validateBuildEntryResponse(requestInput, responseInput) {
+  const request = validateRequest('session/v2', 'AdvanceCurrentBuild', requestInput);
+  const response = validateResponse('session/v2', 'AdvanceCurrentBuild', responseInput);
+  requireFact(response.requestId === request.requestId, 'SCHEMA_INVALID', 'INVALID_SHAPE');
+  if (response.result !== null) {
+    for (const [resultField, requestField] of [['sessionRef', 'sessionRef'],
+      ['worldRef', 'worldRef'], ['turnRevision', 'expectedTurnRevision']])
+      requireFact(response.result[resultField] === request[requestField],
+        'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  }
+  return response;
+}
+/** Coherence only: the record MUST come from the provider's own durable store
+ * after independent service authentication. Caller JSON is never that record. */
+export function validateUndoRecoveryRecord(requestInput, durableRecordInput, operationName = 'RecoverPendingUndo') {
+  requireFact(['RecoverPendingUndo', 'ReadPendingUndoResult'].includes(operationName),
+    'UNSUPPORTED_OPERATION', 'INVALID_SHAPE');
+  const request = validateRequest('canvas/v4', operationName, requestInput);
+  requireFact(durableRecordInput !== null && durableRecordInput !== undefined,
+    'TRANSACTION_CONFLICT', 'POLICY_UNAVAILABLE');
+  const record = validateType('UndoRecoveryRecord', durableRecordInput);
+  for (const field of ['actorRef', 'sessionRef', 'worldRef', 'authorizationRef'])
+    requireFact(record[field] === request[field], 'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  requireFact(record.originalUndoRequestId === request.originalUndoRequestId && record.direction === 'UNDO',
+    'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  requireFact(record.status !== 'RESERVED' && (operationName !== 'RecoverPendingUndo' ||
+    !['VERIFIED', 'ROLLED_BACK'].includes(record.status)),
+    'TRANSACTION_CONFLICT', 'POLICY_UNAVAILABLE');
+  return record;
+}
+/** Correlates a typed response to its request. No provider-authenticity claim. */
+export function validateUndoRecoveryResponse(wire, operationName, requestInput, responseInput) {
+  requireFact((wire === 'session/v2' && operationName === 'RecoverPendingUndo') ||
+    (wire === 'canvas/v4' && ['RecoverPendingUndo', 'ReadPendingUndoResult'].includes(operationName)),
+  'UNSUPPORTED_OPERATION', 'INVALID_SHAPE');
+  const request = validateRequest(wire, operationName, requestInput);
+  const response = validateResponse(wire, operationName, responseInput);
+  requireFact(response.requestId === request.requestId, 'SCHEMA_INVALID', 'INVALID_SHAPE');
+  if (response.result !== null) {
+    for (const field of ['sessionRef', 'worldRef'])
+      requireFact(response.result[field] === request[field], 'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+    if (wire === 'canvas/v4')
+      requireFact(response.result.originalUndoRequestId === request.originalUndoRequestId,
+        'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  }
+  return response;
 }
 /** interaction-surface/v3 SELECT_CHOICE: the value must be one listed choice of the
  * same frameRef/frameRevision/actionId; renderers never parse frame text for options. */
@@ -299,4 +495,211 @@ export function admitPlacementSettings(storedInput, settingsRevision) {
     throw error;
   }
   return validateType('PlacementSettings', { ...values, settingsRevision });
+}
+
+/** Separate Host-issued Session rights. These helpers never authenticate JSON. */
+export function checkSessionOperationAuthorizationHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput,
+    { wires: ['session-operation-authorization/v1'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts,
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+export function validateOriginalSessionAuthorityResponse(requestInput, responseInput) {
+  const wire = 'session-operation-authorization/v1';
+  const request = validateRequest(wire, 'ReadOriginalSessionAuthority', requestInput);
+  const response = validateResponse(wire, 'ReadOriginalSessionAuthority', responseInput);
+  requireFact(response.requestId === request.requestId && response.result.sessionRef === request.sessionRef,
+    'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  return response;
+}
+/** Providers must authenticate both inputs and recheck live Host issuance after
+ * Adapter verification. This pure projection proves neither source nor freshness. */
+export function projectSessionAuthorityProof(hostRequest, hostResponse, grantRequest, grantResponse) {
+  const host = validateOriginalSessionAuthorityResponse(hostRequest, hostResponse).result;
+  const game = validateCurrentGrantResponse(grantRequest, grantResponse).result;
+  requireFact(host.status === 'CURRENT' && game.status === 'CURRENT',
+    'AUTHORIZATION_REVOKED', 'GRANT_REVOKED', 'authorize');
+  const { binding, sessionActions } = host.authority;
+  requireFact(Object.keys(binding).every(field =>
+    JSON.stringify(binding[field]) === JSON.stringify(game.binding[field])),
+    'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  return validateType('SessionAuthorityProof', { current: true,
+    sessionRef: binding.sessionRef, actorRef: binding.actorRef,
+    authorizationRef: binding.authorizationRef, worldRef: binding.worldRef,
+    allowedActions: [...binding.allowedActions, ...sessionActions].sort(compareUTF16) });
+}
+
+/** Matching wire majors alone do not promise current facts or new honest failures. */
+export function checkWorldContextHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput,
+    { wires: ['canvas/v4', 'session/v2'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts,
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+export function validateWorldSelectionContextResponse(requestInput, responseInput) {
+  const request = validateRequest('canvas/v4', 'ReadWorldSelectionContext', requestInput);
+  const response = validateResponse('canvas/v4', 'ReadWorldSelectionContext', responseInput);
+  requireFact(response.requestId === request.requestId,
+    'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  if (response.result) for (const key of ['actorRef', 'sessionRef', 'authorizationRef', 'worldRef'])
+    requireFact(response.result[key] === request[key],
+      'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  return response;
+}
+/** Fixture coherence only. The owning providers must obtain these facts through
+ * authenticated live calls and recheck before dispatch/release. No grant is issued. */
+export function validateWorldContextDelegation(parentInput, operationName, childInput, factsInput) {
+  const parent = validateRequest('session/v2', 'SwitchWorldContext', parentInput);
+  const child = validateType('WorldContextChild', { operation: operationName, request: childInput }).request;
+  const facts = validateType('WorldContextDelegationFacts', factsInput);
+  const identity = ok => requireFact(ok, 'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+  identity(facts.invocationStatus === 'ACTIVE');
+  requireFact(facts.grantStatus === 'CURRENT', 'AUTHORIZATION_REVOKED', 'GRANT_REVOKED', 'authorize');
+  identity(sameJSON(facts.parentRequest, parent) && facts.child.operation === operationName &&
+    sameJSON(facts.child.request, child));
+  const binding = facts.originalBinding;
+  identity(sameJSON(binding, facts.currentBinding) &&
+    binding.sessionIncarnationRef === facts.liveSessionIncarnationRef &&
+    binding.allowedActions.includes('SELECT'));
+  for (const key of ['actorRef', 'sessionRef', 'authorizationRef'])
+    identity(parent[key] === child[key] && parent[key] === binding[key]);
+  identity(binding.worldRef === parent.worldRef);
+  if (operationName !== 'SwitchWorldConnection') identity(child.worldRef === parent.worldRef);
+  if (operationName === 'ReadWorldSelectionContext') return child;
+  const context = facts.context;
+  requireFact(context !== null, 'CAPABILITY_UNAVAILABLE', 'REQUIRED_FACT_UNKNOWN');
+  for (const key of ['actorRef', 'sessionRef', 'authorizationRef', 'worldRef']) identity(context[key] === parent[key]);
+  if (operationName === 'ListWorldConnections')
+    requireFact(child.expectedCapabilityRevision === context.inventory.capabilityRevision,
+      'STALE_REVISION', 'REVISION_CHANGED');
+  if (operationName === 'ListObjects') {
+    requireFact(context.selection.status === 'BOUND' &&
+      context.selection.context.activeWorldRef === parent.worldRef,
+      'WORLD_NOT_BOUND', 'SCOPE_DENIED');
+  }
+  if (operationName === 'SelectWorldConnection' || operationName === 'SwitchWorldConnection') {
+    const selection = context.selection;
+    const revision = selection.status === 'BOUND' ? selection.context.sessionRevision : selection.sessionRevision;
+    requireFact(child.expectedRevision === revision, 'STALE_REVISION', 'REVISION_CHANGED');
+    const connectionRef = operationName === 'SelectWorldConnection' ? child.connectionRef : child.toConnectionRef;
+    const candidate = context.inventory.connections.find(row => row.connectionRef === connectionRef && row.worldRef === parent.worldRef);
+    requireFact(Boolean(candidate), 'CONNECTION_NOT_FOUND', 'SCOPE_DENIED');
+    requireFact(candidate.readiness === 'READY', candidate.readiness, 'POLICY_UNAVAILABLE');
+    if (operationName === 'SelectWorldConnection')
+      requireFact(selection.status === 'UNBOUND' || selection.context.activeWorldRef === parent.worldRef,
+        'TRANSACTION_CONFLICT', 'SCOPE_DENIED');
+    else {
+      requireFact(selection.status === 'BOUND', 'WORLD_NOT_BOUND', 'SCOPE_DENIED');
+      identity(child.worldRef === selection.context.activeWorldRef &&
+        child.fromWorldRef === selection.context.activeWorldRef && child.toWorldRef === parent.worldRef);
+    }
+  }
+  return child;
+}
+
+/** Current package only. These helpers authenticate no JSON and issue no grants. */
+export function checkCurrentBuildAuthorizationHandshake(advertisedInput) {
+  const { advertised } = checkContractHandshake(advertisedInput,
+    { wires: ['session/v2', 'canvas/v4', 'session-authorization/v1'], factProfiles: [] });
+  requireFact(advertised.contracts === contractHandshake.contracts &&
+    digestProfile.projectionTypes['current-build-action'] === 'CurrentBuildActionProjection',
+    'UNSUPPORTED_VERSION', 'VERSION_UNSUPPORTED', 'decode');
+  return deepFreeze({ result: 'HANDSHAKE_OPERATION_MATCH', advertised });
+}
+const buildIdentity = ok => requireFact(ok, 'PERMISSION_DENIED', 'IDENTITY_UNVERIFIED', 'authorize');
+/** Workshop-owned coherent snapshot. Provenance/currentness is checked by providers. */
+export function validateCurrentBuildAuthorizationFacts(input) {
+  const facts = validateType('CurrentBuildAuthorizationFacts', input);
+  const { parentRequest: parent, apply, analysis, intent } = facts;
+  for (const field of ['actorRef', 'sessionRef', 'authorizationRef', 'worldRef'])
+    buildIdentity(parent[field] === apply[field]);
+  buildIdentity(apply.requestId === parent.requestId + ':apply');
+  requireFact(intent.confirmedIntent.confirmedTurnRevision === parent.expectedTurnRevision,
+    'TURN_REVISION_MISMATCH', 'REVISION_CHANGED');
+  buildIdentity(parent.worldRef === intent.intendedWorldRef &&
+    parent.worldRef === analysis.worldRef && parent.worldRef === apply.operations.worldRef);
+  validateDigestBinding('operations', apply.operations, apply.operationDigest);
+  validateDigestBinding('affected-analysis', analysis, apply.analysisDigest);
+  buildIdentity(analysis.operationDigest === apply.operationDigest);
+  requireFact(analysis.worldRevision === apply.expectedWorldRevision,
+    'STALE_REVISION', 'REVISION_CHANGED');
+  requireFact(analysis.affectedObjectRefs.length === 0 &&
+    Object.keys(apply.expectedObjectRevisions).length === 0,
+    'OTHER_OBJECTS_AFFECTED', 'SCOPE_DENIED');
+  // Affected-object/conflict decisions remain their existing Canvas/frame path.
+  return facts;
+}
+/** Pure candidate derivation. Host authenticates sources, serializes reservation,
+ * and rechecks live facts at use; digest possession never confers authority. */
+export function deriveCurrentBuildAuthorization(factsInput, contextInput) {
+  const facts = validateCurrentBuildAuthorizationFacts(factsInput);
+  const context = validateType('CurrentBuildAuthorityContext', contextInput);
+  const { parentRequest: parent, apply, analysis } = facts;
+  const binding = context.originalBinding, verified = context.verifiedBinding;
+  buildIdentity(context.invocationStatus === 'ACTIVE');
+  requireFact(context.grantStatus !== 'UNKNOWN', 'CAPABILITY_UNAVAILABLE', 'REQUIRED_FACT_UNKNOWN', 'authorize');
+  requireFact(context.grantStatus === 'CURRENT', 'AUTHORIZATION_REVOKED', 'GRANT_REVOKED', 'authorize');
+  buildIdentity(sameJSON(parent, context.capturedParent) && sameJSON(apply, context.capturedApply));
+  buildIdentity(context.workshopServiceRef === context.expectedWorkshopServiceRef &&
+    context.canvasServiceRef === context.expectedCanvasServiceRef);
+  buildIdentity(sameJSON(binding, context.currentBinding) &&
+    binding.sessionIncarnationRef === context.liveSessionIncarnationRef &&
+    binding.allowedActions.includes('APPLY_RECOVERABLE'));
+  for (const field of ['actorRef', 'sessionRef', 'authorizationRef', 'worldRef'])
+    buildIdentity(parent[field] === binding[field]);
+  for (const field of ['actorRef', 'bindingRef', 'worldRef', 'grantEpoch', 'allowedActions'])
+    buildIdentity(sameJSON(binding[field], verified[field]));
+  requireFact(context.turnStatus !== 'UNCONFIRMED', 'INTENT_UNCONFIRMED', 'REQUIRED_FACT_UNKNOWN');
+  requireFact(context.turnStatus === 'CURRENT_CONFIRMED' &&
+    facts.turnRef === context.currentTurnRef &&
+    parent.expectedTurnRevision === context.currentTurnRevision &&
+    facts.confirmationInputId === context.currentConfirmationInputId,
+    'TURN_REVISION_MISMATCH', 'REVISION_CHANGED');
+  requireFact(context.currentStage === 'APPLY', 'TRANSACTION_CONFLICT', 'POLICY_UNAVAILABLE');
+  const intentDigest = digestValue('intent', facts.intent).sha256;
+  requireFact(intentDigest === context.currentIntentDigest &&
+    apply.operationDigest === context.currentOperationDigest &&
+    apply.analysisDigest === context.currentAnalysisDigest,
+    'STALE_REVISION', 'REVISION_CHANGED');
+  const action = validateType('CurrentBuildActionProjection', {
+    contractVersion: 'current-build-authorization/v1', operation: 'AdvanceCurrentBuild',
+    childOperation: 'ApplyRecoverableCommit', facts, originalBinding: binding,
+    verifiedBinding: verified, workshopServiceRef: context.workshopServiceRef,
+    canvasServiceRef: context.canvasServiceRef,
+  });
+  const authorizationBinding = validateType('AuthProjection', {
+    contractVersion: 'world-adapter/v2', authorizerRef: verified.authorizerRef,
+    actorRef: binding.actorRef, grantEpoch: binding.grantEpoch, bindingRef: binding.bindingRef,
+    worldRef: binding.worldRef, sessionRef: binding.sessionRef,
+    turnRevision: parent.expectedTurnRevision, intentDigest,
+    surfaceActionDigest: digestValue('current-build-action', action).sha256,
+    allowedAction: 'APPLY_RECOVERABLE', transactionId: apply.transactionId,
+    operationDigest: apply.operationDigest, worldRevision: analysis.worldRevision,
+    selectionRevision: analysis.selectionRevision, analysisDigest: apply.analysisDigest,
+    decisionRevision: null,
+  });
+  const candidate = validateType('CurrentBuildAuthorization', { action, authorizationBinding,
+    authorizationBindingDigest: digestValue('authorization-binding', authorizationBinding).sha256 });
+  // Also enforce the existing region/build/frame/target-facts coherence before issuance.
+  validateBoundRequest('canvas/v4', 'ApplyRecoverableCommit', { ...apply,
+    authorizationBinding, authorizationBindingDigest: candidate.authorizationBindingDigest });
+  requireFact(context.replay !== 'CONFLICT' &&
+    (context.replay === 'NEW' ? context.priorAuthorization === null :
+      context.priorAuthorization !== null && sameJSON(candidate, context.priorAuthorization)),
+    'REPLAY_MISMATCH', 'PAYLOAD_CHANGED');
+  return candidate;
+}
+/** Provider calls with its stored issued record and a newly authenticated context,
+ * immediately before dispatch, including retries. No async/cache/side effects. */
+export function validateCurrentBuildAuthorizedApply(requestInput, issuedInput, factsInput, contextInput) {
+  const request = validateBoundRequest('canvas/v4', 'ApplyRecoverableCommit', requestInput);
+  const issued = validateType('CurrentBuildAuthorization', issuedInput);
+  const current = deriveCurrentBuildAuthorization(factsInput, contextInput);
+  buildIdentity(sameJSON(current, issued));
+  buildIdentity(sameJSON(request, { ...current.action.facts.apply,
+    authorizationBinding: current.authorizationBinding,
+    authorizationBindingDigest: current.authorizationBindingDigest }));
+  return request;
 }

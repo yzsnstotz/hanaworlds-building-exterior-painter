@@ -1,6 +1,6 @@
 {
   "name": "hanaworlds-building-exterior-painter",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -34,8 +34,9 @@
     }
   },
   "scripts": {
-    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs",
-    "test": "node --test test/*.test.mjs"
+    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:proposal": "node --test test/proposal.test.mjs test/handshake.test.mjs test/vendor.test.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",

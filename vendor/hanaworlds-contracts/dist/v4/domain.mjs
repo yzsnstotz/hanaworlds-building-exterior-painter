@@ -14,6 +14,7 @@ function arrayCompare(name, order) {
   if (order === 'UTF16 ascending') return compareUTF16;
   if (order === 'numeric x,y,z' || order === 'numeric lexicographic six coordinates') return comparePosition;
   if (order === 'position numeric x,y,z') return (a, b) => comparePosition(a.position, b.position);
+  if (order === 'objectRef UTF16 ascending') return (a, b) => compareUTF16(a.objectRef, b.objectRef);
   if (order === 'portalRef UTF16 ascending') return (a, b) => compareUTF16(a.portalRef, b.portalRef);
   if (order === 'witnessId UTF16 ascending') return (a, b) => compareUTF16(a.witnessId, b.witnessId);
   if (order === 'resourceId UTF16 ascending') return (a, b) => compareUTF16(a.resourceId, b.resourceId);
@@ -66,6 +67,29 @@ function receipt(v) {
   if (v.status === 'RECOVERY_PENDING') shape(v.error !== null && v.error.mutationState === 'UNKNOWN');
   if (v.status === 'ROLLED_BACK') shape(v.restoreStatus === 'VERIFIED_RESTORED' && v.readbackDigest !== null && v.observedWorldRevision !== null);
 }
+function scopedWorld(v) {
+  const known = ok => requireFact(ok, 'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+  known(v.cells.every(cell => cell.availability === 'KNOWN' && cell.stateDigest !== null));
+  known(v.objects.every(object => object.provenance === 'CANVAS_REGISTERED' && object.positions.length > 0));
+  requireFact(v.objects.every(object => object.worldRef === v.worldRef), 'OBJECT_SCOPE_MISMATCH', 'SCOPE_DENIED');
+  const covered = new Map();
+  for (const position of v.checkedPositions) covered.set(positionKey(position), position);
+  for (const object of v.objects) for (const position of object.positions) covered.set(positionKey(position), position);
+  known(covered.size > 0 && covered.size === v.cells.length &&
+    v.cells.every(cell => covered.has(positionKey(cell.position))));
+}
+function scopedRequest(v) {
+  const scope = v.scope;
+  shape(scope.worldRef === v.worldRef && scope.transactionId === v.transactionId &&
+    scope.operationDigest === v.operationDigest && v.operations.worldRef === v.worldRef);
+  const covered = new Set(scope.cells.map(cell => positionKey(cell.position)));
+  requireFact(v.operations.effects.every(effect => covered.has(positionKey(effect.position))),
+    'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+  shape(v.authorizationBinding.worldRef === v.worldRef &&
+    v.authorizationBinding.transactionId === v.transactionId &&
+    v.authorizationBinding.operationDigest === v.operationDigest &&
+    v.authorizationBinding.sessionRef === v.sessionRef);
+}
 /** Local, declarative domain invariants only. Authenticity, durable storage,
  * actual world occupancy and event emission always require the owning provider. */
 export function validateDomain(visits) {
@@ -74,6 +98,18 @@ export function validateDomain(visits) {
     const schema = schemaBundle.definitions[name];
     if (Array.isArray(v) && schema.type === 'array' && !Array.isArray(schema.items)) validateArrayOrder(name, v, parent);
     if (name === 'Box' || name === 'SetBox') assertBox(v);
+    else if (name === 'OriginalSessionBinding')
+      requireFact(v.allowedActions.length > 0, 'SCHEMA_INVALID', 'INVALID_SHAPE');
+    else if ((name === 'OriginalBindingResult' || name === 'CurrentGrantResult') && v.status === 'CURRENT')
+      requireFact(v.binding.sessionRef === v.sessionRef, 'SCHEMA_INVALID', 'INVALID_SHAPE');
+    else if (name === 'OriginalSessionAuthorityResult' && v.status === 'CURRENT')
+      requireFact(v.authority.binding.sessionRef === v.sessionRef, 'SCHEMA_INVALID', 'INVALID_SHAPE');
+    else if (name === 'CanvasWorldSelection' && v.status === 'BOUND')
+      shape(v.context.activeWorldRef !== null);
+    else if (name === 'WorldSelectionContext') {
+      shape(v.inventory.connections.every(row => row.worldRef === v.worldRef));
+      shape((v.selection.status === 'BOUND' ? v.selection.context.currentSession : v.selection.sessionRef) === v.sessionRef);
+    }
     else if (name === 'Axes') geometry(new Set(v.map(x => x[1])).size === 3);
     else if (name === 'CollisionBox') geometry(v.slice(0, 3).every((x, a) => x <= v[a + 3]));
     else if (name === 'NodeCapability') {
@@ -98,6 +134,11 @@ export function validateDomain(visits) {
     else if (name === 'ReceiptProjection') receipt(v);
     else if (name === 'BeforeImage' || name === 'ReadbackProjection') shape(same(v.coveredPositions, v.records.map(x => x.position)));
     else if (name === 'PreparedTransaction' || name === 'PreparedTransactionResult') shape(v.beforeImageDigest === v.payload.beforeImageDigest);
+    else if (name === 'ScopedWorldBinding') scopedWorld(v);
+    else if (name === 'ScopedPrepareRequest' || name === 'ScopedApplyRequest') scopedRequest(v);
+    else if (name === 'ScopedPreparedTransaction' || name === 'ScopedPreparedTransactionResult')
+      shape(v.beforeImageDigest === v.payload.beforeImageDigest && v.scopeDigest === v.payload.scopeDigest &&
+        v.guarantee === 'RECOVERABLE_VERIFIED');
     else if (name === 'ActionDescriptor') decodeShape((v.choices !== null) === v.inputKinds.includes('SELECT_CHOICE'));
     else if (name === 'PlacementChoiceRequired') {
       shape((v.candidatePlayerNames !== null) === v.reasons.includes('MULTIPLE_ONLINE_PLAYERS'));
@@ -110,6 +151,32 @@ export function validateDomain(visits) {
       geometry([...v.protectedPositions, ...v.bodyOccupiedPositions].every(p => inside(p, v.targetFacts.sampledBounds)));
     } else if (name === 'PlacementRegionInspection') {
       shape((v.unavailableSettings !== null) === (v.error !== null && v.error.code === 'CAPABILITY_UNAVAILABLE' && v.error.reason === 'POLICY_UNAVAILABLE'));
+    } else if (name === 'SessionTurnDetails') {
+      shape(v.turns.every(turn => turn.confirmedBrief === null ||
+        (turn.confirmedBrief.sessionRef === v.sessionRef && turn.confirmedBrief.turnRevision === turn.turnRevision)));
+    } else if (name === 'CurrentUndoStatus') {
+      if (v.availability === 'NO_VERIFIED_BUILD') shape(v.turnRef === null && v.turnRevision === null && v.head === null);
+      else shape(v.turnRef !== null && v.turnRevision !== null && v.head !== null &&
+        (v.availability !== 'AVAILABLE' || v.head.headTransactionId !== null));
+    } else if (name === 'CurrentBuildUndoResult') {
+      shape(v.beforeHead.headTransactionId !== null &&
+        v.beforeHead.historyRevision !== v.afterHead.historyRevision &&
+        v.beforeHead.headTransactionId !== v.afterHead.headTransactionId);
+    } else if (name === 'UndoRecoveryResult') {
+      shape((v.status === 'VERIFIED') === (v.receipt !== null));
+      if (v.receipt !== null) shape(v.receipt.status === 'VERIFIED');
+    } else if (name === 'BuildEntryChoiceRequired' ||
+      (name === 'BuildEntryOutcome' && v.outcome === 'CHOICE_REQUIRED')) {
+      shape(v.frame.sessionRef === v.sessionRef && v.frame.turnRevision === v.turnRevision);
+    } else if (name === 'BuildEntryVerified' ||
+      (name === 'BuildEntryOutcome' && v.outcome === 'VERIFIED')) {
+      shape(v.receipt.status === 'VERIFIED');
+    } else if (name === 'BuildProposalBox') {
+      assertBox(v); geometry(v.min.every(x => x >= 0));
+    } else if (name === 'BuildProposalContext' || name === 'ValidateBuildProposalRequest') {
+      decodeShape(v.referenceBrief.media.length === 0);
+    } else if (name === 'ValidateBuildProposalResponse' && v.error !== null) {
+      shape(v.error.mutationState === 'NONE' && v.error.transactionRef === null);
     } else if (name === 'CreateBuildPlanRequest') {
       // Payload-decidable painter/v3 rules in the approved order; digest coherence is in validateBoundRequest.
       if (v.targetFacts.source === 'REGION_INSPECTED') {

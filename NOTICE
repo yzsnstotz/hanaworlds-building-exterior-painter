@@ -10,8 +10,8 @@ This package depends on the following packages and does not relicense them. Thei
   (transitive, via schemastery)
 - @standard-schema/spec 1.1.0 — MIT — https://github.com/standard-schema/standard-schema
   (transitive, via schemastery)
-- hanaworlds-contracts 0.3.0 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
-  (commit e82735780bdfd4ea8e662781455040a6e5306121, pack sha256 47a2e5cc…8f5c). An unmodified subset of the
+- hanaworlds-contracts 0.3.10 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
+  (commit e66800964726b951a300eb9377b74c318641417f, pack sha256 8624bd02…96ce1). An unmodified subset of the
   admitted package bytes is vendored under vendor/hanaworlds-contracts/ with its own
   LICENSE, NOTICE and licenses/canonicalize-Apache-2.0.txt; see VENDOR.json.
 

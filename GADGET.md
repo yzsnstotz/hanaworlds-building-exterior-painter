@@ -1,239 +1,75 @@
-# HanaWorlds Building Exterior Painter 0.2.1 route candidate (exterior-v4)
+# HanaWorlds Building Exterior Painter 0.2.2 · controlled text proposal
 
-建筑外形画师 / P3 `picture-blocks` / 照片积木.
+The plugin retains the original image `CreateBuildPlan` path and adds public
+`painter/v3.ValidateBuildProposal`. Both return plans; Painter never compiles,
+commits, reads or writes the world. Canvas owns transactions, Brush compilation
+and Adapter transport remain separate origins.
 
-Status: `PARTIAL / SOURCE+FIXTURE` until independent review and admission. This
-is not a release, deployment or user `ACCEPTED` receipt. Stage 1 product
-composition (Workshop, Shell/Luanti entry, Canvas apply/readback, naming,
-history) is a separate later checkpoint, and S1-02 product readiness is UNPROVEN.
+## Public entry
 
-## What it does
+`hanaworldsPainterV2PictureBlocks.call('ValidateBuildProposal', request, {signal})`
+accepts the strict public `ValidateBuildProposalRequest` from admitted contracts
+0.3.10. Only `proposal` is model geometry: BUILD/materials/ordered local boxes.
+The trusted caller assembles the confirmed brief/context and authentic facts;
+model tools must not accept identities, grants, frame or witnesses from JSON.
+Text media must be empty. Skill handles understanding and clarification.
 
-It takes one confirmed `painter/v3` `CreateBuildPlan` request for
-`painterId: "picture-blocks"`. The request must carry an image and text bound by
-`ReferenceBrief/v2`. The painter sends both together to the DSH host model route,
-then returns one of three things:
+The new entry reuses parseProposal, planGeometry, planEntrances,
+checkEntranceFacing and assembleBuild. It invokes no llm or attachments service.
+A valid response is the public BUILD plan envelope. Shape/digest/world/brief,
+region bounds/materials/known-empty/protection/body/hazard and entrance errors
+are typed NONE/null-transaction rejections. Unrecoverable malformed raw identity
+raises a ContractError rather than inventing a requestId.
 
-- a `BUILD/V2` `BuildPlan`;
-- a `ClarificationNeed` for the same Session turn;
-- a typed painter/v3 error.
+## Host provider obligation
 
-For a **first new building**, Workshop relays the Adapter-produced, Canvas-recorded
-`regionInspection` (targetFacts `source: REGION_INSPECTED`, profile
-`target-facts/v3`). The painter uses it as its only trusted input:
+The existing trusted `hanaworldsAuthority.verify(request, operation, {signal})`
+port must return public `BuildProposalProviderFacts` for ValidateBuildProposal.
+This is a provider-side host capability, not a model argument. Its implementation
+must authenticate the exact Workshop service/invocation, capture source context
+before generation, obtain the live Session/incarnation and original game grant,
+INSPECT action and fresh current context from actual public providers. Returning
+a coherent JSON object alone does not authenticate these facts.
 
-- `BUILD.coordinateFrame` = `regionInspection.frame`;
-- the PROTECTION and BODY_CLEARANCE witnesses carry `regionInspection.evidence`.
-  Their protected/body lists are the region lists restricted to the written
-  positions; an overlap is refused;
-- the entrance goes on the footprint face whose outward normal is
-  `regionInspection.entranceFacing`.
+Painter checks the public context helper initially and after awaits before result
+or replay release. It also refuses local abort, authority replacement and changed
+original binding/caller during one call. Full payload equality includes proposal
+materials and ordered boxes. In-flight conflicting payloads cannot reserve the
+same Session/incarnation/requestId. Receipts are in-memory plan receipts, not
+world/transaction authorization or durable Workshop history. Caller must preserve
+its durable confirmed context and independently validate results before applying.
+No facts or permission are accepted from call options.
 
-It never mutates or inspects a world. It never chooses or relocates a placement:
-every write must be a known-empty cell of the relayed footprint. It never calls
-Canvas, an Adapter or Brush, owns no Session or media store, and does not perform
-image-to-3D.
+## Current advertisement and dependencies
 
-## Public host boundary
+The registered service exports exactly contracts0.3.10 ContractHandshake and
+advertises both operations. Consumers of the new entry use the public
+checkBuildProposalHandshake. This origin update does not repin other origins or
+the parallel fixed default0.3.9 chain, and adds no old-peer/profile adapters.
 
-The package is a DSH (cordis) plugin. `package.json#dsh.bundle.patch` →
-`cordis.patch.yml`; it exports `name`, `inject = []`, `Config` and `apply(ctx)`.
+The unmodified 30-file contracts import/profile/fixture/license subset is derived
+from admitted source e66800964726b951a300eb9377b74c318641417f, actual npm tar
+SHA256 8624bd026815fcdafc5248b21d8bc611baa0569b7b492b66905d2d015a496ce1
+(1,031 package entries). Regenerate/check via
+`node tools/vendor-contracts.mjs [--check] --package <admitted0.3.10.tgz>`.
+VENDOR.json lists every copied byte's SHA. Never edit generated vendor files.
 
-It provides `hanaworldsPainterV2PictureBlocks`, an `ExteriorPainterV2` with:
+## Visible settings and retained capabilities
 
-- `call('CreateBuildPlan', raw)`. `raw` is either UTF-8 bytes/string, which go
-  through strict raw admission, or decoded pure JSON. The return value is
-  validated by `hanaworlds-contracts` v4 `painter/v3` `response()`.
-- `contractHandshake` (read-only property) and `handshake()`. Both are the
-  `ContractHandshake` this provider advertises before any request: exactly the
-  vendored admitted contracts@0.3.0 `contractHandshake` value
-  (`{contracts: "hanaworlds-contracts@0.3.0", wireVersions: [BUILD/V2,
-  ReferenceBrief/v2, canvas/v4, interaction-surface/v3, painter/v3, session/v2,
-  world-adapter/v4], compiledOperationsVersion: "operations/v2", factProfiles:
-  [target-facts/v2, target-facts/v3]}`). The painter does not compose its own
-  set. The module also exports it as `contractHandshake`, as admitted Brush
-  0.2.0 does.
-  - A consumer checks it with contracts `checkContractHandshake`
-    (for Workshop: `{wires: [painter/v3], factProfiles: [target-facts/v3]}`).
-  - A missing or incompatible advertisement (for example the contracts@0.2.1
-    painter/v2 peer) fails with `UNSUPPORTED_VERSION/decode/VERSION_UNSUPPORTED`
-    before any request.
-  - Revision `8220f21` did not advertise a handshake. That was the composition
-    defect EXTERIOR-V4-CONTRACT-HANDSHAKE-MISSING.
-- `describe()`, which returns the painter id, ports, current and default
-  settings, fixed invariants and which host services are present. It is
-  unchanged and is not a handshake.
+modelProvider defaults openai-codex, modelId gpt-5.6-luna. They affect only the
+original image-model path; that path requires bound image+text and an image-capable
+resolved route. Config and describe expose these settings and fixed invariants.
+The text-proposal path uses no model route. Existing image planning, geometry,
+clearance, entrance connectivity/face, materials and BUILD assembly remain.
+Freeze fixed orchestration as optional only after the real skill closed loop;
+this component fixture gate does not trigger that decision.
 
-It consumes these host services. Each one is resolved at every call and is never
-cached:
+## Evidence and boundaries
 
-- `hanaworldsAuthority.verify(body, 'CreateBuildPlan')`. This is the same proof
-  shape Canvas uses: `current`, the actor/session/authorization refs, and
-  `allowedActions`. If `currentWorldRevision` is present it is also used to
-  detect a stale target.
-- `llm`, the DSH `LlmRuntime`. The painter calls
-  `resolveModelInfo(provider, model)` and then a single `stream(...)` with one
-  user message containing `[text, image…]` blocks.
-- `attachments`, the DSH `AttachmentStore`. Images are passed only as durable
-  Core references `{attachmentId: <media.attachmentRef>, mediaType, bytes,
-  width, height}`. The attachment store owns media authorization and integrity.
-  (0.1.0 additionally required `attachmentRef = "sha256:"+storedBytesDigest`.
-  That was a worker-only rule and is removed in 0.2.0, because the approved
-  painter/v3 chain uses a non-content-address ref.) The host adapter projects and reads them. The painter
-  never reads, encodes or logs image bytes.
-
-## Settings (visible in the DSH plugin settings through `Config`)
-
-| Setting | Default | Effect |
-|---|---|---|
-| `modelProvider` | `openai-codex` | DSH route used for image+text planning |
-| `modelId` | `gpt-5.6-luna` | exact model on that route |
-
-The default provider matches the registered `dsh-codex-subscription` provider
-and the HanaWorlds Desktop Host route: `openai-codex/gpt-5.6-luna`.
-This alignment is a source and fixture result. Live account/model/image usability
-has not been established by this route-only candidate. The existing image path
-still requires image modality at runtime. A skill-proposal entry is blocked on
-a public contracts input; this package does not advertise that capability.
-
-## Fixed invariants (cannot be switched off; listed by `describe()` and in `Config`)
-
-1. No world, Canvas, Adapter or Brush call. The output is a plan, a
-   clarification or a typed error.
-2. A structure intent requires at least one bound image and non-empty text.
-   Without an image the result is `IMAGE_REQUIRED`; without text it is
-   `INTENT_UNCONFIRMED`. In both cases the model is not called.
-3. The route's resolved model must declare image input. A text-only route is
-   refused (`PainterHostError MODEL_UNAVAILABLE/ROUTE_NOT_IMAGE_CAPABLE`). The
-   painter never lets the host replace the image with a text placeholder.
-4. Written cells must be sampled known-empty cells. An occupied cell is never
-   replaced (`BUILD_INVALID`). An unknown or unsampled cell is never written
-   (`TARGET_FACTS_INCOMPLETE`).
-5. Only static catalogue materials are offered and accepted: no callbacks, no
-   persistent state, and an allowed `param2`. Anything else is
-   `UNSUPPORTED_MATERIAL`.
-6. Entrance connectivity applies when the safety profile sets
-   `requireEntranceConnectivity`. It is recomputed only from bound facts: the
-   final state, the catalogue, the hazard policy and the actual avatar size
-   (`unit: "node"`; any other unit is `TARGET_FACTS_INCOMPLETE`).
-   - A usable (use or path) cell is one whose whole avatar clearance box
-     (ceil width × height × depth) is verified empty air in the final state,
-     and air must satisfy the hazard policy. A non-air node is never empty,
-     even if it is passable (for example `walkable: false` with no collision).
-   - The interior is a cavity, following CONTRACT_RULES ("天空不冒充室内").
-     Treat the confirmed entrance planes as temporarily sealed, then flood
-     6-adjacently from usable cells through every cell that is not a proven
-     collision. A proven collision is a final node with `walkable: true` or a
-     non-empty `collisionBoxes`.
-   - The flood passes through non-colliding non-air nodes (plants, vines,
-     liquids) and through nodes whose collision is unknown, because sky and
-     the outside leak through them.
-   - A component counts as interior only if the flood never reaches an
-     unknown or unsampled cell.
-   - A roofless or leaking enclosure therefore has no interior. Every confirmed
-     portal must reach usable interior cells by a six-neighbour usable path;
-     otherwise the result is `BUILD_INVALID`.
-   - No confirmed portal gives `INTENT_UNCONFIRMED`. A portal missing from the
-     target facts gives `TARGET_FACTS_INCOMPLETE`.
-   - Each portal produces an `ENTRANCE_CONNECTIVITY` witness. The HAZARD
-     witness also covers every entrance use and path cell.
-   - The clearance-only rule (no floor-support predicate) is the worker's
-     engineering reading of the contract's x-rules.
-7. First building (REGION_INSPECTED). The relayed `regionInspection` must be
-   coherent with the request: same facts and digest, frame digest equal to
-   `targetFacts.frameDigest`, same world. This is checked by contracts v4
-   `validateBoundRequest`; a mismatch is `TARGET_FACTS_STALE/validate/REVISION_CHANGED`.
-   The frame and evidence are copied unchanged, never defaulted.
-   - REGION_INSPECTED facts without a `regionInspection` are
-     `TARGET_FACTS_INCOMPLETE`.
-   - A frame whose `transformRevision` is not the evidence revision, or
-     evidence for another world revision, is `SCHEMA_INVALID`.
-   - Interior on region facts is `TARGET_REQUIRED/validate/SCOPE_DENIED`.
-   - Entrance facing (HW-A028, painter side): a doorway is a usable cell on a
-     side face of the structure footprint, 4-adjacent to a usable cell strictly
-     inside it. A structure with a usable interior must have a doorway on the
-     `entranceFacing` face and none on any other side; otherwise
-     `BUILD_INVALID`. A structure without a usable interior (for example a
-     solid block) has no entrance. This definition is worker judgment; see
-     CONTRACT_GAP-EXT-V4-02.
-8. PROTECTION and BODY_CLEARANCE witnesses require provider-verified evidence.
-   In painter/v3 only the region inspection supplies it. INSPECTED facts carry
-   none, so they remain a typed `TARGET_FACTS_INCOMPLETE`.
-9. PLANNED facts are `TARGET_REQUIRED/validate/REQUIRED_FACT_UNKNOWN`, because
-   painter/v3 carries no proof of a real preceding plan (CONTRACT_GAP-EXT-V4-01).
-   This matches the approved `INV-INITIAL-PLANNED`.
-10. Replay: a request with the same `sessionRef + requestId` and the exact same
-   payload returns the original domain response. Current authorization is
-   checked first. A changed payload is `REPLAY_MISMATCH`. Host failures are not
-   recorded, so they can be retried.
-
-Validation order (contract `validationOrder`): raw decode with domain rules →
-authorization → replay → painter-scoped digests → turn/intent confirmation →
-media binding → catalogue → target source and revision → regionInspection
-binding (`validateBoundRequest`, v4) → model → geometry/materials → entrance
-rules → safety witnesses.
-
-## Known gaps and observations (run-private evidence/CONTRACT_GAPS.md)
-
-- **CONTRACT_GAP-EXT-V4-01.** A real preceding plan cannot be verified, so every
-  PLANNED request is refused.
-- **CONTRACT_GAP-EXT-V4-02.** There is no approved definition of "entrance" for
-  a portal-less region footprint. The worker rule is described above.
-  `requireEntranceConnectivity` on region facts stays `TARGET_FACTS_INCOMPLETE`.
-- **Host errors.** The `CreateBuildPlan` failure codes contain no model or
-  capability code. Host model failures are therefore raised as
-  `PainterHostError` with a contract-shaped `publicError` and a stable
-  `hostCode`, rather than disguised as a domain error.
-
-The sealed 0.1.0 gaps EXT-01/02 (no trusted evidence or Frame) are closed for
-first buildings by painter/v3 `regionInspection`.
-
-## Build, test, package
-
-```sh
-npm ci --ignore-scripts      # isolated HOME and npm cache
-npm run build
-npm test
-npm pack --ignore-scripts
-```
-
-`private: true` guards against registry publication. The runtime dependencies
-are registry packages only: `canonicalize@5.1.0` and
-`@deepseek-ai/schemastery@3.18.2`. There are no `file:` paths and no sibling
-checkouts.
-
-Contracts supply is vendored. DSH installs plugins with pnpm 11, and pnpm 11
-refuses URL or git subdependencies (`ERR_PNPM_EXOTIC_SUBDEP`). The admitted
-`hanaworlds-contracts@0.3.0` is pinned to public git `e827357` and pack
-`47a2e5cc…8f5c` (923 entries) in `tools/admitted-contracts.mjs`.
-`vendor/hanaworlds-contracts/` holds an unmodified subset of that pack: the
-import closure of the `dist/v4` entries used here, license and notice files, and
-three fixtures. Each file's sha256 is recorded in `VENDOR.json`.
-
-- `npm test` checks the vendored bytes offline.
-- `node tools/vendor-contracts.mjs --check` (network) re-downloads the pinned
-  source, repacks it, requires `47a2e5cc`/923, and compares every vendored file.
-- Imports go through package `imports`: `#contracts` → `dist/v4/index.mjs`,
-  `#contracts/painter/v3`, `#contracts/BUILD/V2`.
-- Admitted Brush 0.2.0 uses the same vendoring approach (it vendors the full
-  pack).
-
-## Install, rollback, residue
-
-Install into an isolated DSH profile through the supported DSH plugin command
-(pnpm underneath), from the public task branch:
-`dsh plugin --profile <p> add github:yzsnstotz/hanaworlds-building-exterior-painter#<v4 commit>`.
-Uninstall with `dsh plugin --profile <p> remove hanaworlds-building-exterior-painter`.
-
-The painter keeps no files. Its only state is in-memory invocation receipts.
-Uninstalling therefore leaves no painter residue in the profile and touches no
-world, Session or media data. Rollback means removing `0.2.0` and restoring the
-prior plugin set. Per ROLLBACK_AND_RECOVERY (rc.7 version pairing), the painter
-rolls back together with the whole contracts@0.3.0 consumer set to the 0.2.1 set,
-which pins the Exterior source to the sealed candidate `a3156fc`. Mixing a 0.2.1
-and a 0.3.0 peer fails the ContractHandshake with `UNSUPPORTED_VERSION`.
-
-## Licenses
-
-HanaWorlds-owned source is MIT. Third-party licenses are kept as-is; see
-`NOTICE` and `LICENSE_AUDIT.md`.
+`npm run test:proposal` exercises the new entry and affected current handshake
+and vendor integrity. `tools/gate-proposal.sh` archives a committed source,
+checks exact admitted vendor bytes, packs/installs a fresh package, then exercises
+the installed entry and real Cordis provider lifecycle. Authority/LLM/media,
+world and Workshop facts are fixtures. Actual model/DSH full Host/GUI/world writes
+and Undo are NOT_RUN; current source/package/framework checks confer no product
+PASS, TO_TEST or owner ACCEPTED. Prior route gate and admission are not rerun.

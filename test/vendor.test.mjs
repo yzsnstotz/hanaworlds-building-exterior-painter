@@ -1,4 +1,4 @@
-// The vendored Contracts subset must be exactly the admitted 0.3.0 pack bytes
+// The vendored Contracts subset must be exactly the admitted 0.3.10 pack bytes
 // recorded in VENDOR.json (re-verified from public git by tools/vendor-contracts.mjs --check).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,11 +17,11 @@ async function* walk(dir) {
   }
 }
 
-test('vendored hanaworlds-contracts files match VENDOR.json digests of admitted pack 47a2e5cc', async () => {
+test('vendored hanaworlds-contracts files match VENDOR.json digests of admitted pack 8624bd02', async () => {
   const manifest = JSON.parse(await readFile(join(root, 'VENDOR.json'), 'utf8'));
-  assert.equal(manifest.version, '0.3.0');
-  assert.equal(manifest.revision, 'e82735780bdfd4ea8e662781455040a6e5306121');
-  assert.equal(manifest.packSha256, '47a2e5cc77590fb471ffedde715682564e169a0d88dbc5005b71d8d542b38f5c');
+  assert.equal(manifest.version, '0.3.10');
+  assert.equal(manifest.revision, 'e66800964726b951a300eb9377b74c318641417f');
+  assert.equal(manifest.packSha256, '8624bd026815fcdafc5248b21d8bc611baa0569b7b492b66905d2d015a496ce1');
   assert.equal(manifest.sha256, ADMITTED_CONTRACTS.sha256);
   const seen = {};
   for await (const path of walk(root)) {
@@ -31,6 +31,6 @@ test('vendored hanaworlds-contracts files match VENDOR.json digests of admitted 
   }
   assert.deepEqual(Object.keys(seen).sort(), [...VENDORED_FILES].sort());
   assert.deepEqual(seen, manifest.files);
-  assert.equal(version, '0.3.0');
+  assert.equal(version, '0.3.10');
   assert.ok(wireVersions.includes('painter/v3'));
 });

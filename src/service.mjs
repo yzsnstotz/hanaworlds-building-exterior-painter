@@ -9,6 +9,7 @@ import {
 import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, trustedFromRegion,
   checkEntranceFacing } from './planner.mjs';
 import { invokeModel, PainterHostError } from './model.mjs';
+import { BuildProposalValidator, PROPOSAL_OPERATION } from './proposal.mjs';
 
 export const WIRE = 'painter/v3';
 export const OPERATION = 'CreateBuildPlan';
@@ -20,8 +21,8 @@ const sha = text => createHash('sha256').update(text).digest('hex');
 export const DEFAULT_ROUTE = Object.freeze({ provider: 'openai-codex', model: 'gpt-5.6-luna' });
 export const INVARIANTS = Object.freeze([
   'No world, Canvas, Adapter or Brush call; output is a BUILD/V2 plan or a ClarificationNeed only.',
-  'Structure intent requires at least one bound user image and non-empty text.',
-  'The model route must resolve to an image-capable model; a text-only route is refused, never degraded.',
+  'CreateBuildPlan structure intent requires at least one bound user image and non-empty text; ValidateBuildProposal requires confirmed text and empty media.',
+  'CreateBuildPlan requires an image-capable model route; ValidateBuildProposal calls no model or attachment service.',
   'Written cells must be sampled known-empty target cells; occupied cells are never replaced and unknown cells are never written.',
   'When the safety profile requires entrance connectivity, every confirmed entrance portal must reach the enclosed interior by a six-neighbor path of cells with full avatar clearance, recomputed from bound facts; otherwise BUILD_INVALID.',
   'A first new building uses only the Canvas-relayed Adapter regionInspection: BUILD.coordinateFrame = regionInspection.frame and PROTECTION/BODY_CLEARANCE witnesses carry regionInspection.evidence; the painter never inspects the world, chooses or relocates a placement.',
@@ -64,19 +65,20 @@ export class ExteriorPainterV2 {
     this.llm = llm;
     this.attachments = attachments;
     this.route = Object.freeze({ provider: route.provider, model: route.model });
+    this.proposals = new BuildProposalValidator(() => this.authority);
     this.receipts = new Map(); // invocation receipts only; no world or Session state
     // ContractHandshake advertised before any request (CONTRACT_RULES "Compatibility
-    // (rc.7)"): exactly the vendored admitted contracts@0.3.0 advertisement, never
+    // (rc.7)"): exactly the vendored admitted contracts@0.3.10 advertisement, never
     // a painter-synthesized set. Consumers check it with checkContractHandshake.
     Object.defineProperty(this, 'contractHandshake', { value: contractHandshake, enumerable: true });
   }
 
-  /** The ContractHandshake this provider advertises (contracts@0.3.0). */
+  /** The ContractHandshake this provider advertises (contracts@0.3.10). */
   handshake() { return contractHandshake; }
 
   describe() {
     return {
-      painterId: PAINTER_ID, wire: WIRE, operations: [OPERATION],
+      painterId: PAINTER_ID, wire: WIRE, operations: [OPERATION, PROPOSAL_OPERATION],
       consumes: ['painter/v3', 'ReferenceBrief/v2'], factProfiles: ['target-facts/v2', 'target-facts/v3'], emits: ['BUILD/V2', 'ClarificationNeed'],
       settings: { modelProvider: this.route.provider, modelId: this.route.model },
       settingDefaults: { modelProvider: DEFAULT_ROUTE.provider, modelId: DEFAULT_ROUTE.model },
@@ -91,6 +93,7 @@ export class ExteriorPainterV2 {
    * Host capability failures throw PainterHostError.
    */
   async call(operation, raw, { signal } = {}) {
+    if (operation === PROPOSAL_OPERATION) return this.proposals.call(raw, { signal });
     if (operation !== OPERATION) fail('UNSUPPORTED_OPERATION', 'validate', 'INVALID_SHAPE');
     let body;
     try {
