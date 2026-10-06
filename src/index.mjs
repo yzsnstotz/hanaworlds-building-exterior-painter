@@ -4,10 +4,11 @@ import Schema from '@deepseek-ai/schemastery';
 import { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
 
 export { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
-/** ContractHandshake this provider advertises: exactly the admitted contracts@0.4.0 set. */
+/** ContractHandshake this image provider advertises: exactly contracts@0.4.2. */
 export { contractHandshake } from '#contracts';
 export { PROPOSAL_OPERATION } from './proposal.mjs';
 export { matchImageMaterials, IMAGE_MATERIAL_TOOL, ImageMaterialError } from './image-material.mjs';
+export { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 export { PainterHostError, buildMessages, promptText } from './model.mjs';
 export { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, offeredMaterials } from './planner.mjs';
 

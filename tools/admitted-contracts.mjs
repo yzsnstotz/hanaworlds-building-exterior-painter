@@ -1,10 +1,10 @@
 // Exact final local-world replacement artifact; no old wire exports.
 export const ADMITTED_CONTRACTS = Object.freeze({
-  name: 'hanaworlds-contracts', version: '0.4.0',
+  name: 'hanaworlds-contracts', version: '0.4.2',
   origin: 'https://github.com/yzsnstotz/hanaworlds-contracts',
-  revision: '8cfb18f8e13aa33d7a942f230ec6117914322cdd',
-  sourceTarball: 'https://codeload.github.com/yzsnstotz/hanaworlds-contracts/tar.gz/8cfb18f8e13aa33d7a942f230ec6117914322cdd',
-  sha256: 'd7b22e76de5e161abe7525596df608b3f00445fb4237808941cb5ef8328e9bc4', entries: 20,
+  revision: 'aad7c0ea2a4a9a93dfb13555c46cd98b9b5da777',
+  sourceTarball: 'https://codeload.github.com/yzsnstotz/hanaworlds-contracts/tar.gz/aad7c0ea2a4a9a93dfb13555c46cd98b9b5da777',
+  sha256: 'c3528a4fc3f0cdf94245c4d2d8b1cfa5d28db96d1cd00ae74737bdbdfcd26ec6', entries: 21,
 });
 // Entire published package, unmodified. Root API only.
 export const VENDORED_FILES = Object.freeze([
@@ -21,6 +21,7 @@ export const VENDORED_FILES = Object.freeze([
   "dist/errors.mjs",
   "dist/geometry.mjs",
   "dist/local/index.mjs",
+  "dist/local/material-sources.mjs",
   "dist/names.mjs",
   "dist/local/runtime.mjs",
   "dist/local/schema-validator.mjs",

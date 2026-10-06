@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.3.1 · local world
+# HanaWorlds Building Exterior Painter 0.3.2 · current image material sources
 
 The plugin implements `painter/v4.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
@@ -40,11 +40,11 @@ fixture gate does not prove that full Host integration.
 
 ## Pinned bytes and settings
 
-The whole published 20-file contracts0.4.0 package is vendored unmodified:
-source `8cfb18f8e13aa33d7a942f230ec6117914322cdd`, npm tar SHA256
-`d7b22e76de5e161abe7525596df608b3f00445fb4237808941cb5ef8328e9bc4`.
+The whole published 21-file contracts0.4.2 package is vendored unmodified:
+source `aad7c0ea2a4a9a93dfb13555c46cd98b9b5da777`, npm tar SHA256
+`c3528a4fc3f0cdf94245c4d2d8b1cfa5d28db96d1cd00ae74737bdbdfcd26ec6`.
 Root API only; no `/v4` binding or prior wire compatibility. Regenerate/check:
-`node tools/vendor-contracts.mjs [--check] --package <final0.4.0.tgz>`.
+`node tools/vendor-contracts.mjs [--check] --package <final0.4.2.tgz>`.
 VENDOR.json records per-file SHA256. Never edit generated vendor bytes.
 
 Config/describe retain modelProvider `openai-codex`, modelId `gpt-5.6-luna` and
@@ -66,12 +66,75 @@ at 8e96b57441a697f79a2cda17e8acb6538814630e with their protected old artifact;
 old permission, replay/concurrency and expanded negative matrices are deferred,
 not current npm-test requirements. Historical report/evidence remain protected.
 
-## One image material tool (0.3.1)
+## Current-world image material consumer (0.3.2)
+
+The service `hanaworldsPainterV2PictureBlocks` and root export expose:
+
+```js
+const hint = await painter.matchCurrentImageMaterials({
+  imageBytes,       // actual Uint8Array for the Host-verified brief attachment
+  materialSources,  // contracts0.4.2 MaterialSources {snapshot, textures}
+  catalogue,        // fresh public Catalogue matching that source
+  currentConnection: {worldRef, connectionRef, connectionIncarnationRef},
+})
+// hint.material = {nodeName, param2}; use in the existing proposal materials.
+```
+
+`describe().tools` advertises exactly one current tool,
+`CURRENT_IMAGE_MATERIAL_TOOL` (`MatchCurrentImageMaterials`). This is an own pure
+method, not an added painter/v4 wire operation. Host reads public NativeFacts,
+checks current selection/provider/Catalogue, and calls this method with actual
+media bytes. The consumer itself rereads no peer, file, path, URL, model or world.
+It synchronously validates Catalogue and calls `validateMaterialSources` before
+any await, acquiring validated copies of the texture bytes. Connection has the
+three contract fields above; selectionRevision belongs to Host and is not passed
+as an extra MaterialSourceConnection field. Host must recheck its live selection,
+brief, provider identities and Catalogue after this await before releasing the
+hint. Matching cannot prove that supplied facts are still live or that an
+attachment belongs to a Session; those remain public supplier/Host duties.
+
+Only KNOWN source rows which pass `validateStaticMaterials` are candidates.
+KNOWN does not fill missing callbacks/state/param2 facts. UNKNOWN rows and
+static-ineligible variants are counted in `hint.sources` and never get a colour.
+No static index, base:* alias or default colour is consulted. Missing legal
+candidates throws `ImageMaterialError` with code `MATERIAL_SOURCES_UNAVAILABLE`.
+Corrupt/transparent/over-limit or mediaType-mismatched eligible texture bytes
+throw `MATERIAL_TEXTURE_UNAVAILABLE`; no partial colour or fallback hint is
+returned. Input image errors retain IMAGE_REQUIRED/IMAGE_DECODE_FAILED/
+IMAGE_LIMIT_EXCEEDED/NO_VISIBLE_PIXELS. Contract errors retain their precise
+world/Catalogue/sourceRevision/byte integrity code.
+
+Image decoding, dominant bins, Oklab transform and limits reuse the existing
+pixel functions below. Each simple uniform texture uses the existing alpha
+weighted linear-light mean. Distance is Euclidean Oklab, exact ties use contract
+UTF16 node order then numeric param2 order. Per-call duplicate texture digests
+are measured once within the validated sourceRevision; there is no cross-call
+cache. Changing source bytes/revision cannot reuse a historical colour.
+
+Frozen results include actual image hash/dimensions/format, dominant colour,
+material, measured match RGB/Oklab/distance and its public texture provenance,
+sourceRevision, catalogueDigest, connection, gameId/gameRevision, sourceBasis,
+source counts and zero modelCalls/worldWrites. `SERVER_ASSET_ONLY` is the source
+baseline; it does not promise client texture-pack appearance. No BUILD, geometry,
+transaction, planner, model, renderer or write happens here. Original proposal
+geometry source remains unchanged and downstream validation remains mandatory.
+
+`npm run test:material-sources` runs only seven new affected tests.
+`tools/gate-current-image-material.sh <full-source-sha> <fresh-E-dir> <fixed-App> <actual-texture>`
+archives source, verifies the exact 0.4.2 vendor, builds, runs these tests,
+packs/independently installs 0.3.2, repeats them and loads the actual installed
+plugin in real Cordis. Public Catalogue/MaterialSources/Host media association
+are explicit fixtures, including the binding of preserved real texture bytes.
+Actual current product game, Host/App/model/world/Undo and REAL_UI are NOT_RUN.
+Protected 0.3.0 text and 0.3.1 image artifacts/E are not overwritten or retested.
+
+## Historical measured-index method (protected 0.3.1)
 
 The registered Painter service exposes `matchImageMaterials({imageBytes, catalogue})`
 and root exports `matchImageMaterials`, `IMAGE_MATERIAL_TOOL`, `ImageMaterialError`.
 This is an own-plugin computation method, not a new frozen painter/v4 operation.
-Host binds one skill tool `MatchImageMaterials` using this public descriptor:
+This retained historical method is not advertised by describe().tools in 0.3.2.
+It must not be used as the current-world material consumer. Its old descriptor says:
 resolve the actual attachment bytes for the current brief and obtain the current
 public Catalogue, then call the method. Do not accept model-provided RGB/palette
 facts, URLs or local file paths. Host must correlate the result to that brief

@@ -11,7 +11,8 @@ import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, 
 import { invokeModel, PainterHostError } from './model.mjs';
 import { BuildProposalValidator, PROPOSAL_OPERATION } from './proposal.mjs';
 import { readCurrentFacts } from './local-context.mjs';
-import { matchImageMaterials, IMAGE_MATERIAL_TOOL } from './image-material.mjs';
+import { matchImageMaterials } from './image-material.mjs';
+import { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 
 export const WIRE = 'painter/v4';
 export const OPERATION = 'CreateBuildPlan';
@@ -23,7 +24,7 @@ const sha = text => createHash('sha256').update(text).digest('hex');
 export const DEFAULT_ROUTE = Object.freeze({ provider: 'openai-codex', model: 'gpt-5.6-luna' });
 export const INVARIANTS = Object.freeze([
   'No world, Canvas, Adapter or Brush call; output is a BUILD/V3 plan or a ClarificationNeed only.',
-  'CreateBuildPlan structure intent requires at least one bound user image and non-empty text; ValidateBuildProposal requires confirmed text and empty media.',
+  'CreateBuildPlan structure intent requires at least one bound user image and non-empty text; ValidateBuildProposal validates confirmed proposals with supplied current media facts and calls no model.',
   'CreateBuildPlan requires an image-capable model route; ValidateBuildProposal calls no model or attachment service.',
   'Written cells must be sampled known-empty target cells; occupied cells are never replaced and unknown cells are never written.',
   'When the safety profile requires entrance connectivity, every confirmed entrance portal must reach the enclosed interior by a six-neighbor path of cells with full avatar clearance, recomputed from bound facts; otherwise BUILD_INVALID.',
@@ -70,14 +71,15 @@ export class ExteriorPainterV2 {
     this.proposals = new BuildProposalValidator(() => this.localFacts);
     this.receipts = new Map(); // invocation receipts only; no world or Session state
     // ContractHandshake advertised before any request (CONTRACT_RULES "Compatibility
-    // (rc.7)"): exactly the vendored admitted contracts@0.4.0 advertisement, never
+    // (rc.7)"): exactly the vendored admitted contracts@0.4.2 advertisement, never
     // a painter-synthesized set. Consumers check it with checkContractHandshake.
     Object.defineProperty(this, 'contractHandshake', { value: contractHandshake, enumerable: true });
   }
 
-  /** The ContractHandshake this provider advertises (contracts@0.4.0). */
+  /** The ContractHandshake this image provider advertises (contracts@0.4.2). */
   handshake() { return contractHandshake; }
   matchImageMaterials(input) { return matchImageMaterials(input); }
+  matchCurrentImageMaterials(input) { return matchCurrentImageMaterials(input); }
 
   describe() {
     return {
@@ -86,7 +88,7 @@ export class ExteriorPainterV2 {
       settings: { modelProvider: this.route.provider, modelId: this.route.model },
       settingDefaults: { modelProvider: DEFAULT_ROUTE.provider, modelId: DEFAULT_ROUTE.model },
       invariants: INVARIANTS, worldWrites: 0,
-      tools: [IMAGE_MATERIAL_TOOL],
+      tools: [CURRENT_IMAGE_MATERIAL_TOOL],
       services: { localFacts: !!this.localFacts, llm: !!this.llm, attachments: !!this.attachments },
     };
   }

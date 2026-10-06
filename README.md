@@ -10,6 +10,9 @@ contract gaps, and the install and rollback steps. Licensing: MIT for
 HanaWorlds-owned source; see [NOTICE](NOTICE) and
 [LICENSE_AUDIT.md](LICENSE_AUDIT.md).
 
-One pure `MatchImageMaterials` tool also decodes real PNG/JPEG/WebP bytes and
-suggests the nearest indexed legal block material. It calls no model and writes
-no world; see GADGET.md for measured palette provenance and current-world limits.
+One pure `MatchCurrentImageMaterials` tool decodes actual PNG/JPEG/WebP bytes and
+matches against current validated MaterialSources texture bytes with static
+Catalogue legality. It calls no model and writes no world. Its public method is
+`matchCurrentImageMaterials({imageBytes, materialSources, catalogue, currentConnection})`;
+see GADGET.md for binding, UNKNOWN and server-asset limits. The historical 0.3.1
+measured-index method remains available but is not advertised for current worlds.

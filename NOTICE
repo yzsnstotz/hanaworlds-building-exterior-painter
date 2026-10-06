@@ -10,9 +10,9 @@ This package depends on the following packages and does not relicense them. Thei
   (transitive, via schemastery)
 - @standard-schema/spec 1.1.0 — MIT — https://github.com/standard-schema/standard-schema
   (transitive, via schemastery)
-- hanaworlds-contracts 0.4.0 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
-  (commit 8cfb18f8e13aa33d7a942f230ec6117914322cdd,
-  pack sha256 d7b22e76de5e161abe7525596df608b3f00445fb4237808941cb5ef8328e9bc4).
+- hanaworlds-contracts 0.4.2 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
+  (commit aad7c0ea2a4a9a93dfb13555c46cd98b9b5da777,
+  pack sha256 c3528a4fc3f0cdf94245c4d2d8b1cfa5d28db96d1cd00ae74737bdbdfcd26ec6).
   The entire published package is vendored unmodified with its LICENSE/NOTICE;
   see vendor/hanaworlds-contracts/VENDOR.json. canonicalize remains an external
   Apache-2.0 dependency with its own installed license.
