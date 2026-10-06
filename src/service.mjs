@@ -14,10 +14,10 @@ import { readCurrentFacts } from './local-context.mjs';
 import { matchImageMaterials } from './image-material.mjs';
 import { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 import { RegionProposalValidator } from './region-proposal.mjs';
-import { REGION_PROPOSAL_TOOL, REGION_SUPPORT, isRegionRequest, checkRegionContract } from './region.mjs';
-import { regionContract as defaultRegionContract, REGION_CONTRACT_STATUS } from './region-contract.mjs';
+import { REGION_PROPOSAL_TOOL, REGION_OPERATION, protocolHandshake } from './region.mjs';
 
 export const WIRE = 'painter/v4';
+export const PACKAGE_VERSION = '0.4.0';
 export const OPERATION = 'CreateBuildPlan';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -68,15 +68,13 @@ export class ExteriorPainterV2 {
    * @param {object|undefined} deps.attachments host `attachments` service
    * @param {{provider: string, model: string}} deps.route model route
    */
-  constructor({ localFacts, llm, attachments, route = DEFAULT_ROUTE, regionContract = defaultRegionContract } = {}) {
+  constructor({ localFacts, llm, attachments, route = DEFAULT_ROUTE } = {}) {
     this.localFacts = localFacts;
     this.llm = llm;
     this.attachments = attachments;
     this.route = Object.freeze({ provider: route.provider, model: route.model });
     this.proposals = new BuildProposalValidator(() => this.localFacts);
-    // Public contracts region v1 port; null until that package is vendored.
-    this.regionContract = regionContract;
-    this.regions = new RegionProposalValidator(() => this.localFacts, () => this.regionContract);
+    this.regions = new RegionProposalValidator(() => this.localFacts);
     this.receipts = new Map(); // invocation receipts only; no world or Session state
     // ContractHandshake advertised before any request (CONTRACT_RULES "Compatibility
     // (rc.7)"): exactly the vendored admitted contracts@0.4.2 advertisement, never
@@ -91,13 +89,12 @@ export class ExteriorPainterV2 {
 
   describe() {
     return {
-      painterId: PAINTER_ID, wire: WIRE, operations: [OPERATION, PROPOSAL_OPERATION],
+      painterId: PAINTER_ID, wire: WIRE, operations: [OPERATION, PROPOSAL_OPERATION, REGION_OPERATION],
       consumes: ['painter/v4', 'ReferenceBrief/v3'], factProfiles: ['target-facts/v4'], emits: ['BUILD/V3', 'ClarificationNeed'],
       settings: { modelProvider: this.route.provider, modelId: this.route.model },
       settingDefaults: { modelProvider: DEFAULT_ROUTE.provider, modelId: DEFAULT_ROUTE.model },
       invariants: INVARIANTS, worldWrites: 0,
-      tools: [CURRENT_IMAGE_MATERIAL_TOOL, { ...REGION_PROPOSAL_TOOL, availability: this.regionAvailability() }],
-      regionSupport: REGION_SUPPORT,
+      tools: [CURRENT_IMAGE_MATERIAL_TOOL, REGION_PROPOSAL_TOOL],
       services: { localFacts: !!this.localFacts, llm: !!this.llm, attachments: !!this.attachments },
     };
   }
@@ -107,19 +104,13 @@ export class ExteriorPainterV2 {
    * return the contract-validated response: an envelope or ClarificationNeed.
    * Host capability failures throw PainterHostError.
    */
-  /** Whether the region proposal path can run, and what it needs if not. */
-  regionAvailability() {
-    if (this.regionContract === null || this.regionContract === undefined)
-      return { available: false, reason: REGION_CONTRACT_STATUS.reason };
-    try { checkRegionContract(this.regionContract); }
-    catch (error) { return { available: false, reason: `region contract port not consumable: ${error.code}` }; }
-    return { available: true, contracts: this.regionContract.contracts ?? null,
-      regionProtocol: { ...this.regionContract.regionProtocol } };
-  }
+  /** ProtocolHandshake (protocol major + capabilities); version is provenance only. */
+  protocolHandshake() { return protocolHandshake(PACKAGE_VERSION); }
 
   async call(operation, raw, { signal } = {}) {
     if (operation === PROPOSAL_OPERATION)
-      return isRegionRequest(raw) ? this.regions.call(raw, { signal }) : this.proposals.call(raw, { signal });
+      return this.proposals.call(raw, { signal });
+    if (operation === REGION_OPERATION) return this.regions.call(raw, { signal });
     if (operation !== OPERATION) fail('UNSUPPORTED_OPERATION', 'validate', 'INVALID_SHAPE');
     let body;
     try {

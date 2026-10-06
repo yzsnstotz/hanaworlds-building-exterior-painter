@@ -4,12 +4,11 @@ import Schema from '@deepseek-ai/schemastery';
 import { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
 
 export { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
-/** ContractHandshake this image provider advertises: exactly contracts@0.4.2. */
+/** ContractHandshake this image provider advertises: exactly contracts@0.5.0. */
 export { contractHandshake } from '#contracts';
 export { PROPOSAL_OPERATION } from './proposal.mjs';
-export { REGION_PROPOSAL_TOOL, REGION_SUPPORT, REGION_PROTOCOL, REGION_AXIS_ORDER, REGION_DECISION,
-  checkRegionCompatibility, parseRegionProposal, planRegion, assembleRegionBuild } from './region.mjs';
-export { REGION_CONTRACT_STATUS } from './region-contract.mjs';
+export { REGION_PROPOSAL_TOOL, REGION_OPERATION, REGION_WIRE, REGION_CAPABILITY, admitRegionProposal,
+  regionBuildPlan, protocolHandshake } from './region.mjs';
 export { matchImageMaterials, IMAGE_MATERIAL_TOOL, ImageMaterialError } from './image-material.mjs';
 export { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 export { PainterHostError, buildMessages, promptText } from './model.mjs';
