@@ -16,7 +16,7 @@ export const SAMPLES=Object.freeze([
  {id:'bad-param2',label:'不合法：param2 超出范围',note:'把材质 param2 改成 256（合约只允许 0–255）。',build:derive(r=>{r.proposal.materials.stone.param2=256;})},
  {id:'unknown-material',label:'不合法：引用未声明材质',note:'方块引用材质名 missing，提议里没有声明它。',build:derive(r=>{r.proposal.boxes[0].materialRef='missing';})},
  {id:'extra-field',label:'不合法：多出合约外字段',note:'请求里多带一个 authorizationRef 字段。',build:derive(r=>{r.authorizationRef='old';})},
- {id:'duplicate-key',label:'不合法：JSON 重复键',note:'原始 JSON 里 proposal 出现两次，含义不唯一。',build:()=>'{"requestId":"fixture","proposal":{},"proposal":{}}'},
+ {id:'duplicate-key',label:'不合法：同一项写了两次',note:'提议原文里 proposal 这一项出现了两次，含义不唯一。',build:()=>'{"requestId":"fixture","proposal":{},"proposal":{}}'},
 ]);
 
 const REASONS={
@@ -25,7 +25,7 @@ const REASONS={
  UNKNOWN_REQUIRED_FIELD:'请求里有合约不允许的多余字段，已拒绝。',
  UNSUPPORTED_MATERIAL:'提议引用了没有声明的材质，无法对应到示例方块目录。',
  CATALOGUE_MISMATCH:'材质不在示例方块目录允许的范围内。',
- NON_CANONICAL_AMBIGUITY:'提议 JSON 有重复键，含义不唯一，已拒绝。',
+ NON_CANONICAL_AMBIGUITY:'提议里同一项写了两次，含义不唯一，已拒绝。',
 };
 
 export const ENVIRONMENT=Object.freeze({source:'FIXTURE',label:'示例环境 · 公开合约 fixture · 未绑定真实世界',worldRef:fixture.request.worldRef,sessionRef:fixture.request.sessionRef});
