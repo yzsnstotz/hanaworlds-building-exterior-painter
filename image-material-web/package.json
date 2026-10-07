@@ -1,0 +1,10 @@
+{
+  "name": "hanaworlds-painter-image-material-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=24.13.1 <25" },
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": { "react": "18.2.0", "react-dom": "18.2.0" }
+}
