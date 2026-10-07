@@ -1,8 +1,9 @@
 # Panel license inventory
 
-- hanaworlds-painter-image-material-panel · 0.1.0 · MIT · this origin · development UI and Host adapter.
+- hanaworlds-painter-image-material-panel · 0.1.2 · MIT · this origin · development UI and Host adapter.
 - hanaworlds-building-exterior-painter · 0.4.0 · MIT · yzsnstotz/hanaworlds-building-exterior-painter, 2aa55c7fe55d68b6ec839b3c6c0c9a204a8a3dab · unchanged pixel decode and material matching; exact local tar in vendor. The tar includes its original LICENSE_AUDIT/NOTICE and contracts license inventory.
 - @deepseek-ai/dsh-typert-protocol · 0.2.0-rc.2 · MIT · official installed DeepSeek Harness · Host Remote service binding (peer provided by App).
-- React · App supplied version · MIT · official installed DeepSeek Harness · renderer baseline; no vendored React.
+- React · App baseline ^18.2.0 · MIT · official dsh-client-ui-layout manifest · renderer baseline; no vendored React.
+- @deepseek-ai/cordis · 4.0.4 · MIT · official DeepSeek Harness/npm registry · required Host service framework peer.
 
 No new image/model/network service. Painter sharp 0.35.3/native libvips use the original dependency license inventory; no algorithm or dependency version change.
