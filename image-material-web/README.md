@@ -24,3 +24,13 @@ npm start --prefix image-material-web
 新 HTTP 宿主的传输检查：`node --test test/image-web.test.mjs`。它检查页面/原面板字节、真实 PNG HTTP 调用与来源边界；不代替浏览器主流程。
 
 许可：本代码 MIT；React 18.2.0、React DOM 18.2.0、scheduler 0.23.2、loose-envify 1.4.0、js-tokens 4.0.0 均 MIT，来自官方 npm registry，仅用于本地呈现原面板；对应 LICENSE 随本机依赖保留。既有 Painter/Sharp/Contracts 许可与来源继续使用 `image-material-panel/LICENSE_AUDIT.md`，未新增模型或纹理数据。
+
+## 提议校验 · `/validate`
+
+入口：<http://127.0.0.1:47603/validate>，与 `/image` 同一个服务、同一条启动命令（`npm start --prefix image-material-web`）；`/image` 的页面、接口与行为不变。
+
+选一个样例提议，点「校验」：服务端用全新的 `ExteriorPainterV2` 调用 Painter 既有公开纯入口 `call('ValidateBuildProposal', request)`，显示通过（BUILD/V3 建筑摘要：文档、操作数、方块格数、范围、材质、安全见证、计划摘要）或拒绝（一句话原因 + 公开错误码 + 世界变化「无」）。切换样例会清空旧结果，拒绝后可以继续校验其他样例。
+
+**示例数据 · 示例环境**：样例提议、世界、会话、连接、方块目录与宿主当前事实全部来自随包的公开合约 fixture `vendor/hanaworlds-contracts/fixtures/local/main.json`；合法样例就是 fixture 原样请求，其余 6 个不合法样例各改一处（越界、挡住身体、param2=256、未声明材质、多余字段、JSON 重复键）。页面与每条结果都醒目标出。网页只能选列出的样例，不接受任意请求；不调用模型，不写世界，不提交给 Brush/Canvas/Adapter，没有新增校验语义。
+
+传输检查：`node --test test/validate-web.test.mjs`（7 个样例经 HTTP 的结论、拒绝后再通过、`/image` 仍可用、来源边界）。它不代替浏览器主流程。

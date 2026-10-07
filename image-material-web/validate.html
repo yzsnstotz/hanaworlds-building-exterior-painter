@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>提议校验 · HanaWorlds Painter</title>
+ <style>
+  html,body{margin:0;min-height:100%;background:#faf9f6;color:#252a26;font:14px/1.6 system-ui}
+  main{max-width:760px;margin:0 auto;padding:24px 36px 48px}
+  h1{font-size:22px;margin:0 0 8px}
+  .fixture{border:2px solid #c98a1b;background:#fff4dc;color:#6b4a0c;border-radius:8px;padding:10px 14px;font-weight:600}
+  .samples{display:grid;gap:6px;margin:16px 0}
+  .samples label{display:flex;gap:8px;align-items:flex-start;border:1px solid #d9d6cc;border-radius:6px;padding:8px 10px;background:#fff;cursor:pointer}
+  .samples small{display:block;color:#6a6e66}
+  pre{background:#f0eee7;border-radius:6px;padding:10px;overflow:auto;max-height:180px;font-size:12px}
+  button{font:inherit;font-weight:600;padding:8px 22px;border-radius:6px;border:1px solid #2e5c3a;background:#2e5c3a;color:#fff;cursor:pointer}
+  button:disabled{opacity:.5;cursor:default}
+  #result{margin-top:18px;border-radius:8px;padding:12px 16px;display:none}
+  #result.accepted{display:block;background:#e5f3e7;border:1px solid #4d8c5a}
+  #result.rejected{display:block;background:#fbe7e4;border:1px solid #b5534a}
+  #result.failed{display:block;background:#eee;border:1px solid #888}
+  #result h2{margin:0 0 4px;font-size:18px}
+  #result dl{display:grid;grid-template-columns:max-content 1fr;gap:2px 12px;margin:8px 0 0}
+  #result dt{color:#555}#result dd{margin:0;word-break:break-all}
+ </style>
+ <script defer src="/validate-page.js"></script>
+</head>
+<body>
+<main>
+ <h1>提议校验</h1>
+ <p class="fixture" id="fixture-banner">示例数据 · 示例环境：提议样例、世界、会话、连接和方块目录全部来自公开合约 fixture，不是真实世界或模型产物。校验不调用模型，不写世界。</p>
+ <form id="form">
+  <div class="samples" id="samples" role="radiogroup" aria-label="样例提议">正在读取样例…</div>
+  <p>当前样例的提议内容：</p>
+  <pre id="proposal">—</pre>
+  <button type="submit" id="validate" disabled>校验</button>
+ </form>
+ <section id="result" aria-live="polite"></section>
+</main>
+</body>
+</html>

@@ -4,11 +4,14 @@ import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {matchPanelImage} from '../image-material-panel/engine.mjs';
+import {ENVIRONMENT,listSamples,validateSample} from './validate.mjs';
 
 const require=createRequire(import.meta.url);
 const asset=(relative)=>readFileSync(new URL(relative,import.meta.url));
 const assets=new Map([
  ['/image',['text/html; charset=utf-8',asset('./index.html')]],
+ ['/validate',['text/html; charset=utf-8',asset('./validate.html')]],
+ ['/validate-page.js',['text/javascript; charset=utf-8',asset('./validate-page.js')]],
  ['/web-host.js',['text/javascript; charset=utf-8',asset('./web-host.js')]],
  ['/client.cjs',['text/javascript; charset=utf-8',asset('../image-material-panel/client.cjs')]],
  ['/react.js',['text/javascript; charset=utf-8',readFileSync(new URL('./umd/react.production.min.js',pathToFileURL(require.resolve('react'))))]],
@@ -41,6 +44,20 @@ export function createImageWebServer(){return createServer(async(request,respons
    response.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'"});
    return response.end(bytes);
   }
+  if(path==='/api/validate/samples'){
+   if(request.method!=='GET')return json(response,405,{ok:false,code:'GET_REQUIRED'});
+   return json(response,200,{ok:true,environment:ENVIRONMENT.label,samples:listSamples()});
+  }
+  if(path==='/api/validate'){
+   if(request.method!=='POST')return json(response,405,{ok:false,code:'POST_REQUIRED'});
+   if(!request.headers['content-type']?.startsWith('application/json'))return json(response,415,{ok:false,code:'JSON_REQUIRED'});
+   let input;
+   try{input=JSON.parse(await readBody(request));}catch(error){return json(response,error.status??400,{ok:false,code:error.status?'INPUT_LIMIT_EXCEEDED':'INVALID_JSON'});}
+   if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(k=>k!=='sampleId')||typeof input.sampleId!=='string')return json(response,400,{ok:false,code:'SAMPLE_ID_REQUIRED'});
+   // Only listed fixture samples are validated; Painter's public entry decides the verdict.
+   const result=await validateSample(input.sampleId);
+   return result?json(response,200,result):json(response,404,{ok:false,code:'UNKNOWN_SAMPLE'});
+  }
   if(path!=='/api/image')return json(response,404,{ok:false,code:'NOT_FOUND'});
   if(request.method!=='POST')return json(response,405,{ok:false,code:'POST_REQUIRED'});
   if(!request.headers['content-type']?.startsWith('application/json'))return json(response,415,{ok:false,code:'JSON_REQUIRED'});
@@ -50,8 +67,8 @@ export function createImageWebServer(){return createServer(async(request,respons
   // The local development page has no world binding. Reuse Painter via its existing UI engine.
   return json(response,200,await matchPanelImage({imageBase64:input.imageBase64}));
  }catch(error){
-  console.error('Painter image web request failed:',error.message);
-  if(!response.headersSent)json(response,500,{ok:false,code:'IMAGE_WEB_FAILED'});
+  console.error('Painter web request failed:',error.message);
+  if(!response.headersSent)json(response,500,{ok:false,code:request.url?.startsWith('/api/validate')?'VALIDATE_WEB_FAILED':'IMAGE_WEB_FAILED'});
   else response.end();
  }
 });}
@@ -59,6 +76,6 @@ export function createImageWebServer(){return createServer(async(request,respons
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  const server=createImageWebServer();
  server.on('error',error=>{console.error(error.message);process.exitCode=1;});
- server.listen(47603,'127.0.0.1',()=>console.log('Painter image page ready: http://127.0.0.1:47603/image · 示例材质表'));
+ server.listen(47603,'127.0.0.1',()=>console.log('Painter pages ready: http://127.0.0.1:47603/image · 示例材质表；http://127.0.0.1:47603/validate · 示例提议与环境'));
  for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>server.close(()=>process.exit()));
 }
