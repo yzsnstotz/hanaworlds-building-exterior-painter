@@ -6,7 +6,7 @@ Painter 同仓独立开发面板。经 HanaWorlds 的「插件」页 Add plugin 
 
 输入文件原始字节用标准 Base64 JSON 字段通过 Connection `/api/hanaworldsImageMaterialPanel/{sampleImage,sessionImage}` 传到 Host。SRC 自动解析 `session` 参数为官方 Session lookup；Host 使用 Painter 0.4.0 原方法，浏览器不计算颜色。无模型、无世界写入。沿用 Painter 的单帧 PNG/JPEG/WebP、32 MiB/16777216 像素限制。
 
-依赖的 Painter 0.4.0 tar 是同 origin 的冻结原实现，base commit `2aa55c7fe55d68b6ec839b3c6c0c9a204a8a3dab`。不修改或解锁安装器自带 Painter 包。
+依赖的 Painter 0.4.0 tar 由同 origin 源码用 `tools/repack-panel-painter.sh` 重新打包（F-PAINTER-CONTRACT-REPIN-01），合约改为依赖已发布的 hanaworlds-contracts v0.5.3（commit `3457493da209178f815d6950e323e1dc462e8d6c`），包内不再带 vendor 合约副本；取色与匹配算法未改。不修改或解锁安装器自带 Painter 包。
 
 安装时使用 `hanaworlds-painter-image-material-panel-0.1.2.tgz` 的绝对路径，不使用源码目录 link。公开 Host SDK peer 必须由包管理器解析：`@deepseek-ai/cordis@4.0.4`、`@deepseek-ai/dsh-typert-protocol@0.2.0-rc.2`；缺 peer 不能启用。
 
