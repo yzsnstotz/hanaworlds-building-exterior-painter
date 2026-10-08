@@ -4,10 +4,10 @@
 // same-named 0.5.3 candidate existed. `npm run verify:contracts -- --package <tgz>`
 // checks the lock revision and that the installed bytes equal the released pack.
 export const ADMITTED_CONTRACTS = Object.freeze({
-  name: 'hanaworlds-contracts', version: '0.5.3',
+  name: 'hanaworlds-contracts', version: '0.5.4-rc.1',
   origin: 'https://github.com/yzsnstotz/hanaworlds-contracts',
-  tag: 'v0.5.3', tagObject: 'b3983bc5cde7791266758842a017458386d14283',
-  revision: '3457493da209178f815d6950e323e1dc462e8d6c',
-  packageSha256: '7f2b088b300426ea2536e08904780dc5df94eaf5e341e83cbff0cc3a42362241',
+  tag: 'v0.5.4-rc.1', tagObject: 'f2600bd84bbc6b53ae9b52a0baadeb5c1c8336ef',
+  revision: '0beeff5774db476c0128683ca6107a28bdcdcbee',
+  packageSha256: '51902797a167a222d812c344871bb1c0774ae775fb0026d70381edd4c08f17ed',
   packageBytes: 146045, packageFiles: 25,
 });

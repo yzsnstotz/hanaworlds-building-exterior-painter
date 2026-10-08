@@ -44,7 +44,7 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
     "canonicalize": "5.1.0",
-    "hanaworlds-contracts": "github:yzsnstotz/hanaworlds-contracts#3457493da209178f815d6950e323e1dc462e8d6c",
+    "hanaworlds-contracts": "github:yzsnstotz/hanaworlds-contracts#0beeff5774db476c0128683ca6107a28bdcdcbee",
     "sharp": "0.35.3"
   }
 }
