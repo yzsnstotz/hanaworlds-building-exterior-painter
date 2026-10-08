@@ -4,7 +4,7 @@
 // dependency <spec>, drops the vendor copy and "vendor" from "files", and sets the
 // pinned version in tools/admitted-contracts.mjs. Only a released reference may be
 // committed; a candidate tarball spec (file:...) is for an uncommitted test copy only.
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const opt = name => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? process.argv[i + 1] : undefined; };
@@ -23,6 +23,8 @@ pkg.dependencies = Object.fromEntries(Object.entries({ ...pkg.dependencies, 'han
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
 rmSync(fileURLToPath(new URL('vendor/hanaworlds-contracts', root)), { recursive: true, force: true });
+const vendor = fileURLToPath(new URL('vendor', root));
+try { if (readdirSync(vendor).length === 0) rmSync(vendor, { recursive: true }); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 
 const admittedPath = new URL('tools/admitted-contracts.mjs', root), admitted = readFileSync(admittedPath, 'utf8');
 const pinned = admitted.replace(/version: '[^']*'/, `version: '${version}'`);
