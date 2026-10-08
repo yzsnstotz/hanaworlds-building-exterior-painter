@@ -3,7 +3,7 @@
 | Component | Version | License | Source | Use | Copied into this repo? |
 |---|---|---|---|---|---|
 | HanaWorlds Exterior Painter source (`src/`, `test/`, `tools/`) | 0.3.1 | MIT | this repository | plugin | original work |
-| hanaworlds-contracts | 0.5.3 @ 3457493d (tag v0.5.3) | MIT (own LICENSE/NOTICE preserved; canonicalize external Apache-2.0 dependency) | github.com/yzsnstotz/hanaworlds-contracts | root painter/v4, painter-region/v1, ReferenceBrief/v3, BUILD/V3, region-voxels/v1 validation, digests and ProtocolHandshake | no: external dependency pinned to the tag commit; released pack 7f2b088b checked byte-for-byte by verify:contracts |
+| hanaworlds-contracts | 0.5.4 @ 85687fc3 (tag v0.5.4) | MIT (own LICENSE/NOTICE preserved; canonicalize external Apache-2.0 dependency) | github.com/yzsnstotz/hanaworlds-contracts | root painter/v4, painter-region/v1, ReferenceBrief/v3, BUILD/V3, region-voxels/v1 validation, digests and ProtocolHandshake | no: external dependency pinned to the tag commit; released pack b920097d checked byte-for-byte by verify:contracts |
 | canonicalize | 5.1.0 | Apache-2.0 | npm / github.com/erdtman/canonicalize | JCS for replay identity | no (dependency) |
 | @deepseek-ai/schemastery | 3.18.2 | MIT | npm / github.com/deepseek-ai/deepseek-harness | visible DSH Config schema | no (dependency) |
 | @deepseek-ai/cosmokit | 1.8.5 | MIT | npm / deepseek-harness | transitive | no |

@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.4.0 · painter-region/v1 region proposals
+# HanaWorlds Building Exterior Painter 0.4.1 · painter-region/v1 region proposals
 
 The plugin implements `painter/v4.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
@@ -40,13 +40,13 @@ fixture gate does not prove that full Host integration.
 
 ## Pinned bytes and settings
 
-Contracts are the released hanaworlds-contracts v0.5.3 package, no vendor copy:
-dependency `github:yzsnstotz/hanaworlds-contracts#3457493da209178f815d6950e323e1dc462e8d6c` (tag v0.5.3,
-tag object b3983bc5), released pack SHA256 `7f2b088b300426ea2536e08904780dc5df94eaf5e341e83cbff0cc3a42362241`
-(146045 B, 25 files). Code, tests, fixtures and the dev page reach it only through
+Contracts are the released hanaworlds-contracts v0.5.4 package, no vendor copy:
+dependency `github:yzsnstotz/hanaworlds-contracts#85687fc3811e4c8ee6e69410d46d8026e19d2c75` (tag v0.5.4,
+tag object b3721db8), released pack SHA256 `b920097dee8bf57ef44cc9ca964829e568b14c9e1b15a77bf4599f69391062ec`
+(157837 B, 26 files). Code, tests, fixtures and the dev page reach it only through
 the package.json `#contracts` imports (`src/contract-package.mjs`); the identity
 lives in `tools/admitted-contracts.mjs`. Check: `npm run verify:contracts -- --package
-<hanaworlds-contracts-0.5.3.tgz>` (lock revision + byte equality). Repin:
+<hanaworlds-contracts-0.5.4.tgz>` (lock revision + byte equality). Repin:
 `node tools/repin-contracts.mjs --spec <spec#commit> --version <v> --sha256 <pack sha>`.
 Root API only; no `/v4` binding or prior wire compatibility.
 

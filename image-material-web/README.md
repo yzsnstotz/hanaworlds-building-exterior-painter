@@ -2,7 +2,7 @@
 
 入口：<http://127.0.0.1:47603/image>。
 
-这是 Painter 自带的开发服务。网页加载原 `image-material-panel/client.cjs`，仅把它的公开图片请求适配为本机 HTTP；服务端调用原 `engine.mjs` 和冻结的 Painter 0.4.0。原 App 面板保留，App 内整合不属于这个网页。
+这是 Painter 自带的开发服务。网页加载原 `image-material-panel/client.cjs`，仅把它的公开图片请求适配为本机 HTTP；服务端调用原 `engine.mjs` 和Painter 0.4.1（取色/匹配算法同 0.4.0）。原 App 面板保留，App 内整合不属于这个网页。
 
 此网页没有世界绑定，首屏与每个结果都明确标出「示例材质表」。图片原始字节通过 JSON Base64 交给本机 Node 服务取色；浏览器不计算主色，服务不调用模型或写入世界。当前世界分支留给后续公开宿主整合。
 

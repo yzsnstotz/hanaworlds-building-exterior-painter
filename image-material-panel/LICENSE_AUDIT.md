@@ -1,7 +1,7 @@
 # Panel license inventory
 
-- hanaworlds-painter-image-material-panel · 0.1.2 · MIT · this origin · development UI and Host adapter.
-- hanaworlds-building-exterior-painter · 0.4.0 · MIT · yzsnstotz/hanaworlds-building-exterior-painter, 2aa55c7fe55d68b6ec839b3c6c0c9a204a8a3dab · unchanged pixel decode and material matching; exact local tar in vendor. The tar includes its original LICENSE_AUDIT/NOTICE and contracts license inventory.
+- hanaworlds-painter-image-material-panel · 0.1.3 · MIT · this origin · development UI and Host adapter.
+- hanaworlds-building-exterior-painter · 0.4.1 · MIT · yzsnstotz/hanaworlds-building-exterior-painter, this branch repinned to hanaworlds-contracts v0.5.4 (85687fc3) · pixel decode and material matching unchanged since 0.4.0 (2aa55c7f); exact local tar in vendor. The tar includes its original LICENSE_AUDIT/NOTICE and contracts license inventory.
 - @deepseek-ai/dsh-typert-protocol · 0.2.0-rc.2 · MIT · official installed DeepSeek Harness · Host Remote service binding (peer provided by App).
 - React · App baseline ^18.2.0 · MIT · official dsh-client-ui-layout manifest · renderer baseline; no vendored React.
 - @deepseek-ai/cordis · 4.0.4 · MIT · official DeepSeek Harness/npm registry · required Host service framework peer.

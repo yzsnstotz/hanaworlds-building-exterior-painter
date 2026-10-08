@@ -45,7 +45,7 @@ assert.equal(sessionResult.ok,false);assert.equal(sessionResult.code,'IMAGE_DECO
 const sessionBytes=await sharp(Buffer.from([141,94,83,255,141,94,83,255]),{raw:{width:2,height:1,channels:4}}).png().toBuffer();
 const sessionImage=await gateway.invoke({namespace:panel.SERVICE,method:'sessionImage',args:{sessionId:session.id,imageBase64:sessionBytes.toString('base64')},peer});
 assert.deepEqual(sessionImage,rows[0].output);
-const receipt={evidence:'SOURCE/FIXTURE_PUBLIC_CORDIS_GATEWAY',productProfileTouched:false,realUi:'NOT_RUN',stage,peer:'FIXTURE in-process caller',session:'FIXTURE lookup/unbound Host state',panelVersion:'0.1.2',methods:remoteMethods(service),rows,nonImage,sessionResult,sessionImage,modelCalls:0,worldWrites:0};
+const receipt={evidence:'SOURCE/FIXTURE_PUBLIC_CORDIS_GATEWAY',productProfileTouched:false,realUi:'NOT_RUN',stage,peer:'FIXTURE in-process caller',session:'FIXTURE lookup/unbound Host state',panelVersion:'0.1.3',methods:remoteMethods(service),rows,nonImage,sessionResult,sessionImage,modelCalls:0,worldWrites:0};
 writeFileSync(receiptPath,JSON.stringify(receipt,null,2)+'\n');
 console.log(JSON.stringify({panelVersion:receipt.panelVersion,methods:receipt.methods.map(x=>x.method),differentMaterials:rows.slice(0,3).map(x=>x.output.material.nodeName),repeatEqual:true,nonImage:nonImage.code,sessionLookup:sessionResult.code,realUi:receipt.realUi,receiptPath}));
 await fiber.dispose();

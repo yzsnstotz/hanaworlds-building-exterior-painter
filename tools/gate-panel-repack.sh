@@ -25,7 +25,7 @@ git -C "$src" archive "$commit" | tar -x -C "$run/after"
 (cd "$run/before" && node tools/panel-engine-receipt.mjs image-material-panel/engine.mjs "$ev/engine-before.json" > "$ev/engine-before.log" 2>&1); note engine-before $?
 
 cd "$run/after"
-node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" --tag "$tag" --tag-object "$tagObject" > "$ev/repin.log" 2>&1; note repin $?
+node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" --tag "$tag" --tag-object "$tagObject" --package "$tarball" > "$ev/repin.log" 2>&1; note repin $?
 npm install "${c[@]}" > "$ev/install.log" 2>&1; note install $?
 tools/repack-panel-painter.sh "$run/pack" "$cache" > "$ev/repack.json" 2> "$ev/repack.err"; note repack $?
 (cd image-material-web && npm ci "${c[@]}" > "$ev/web-ci.log" 2>&1); note web-ci $?

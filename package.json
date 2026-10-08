@@ -1,6 +1,6 @@
 {
   "name": "hanaworlds-building-exterior-painter",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -44,7 +44,7 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
     "canonicalize": "5.1.0",
-    "hanaworlds-contracts": "github:yzsnstotz/hanaworlds-contracts#3457493da209178f815d6950e323e1dc462e8d6c",
+    "hanaworlds-contracts": "github:yzsnstotz/hanaworlds-contracts#85687fc3811e4c8ee6e69410d46d8026e19d2c75",
     "sharp": "0.35.3"
   }
 }

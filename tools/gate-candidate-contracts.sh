@@ -17,7 +17,7 @@ got_sha=$(shasum -a 256 "$tarball" | cut -d' ' -f1)
 [ "$got_sha" = "$want_sha" ] || { echo "tarball sha $got_sha != $want_sha"; exit 2; }
 git -C "$src" archive "$commit" | tar -x -C "$run/copy"
 cd "$run/copy"
-node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" --tag "$tag" --tag-object "$tagObject" > "$ev/repin.log" 2>&1; echo "repin=$?" >> "$ev/exit.txt"
+node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" --tag "$tag" --tag-object "$tagObject" --package "$tarball" > "$ev/repin.log" 2>&1; echo "repin=$?" >> "$ev/exit.txt"
 npm install --cache "$cache" --no-audit --no-fund > "$ev/install.log" 2>&1; echo "install=$?" >> "$ev/exit.txt"
 for s in build test test:region test:image-material test:material-sources; do
   npm run -s "$s" > "$ev/$s.log" 2>&1; echo "$s=$?" >> "$ev/exit.txt"
