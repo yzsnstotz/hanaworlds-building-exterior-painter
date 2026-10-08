@@ -9,8 +9,9 @@
 set -u
 commit=${1:?commit}; tarball=${2:?released tarball}; want_sha=${3:?sha256}; before=${4:?before commit}; other=${5:?other tarball}; run=${6:?run dir}
 src=$(cd "$(dirname "$0")/.." && pwd)
-rm -rf "$run"; mkdir -p "$run/evidence" "$run/copy" "$run/before" "$run/pack" "$run/consumer" "$run/panel-consumer" "$run/npm-cache"
-ev=$run/evidence; c=(--cache "$run/npm-cache" --no-audit --no-fund)
+cache=${HANAWORLDS_NPM_CACHE:-$HOME/.cache/hanaworlds-deps/npm}  # shared dependency cache (WORKER §3)
+rm -rf "$run"; mkdir -p "$run/evidence" "$run/copy" "$run/before" "$run/pack" "$run/consumer" "$run/panel-consumer"
+ev=$run/evidence; c=(--cache "$cache" --no-audit --no-fund)
 note() { echo "$1=$2" >> "$ev/exit.txt"; }
 got_sha=$(shasum -a 256 "$tarball" | cut -d' ' -f1)
 [ "$got_sha" = "$want_sha" ] || { echo "tarball sha $got_sha != $want_sha"; exit 2; }

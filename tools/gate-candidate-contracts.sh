@@ -2,32 +2,36 @@
 # Candidate contracts gate (test environment only; nothing here is committed):
 # archive <commit> -> repin the copy to <tarball> -> install -> build, suites,
 # verify:contracts --package -> pack/install Painter -> installed-package suites.
-#   tools/gate-candidate-contracts.sh <commit> <contracts.tgz> <sha256> <version> <run-dir>
+#   tools/gate-candidate-contracts.sh <commit> <contracts.tgz> <sha256> <version> <run-dir> [spec]
+# [spec] is the dependency to pin (default file:<contracts.tgz>); give the candidate's
+# exact github:...#<commit> so the lock revision is checked, not only the version string.
+# The pin always records <sha256>, so verify:contracts requires that exact pack.
 # <run-dir> is wiped first; keep earlier evidence elsewhere.
 set -u
-commit=${1:?commit}; tarball=${2:?contracts tarball}; want_sha=${3:?sha256}; version=${4:?version}; run=${5:?run dir}
+commit=${1:?commit}; tarball=${2:?contracts tarball}; want_sha=${3:?sha256}; version=${4:?version}; run=${5:?run dir}; spec=${6:-file:$tarball}
 src=$(cd "$(dirname "$0")/.." && pwd)
-rm -rf "$run"; mkdir -p "$run/evidence" "$run/copy" "$run/consumer" "$run/npm-cache"
+cache=${HANAWORLDS_NPM_CACHE:-$HOME/.cache/hanaworlds-deps/npm}  # shared dependency cache (WORKER §3)
+rm -rf "$run"; mkdir -p "$run/evidence" "$run/copy" "$run/consumer"
 ev=$run/evidence
 got_sha=$(shasum -a 256 "$tarball" | cut -d' ' -f1)
 [ "$got_sha" = "$want_sha" ] || { echo "tarball sha $got_sha != $want_sha"; exit 2; }
 git -C "$src" archive "$commit" | tar -x -C "$run/copy"
 cd "$run/copy"
-node tools/repin-contracts.mjs --spec "file:$tarball" --version "$version" > "$ev/repin.log" 2>&1; echo "repin=$?" >> "$ev/exit.txt"
-npm install --cache "$run/npm-cache" --no-audit --no-fund > "$ev/install.log" 2>&1; echo "install=$?" >> "$ev/exit.txt"
+node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" > "$ev/repin.log" 2>&1; echo "repin=$?" >> "$ev/exit.txt"
+npm install --cache "$cache" --no-audit --no-fund > "$ev/install.log" 2>&1; echo "install=$?" >> "$ev/exit.txt"
 for s in build test test:region test:image-material test:material-sources; do
   npm run -s "$s" > "$ev/$s.log" 2>&1; echo "$s=$?" >> "$ev/exit.txt"
 done
 node tools/verify-contracts.mjs --package "$tarball" > "$ev/verify-contracts.json" 2>&1; echo "verify:contracts=$?" >> "$ev/exit.txt"
 for d in image-material-panel image-material-web; do
-  (cd "$d" && npm ci --cache "$run/npm-cache" --no-audit --no-fund > "$ev/install-$d.log" 2>&1); echo "install-$d=$?" >> "$ev/exit.txt"
+  (cd "$d" && npm ci --cache "$cache" --no-audit --no-fund > "$ev/install-$d.log" 2>&1); echo "install-$d=$?" >> "$ev/exit.txt"
 done
 node --test test/validate-web.test.mjs test/image-web.test.mjs > "$ev/web.log" 2>&1; echo "web=$?" >> "$ev/exit.txt"
 node tools/web-paths-check.mjs "$ev/web-paths.json" > "$ev/web-paths.log" 2>&1; echo "web-paths=$?" >> "$ev/exit.txt"
-npm pack --cache "$run/npm-cache" --pack-destination "$run" > "$ev/pack.log" 2>&1; echo "pack=$?" >> "$ev/exit.txt"
+npm pack --cache "$cache" --pack-destination "$run" > "$ev/pack.log" 2>&1; echo "pack=$?" >> "$ev/exit.txt"
 packed=$(ls "$run"/hanaworlds-building-exterior-painter-*.tgz)
 (cd "$run/consumer" && echo '{"name":"painter-gate-consumer","private":true}' > package.json \
-  && npm install --cache "$run/npm-cache" --no-audit --no-fund "$packed" > "$ev/packed-install.log" 2>&1); echo "packed-install=$?" >> "$ev/exit.txt"
+  && npm install --cache "$cache" --no-audit --no-fund "$packed" > "$ev/packed-install.log" 2>&1); echo "packed-install=$?" >> "$ev/exit.txt"
 installed=$run/consumer/node_modules/hanaworlds-building-exterior-painter
 for t in local-world region-v1; do
   PAINTER_TEST_PACKAGE=$installed node --test "test/$t.test.mjs" > "$ev/packed-$t.log" 2>&1; echo "packed-$t=$?" >> "$ev/exit.txt"
