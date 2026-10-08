@@ -23,6 +23,7 @@ for d in image-material-panel image-material-web; do
   (cd "$d" && npm ci --cache "$run/npm-cache" --no-audit --no-fund > "$ev/install-$d.log" 2>&1); echo "install-$d=$?" >> "$ev/exit.txt"
 done
 node --test test/validate-web.test.mjs test/image-web.test.mjs > "$ev/web.log" 2>&1; echo "web=$?" >> "$ev/exit.txt"
+node tools/web-paths-check.mjs "$ev/web-paths.json" > "$ev/web-paths.log" 2>&1; echo "web-paths=$?" >> "$ev/exit.txt"
 npm pack --cache "$run/npm-cache" --pack-destination "$run" > "$ev/pack.log" 2>&1; echo "pack=$?" >> "$ev/exit.txt"
 packed=$(ls "$run"/hanaworlds-building-exterior-painter-*.tgz)
 (cd "$run/consumer" && echo '{"name":"painter-gate-consumer","private":true}' > package.json \
