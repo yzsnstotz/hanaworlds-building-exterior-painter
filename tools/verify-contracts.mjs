@@ -4,16 +4,20 @@
 //   node tools/verify-contracts.mjs --package <tgz>    also byte-compare with a package tarball
 // Identity: resolved package.json name/version == tools/admitted-contracts.mjs,
 // the advertised ContractHandshake names that exact package, and the Painter
-// service advertises the contracts handshake unchanged. With --package, every
-// file of the tarball's package/ is present with identical bytes in the resolved
-// package directory and no other file is (a vendor copy may add only VENDOR.json).
+// service advertises the contracts handshake unchanged. When the pin records a
+// released revision, the package.json dependency and the package-lock both name
+// that exact commit (a source checkout; an installed Painter has no lock). With
+// --package, the tarball is the admitted released pack (sha256) and every file of
+// its package/ is present with identical bytes in the resolved package directory
+// and no other file is (a vendor copy may add only VENDOR.json).
 // Prints one JSON receipt; exit 0 only when every check holds.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { contracts, contractPackage, contractPackageDir } from '../src/contract-package.mjs';
 import { ExteriorPainterV2 } from '../src/index.mjs';
 import { ADMITTED_CONTRACTS } from './admitted-contracts.mjs';
@@ -35,10 +39,20 @@ const check = (name, fn) => { try { fn(); receipt.checks[name] = 'PASS'; } catch
 check('resolved package is the pinned name/version', () => assert.equal(receipt.resolved, expected));
 check('contracts handshake names the pinned package', () => assert.equal(receipt.handshake, expected));
 check('Painter advertises the contracts handshake unchanged', () => assert.deepEqual(advertised, contracts.contractHandshake));
+const rev = ADMITTED_CONTRACTS.revision, root = fileURLToPath(new URL('..', import.meta.url));
+if (rev && existsSync(join(root, 'package-lock.json'))) {
+  const own = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  const locked = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8')).packages['node_modules/hanaworlds-contracts'];
+  receipt.revision = { admitted: rev, tag: ADMITTED_CONTRACTS.tag, dependency: own.dependencies?.[ADMITTED_CONTRACTS.name] ?? null, lockResolved: locked?.resolved ?? null };
+  check('package.json dependency pins the released revision', () => assert.ok(receipt.revision.dependency?.endsWith(`#${rev}`), receipt.revision.dependency));
+  check('package-lock resolves the released revision', () => assert.ok(receipt.revision.lockResolved?.endsWith(`#${rev}`), receipt.revision.lockResolved));
+}
 
 if (tarball) {
   const bytes = readFileSync(tarball);
   receipt.package = { path: tarball, bytes: statSync(tarball).size, sha256: sha(bytes) };
+  if (ADMITTED_CONTRACTS.packageSha256)
+    check('tarball is the admitted released pack', () => assert.equal(receipt.package.sha256, ADMITTED_CONTRACTS.packageSha256));
   const unpacked = mkdtempSync(join(tmpdir(), 'painter-verify-contracts-'));
   try {
     execFileSync('tar', ['-xzf', tarball, '-C', unpacked]);

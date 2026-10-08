@@ -16,13 +16,12 @@
     ".": "./src/index.mjs"
   },
   "imports": {
-    "#contracts": "./vendor/hanaworlds-contracts/dist/local/index.mjs",
-    "#contracts/fixtures/*": "./vendor/hanaworlds-contracts/fixtures/local/*.json",
-    "#contracts/package.json": "./vendor/hanaworlds-contracts/package.json"
+    "#contracts": "hanaworlds-contracts",
+    "#contracts/fixtures/*": "hanaworlds-contracts/fixtures/*",
+    "#contracts/package.json": "hanaworlds-contracts/package.json"
   },
   "files": [
     "src",
-    "vendor",
     "cordis.patch.yml",
     "GADGET.md",
     "LICENSE_AUDIT.md",
@@ -45,6 +44,7 @@
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
     "canonicalize": "5.1.0",
+    "hanaworlds-contracts": "github:yzsnstotz/hanaworlds-contracts#3457493da209178f815d6950e323e1dc462e8d6c",
     "sharp": "0.35.3"
   }
 }

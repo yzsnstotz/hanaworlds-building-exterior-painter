@@ -40,12 +40,15 @@ fixture gate does not prove that full Host integration.
 
 ## Pinned bytes and settings
 
-The whole published 24-file contracts0.5.0 package (c006a839, tar 7fb42f1e) is vendored unmodified:
-source `aad7c0ea2a4a9a93dfb13555c46cd98b9b5da777`, npm tar SHA256
-`c3528a4fc3f0cdf94245c4d2d8b1cfa5d28db96d1cd00ae74737bdbdfcd26ec6`.
-Root API only; no `/v4` binding or prior wire compatibility. Regenerate/check:
-`node tools/vendor-contracts.mjs [--check] --package <hanaworlds-contracts-0.5.0.tgz>`.
-VENDOR.json records per-file SHA256. Never edit generated vendor bytes.
+Contracts are the released hanaworlds-contracts v0.5.3 package, no vendor copy:
+dependency `github:yzsnstotz/hanaworlds-contracts#3457493da209178f815d6950e323e1dc462e8d6c` (tag v0.5.3,
+tag object b3983bc5), released pack SHA256 `7f2b088b300426ea2536e08904780dc5df94eaf5e341e83cbff0cc3a42362241`
+(146045 B, 25 files). Code, tests, fixtures and the dev page reach it only through
+the package.json `#contracts` imports (`src/contract-package.mjs`); the identity
+lives in `tools/admitted-contracts.mjs`. Check: `npm run verify:contracts -- --package
+<hanaworlds-contracts-0.5.3.tgz>` (lock revision + byte equality). Repin:
+`node tools/repin-contracts.mjs --spec <spec#commit> --version <v> --sha256 <pack sha>`.
+Root API only; no `/v4` binding or prior wire compatibility.
 
 Config/describe retain modelProvider `openai-codex`, modelId `gpt-5.6-luna` and
 read-only geometry invariants. Only the image path uses that route; image+text
