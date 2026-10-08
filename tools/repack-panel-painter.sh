@@ -21,7 +21,11 @@ j.dependencies["hanaworlds-building-exterior-painter"]="file:vendor/"+process.ar
 fs.writeFileSync(p,JSON.stringify(j,null,2)+"\n");' "$name"
 # Same name/version as before: install by explicit file spec so the lockfile takes the
 # new integrity (a lock-driven install would serve the old bytes from the npm cache).
+# npm install also rewrites package.json (adds a duplicate bundleDependencies key);
+# keep the panel manifest exactly as written above, only the lock follows npm.
+cp image-material-panel/package.json "$pack/panel-package.json"
 (cd image-material-panel && npm install "${cacheArg[@]}" --no-audit --no-fund "file:vendor/$name" >/dev/null)
+cp "$pack/panel-package.json" image-material-panel/package.json
 node -e '
 const fs=require("fs"),crypto=require("crypto"),[tar]=process.argv.slice(1);
 const want="sha512-"+crypto.createHash("sha512").update(fs.readFileSync(tar)).digest("base64");
