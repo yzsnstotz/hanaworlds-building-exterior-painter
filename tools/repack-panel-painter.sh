@@ -19,5 +19,14 @@ node -e '
 const fs=require("fs"),p="image-material-panel/package.json",j=JSON.parse(fs.readFileSync(p,"utf8"));
 j.dependencies["hanaworlds-building-exterior-painter"]="file:vendor/"+process.argv[1];
 fs.writeFileSync(p,JSON.stringify(j,null,2)+"\n");' "$name"
-(cd image-material-panel && npm install "${cacheArg[@]}" --no-audit --no-fund >/dev/null)
+# Same name/version as before: install by explicit file spec so the lockfile takes the
+# new integrity (a lock-driven install would serve the old bytes from the npm cache).
+(cd image-material-panel && npm install "${cacheArg[@]}" --no-audit --no-fund "file:vendor/$name" >/dev/null)
+node -e '
+const fs=require("fs"),crypto=require("crypto"),[tar]=process.argv.slice(1);
+const want="sha512-"+crypto.createHash("sha512").update(fs.readFileSync(tar)).digest("base64");
+const lock=JSON.parse(fs.readFileSync("image-material-panel/package-lock.json","utf8"));
+const got=lock.packages["node_modules/hanaworlds-building-exterior-painter"].integrity;
+if(got!==want){console.error("panel lock integrity "+got+" != new tar "+want);process.exit(4);}
+if(fs.existsSync("image-material-panel/node_modules/hanaworlds-building-exterior-painter/vendor")){console.error("installed Painter still has vendor/");process.exit(5);}' "image-material-panel/vendor/$name"
 echo "{\"painterTar\":\"image-material-panel/vendor/$name\",\"sha256\":\"$(shasum -a 256 "image-material-panel/vendor/$name" | cut -d' ' -f1)\"}"
