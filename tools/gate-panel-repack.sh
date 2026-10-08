@@ -4,13 +4,13 @@
 # repinned to <tarball> and the panel's bundled Painter repacked -> panel/web
 # tests, no contracts vendor copy anywhere, engine outputs equal before/after,
 # then the repacked panel is itself packed, installed and compared again.
-#   tools/gate-panel-repack.sh <commit> <contracts.tgz> <sha256> <version> <run-dir> [spec]
+#   tools/gate-panel-repack.sh <commit> <contracts.tgz> <sha256> <version> <run-dir> [spec] [tag] [tag-object]
 # [spec] is the dependency to pin (default file:<contracts.tgz>); give the candidate's
 # exact github:...#<commit> so the lock revision is checked, not only the version string.
 # The pin always records <sha256>, so verify:contracts requires that exact pack.
 # <run-dir> is wiped first; keep earlier evidence elsewhere.
 set -u
-commit=${1:?commit}; tarball=${2:?contracts tarball}; want_sha=${3:?sha256}; version=${4:?version}; run=${5:?run dir}; spec=${6:-file:$tarball}
+commit=${1:?commit}; tarball=${2:?contracts tarball}; want_sha=${3:?sha256}; version=${4:?version}; run=${5:?run dir}; spec=${6:-file:$tarball}; tag=${7:-}; tagObject=${8:-}
 src=$(cd "$(dirname "$0")/.." && pwd)
 cache=${HANAWORLDS_NPM_CACHE:-$HOME/.cache/hanaworlds-deps/npm}  # shared dependency cache (WORKER §3)
 rm -rf "$run"; mkdir -p "$run/evidence" "$run/before" "$run/after" "$run/pack" "$run/consumer"
@@ -25,7 +25,7 @@ git -C "$src" archive "$commit" | tar -x -C "$run/after"
 (cd "$run/before" && node tools/panel-engine-receipt.mjs image-material-panel/engine.mjs "$ev/engine-before.json" > "$ev/engine-before.log" 2>&1); note engine-before $?
 
 cd "$run/after"
-node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" > "$ev/repin.log" 2>&1; note repin $?
+node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" --tag "$tag" --tag-object "$tagObject" > "$ev/repin.log" 2>&1; note repin $?
 npm install "${c[@]}" > "$ev/install.log" 2>&1; note install $?
 tools/repack-panel-painter.sh "$run/pack" "$cache" > "$ev/repack.json" 2> "$ev/repack.err"; note repack $?
 (cd image-material-web && npm ci "${c[@]}" > "$ev/web-ci.log" 2>&1); note web-ci $?

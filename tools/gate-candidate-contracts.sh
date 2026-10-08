@@ -2,13 +2,13 @@
 # Candidate contracts gate (test environment only; nothing here is committed):
 # archive <commit> -> repin the copy to <tarball> -> install -> build, suites,
 # verify:contracts --package -> pack/install Painter -> installed-package suites.
-#   tools/gate-candidate-contracts.sh <commit> <contracts.tgz> <sha256> <version> <run-dir> [spec]
+#   tools/gate-candidate-contracts.sh <commit> <contracts.tgz> <sha256> <version> <run-dir> [spec] [tag] [tag-object]
 # [spec] is the dependency to pin (default file:<contracts.tgz>); give the candidate's
 # exact github:...#<commit> so the lock revision is checked, not only the version string.
 # The pin always records <sha256>, so verify:contracts requires that exact pack.
 # <run-dir> is wiped first; keep earlier evidence elsewhere.
 set -u
-commit=${1:?commit}; tarball=${2:?contracts tarball}; want_sha=${3:?sha256}; version=${4:?version}; run=${5:?run dir}; spec=${6:-file:$tarball}
+commit=${1:?commit}; tarball=${2:?contracts tarball}; want_sha=${3:?sha256}; version=${4:?version}; run=${5:?run dir}; spec=${6:-file:$tarball}; tag=${7:-}; tagObject=${8:-}
 src=$(cd "$(dirname "$0")/.." && pwd)
 cache=${HANAWORLDS_NPM_CACHE:-$HOME/.cache/hanaworlds-deps/npm}  # shared dependency cache (WORKER §3)
 rm -rf "$run"; mkdir -p "$run/evidence" "$run/copy" "$run/consumer"
@@ -17,7 +17,7 @@ got_sha=$(shasum -a 256 "$tarball" | cut -d' ' -f1)
 [ "$got_sha" = "$want_sha" ] || { echo "tarball sha $got_sha != $want_sha"; exit 2; }
 git -C "$src" archive "$commit" | tar -x -C "$run/copy"
 cd "$run/copy"
-node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" > "$ev/repin.log" 2>&1; echo "repin=$?" >> "$ev/exit.txt"
+node tools/repin-contracts.mjs --spec "$spec" --version "$version" --sha256 "$want_sha" --tag "$tag" --tag-object "$tagObject" > "$ev/repin.log" 2>&1; echo "repin=$?" >> "$ev/exit.txt"
 npm install --cache "$cache" --no-audit --no-fund > "$ev/install.log" 2>&1; echo "install=$?" >> "$ev/exit.txt"
 for s in build test test:region test:image-material test:material-sources; do
   npm run -s "$s" > "$ev/$s.log" 2>&1; echo "$s=$?" >> "$ev/exit.txt"
