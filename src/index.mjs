@@ -4,7 +4,7 @@ import Schema from '@deepseek-ai/schemastery';
 import { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
 
 export { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
-/** ContractHandshake this image provider advertises: exactly contracts@0.5.0. */
+/** ContractHandshake this image provider advertises: exactly the pinned contracts package (tools/admitted-contracts.mjs). */
 export { contractHandshake } from '#contracts';
 export { PROPOSAL_OPERATION } from './proposal.mjs';
 export { REGION_PROPOSAL_TOOL, REGION_OPERATION, REGION_WIRE, REGION_CAPABILITY, admitRegionProposal,

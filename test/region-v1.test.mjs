@@ -1,18 +1,17 @@
-// Actual source/installed Painter, painter-region/v1 from the vendored real
-// hanaworlds-contracts@0.5.0. FIXTURE boundary: the contract's published
+// Actual source/installed Painter, painter-region/v1 from the pinned real
+// hanaworlds-contracts package (src/contract-package.mjs). FIXTURE boundary: the contract's published
 // region scenario (Session/world/brief/catalogue) and the Host business port.
 // No world, Canvas, Adapter, Brush, model or attachment is reached.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.env.PAINTER_TEST_PACKAGE ?? resolve(new URL('..', import.meta.url).pathname);
-const api = await import(pathToFileURL(resolve(root, 'vendor/hanaworlds-contracts/dist/local/index.mjs')));
+const { contracts: api, contractFixture } = await import(pathToFileURL(resolve(root, 'src/contract-package.mjs')));
 const Painter = await import(pathToFileURL(resolve(root, 'src/index.mjs')));
 const { ExteriorPainterV2 } = Painter;
-const region = JSON.parse(readFileSync(resolve(root, 'vendor/hanaworlds-contracts/fixtures/local/region.json')));
-const main = JSON.parse(readFileSync(resolve(root, 'vendor/hanaworlds-contracts/fixtures/local/main.json')));
+const region = contractFixture('region');
+const main = contractFixture('main');
 const op = 'ValidateRegionProposal';
 const CAP = 'painter-region/v1:validate-region-proposal';
 const clone = structuredClone;

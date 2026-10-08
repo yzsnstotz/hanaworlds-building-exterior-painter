@@ -1,12 +1,13 @@
 // Authored public peer facts, never product-game evidence.
 import sharp from 'sharp';
-import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 export const root=process.env.PAINTER_TEST_PACKAGE??resolve(new URL('..',import.meta.url).pathname);
-export const contracts=await import(pathToFileURL(resolve(root,'vendor/hanaworlds-contracts/dist/local/index.mjs')));
-export const fixture=JSON.parse(readFileSync(resolve(root,'vendor/hanaworlds-contracts/fixtures/local/main.json')));
+const pinned=await import(pathToFileURL(resolve(root,'src/contract-package.mjs')));
+export const contracts=pinned.contracts;
+export const contractPackage=pinned.contractPackage;
+export const fixture=pinned.contractFixture('main');
 export const connection={worldRef:'fixture-world',connectionRef:'local-connection',connectionIncarnationRef:'socket-open-1'};
 export const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function pixels(rgb=[255,0,0]) {

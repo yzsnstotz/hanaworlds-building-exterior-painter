@@ -1,8 +1,9 @@
 import sharp from 'sharp';
-import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
 const root=process.env.PAINTER_TEST_PACKAGE??resolve(new URL('..',import.meta.url).pathname);
-export const base=JSON.parse(readFileSync(resolve(root,'vendor/hanaworlds-contracts/fixtures/local/main.json'))).request.catalogue;
+const {contractFixture}=await import(pathToFileURL(resolve(root,'src/contract-package.mjs')));
+export const base=contractFixture('main').request.catalogue;
 export function catalogueFixture(){return {...base,nodes:{
  'mcl_colorblocks:concrete_red':structuredClone(base.nodes['fixture:stone']),
  'mcl_colorblocks:concrete_blue':structuredClone(base.nodes['fixture:stone']),

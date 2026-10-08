@@ -1,13 +1,12 @@
 // Actual source/installed Painter, public contract fixture and external business port.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const root = process.env.PAINTER_TEST_PACKAGE ?? resolve(new URL('..', import.meta.url).pathname);
-const api = await import(pathToFileURL(resolve(root, 'vendor/hanaworlds-contracts/dist/local/index.mjs')));
+const { contracts: api, contractFixture } = await import(pathToFileURL(resolve(root, 'src/contract-package.mjs')));
 const { ExteriorPainterV2, DEFAULT_ROUTE } = await import(pathToFileURL(resolve(root, 'src/index.mjs')));
-const fixture = JSON.parse(readFileSync(resolve(root, 'vendor/hanaworlds-contracts/fixtures/local/main.json')));
+const fixture = contractFixture('main');
 const op = 'ValidateBuildProposal';
 const clone = structuredClone;
 function setup(change) {

@@ -77,12 +77,12 @@ export class ExteriorPainterV2 {
     this.regions = new RegionProposalValidator(() => this.localFacts);
     this.receipts = new Map(); // invocation receipts only; no world or Session state
     // ContractHandshake advertised before any request (CONTRACT_RULES "Compatibility
-    // (rc.7)"): exactly the vendored admitted contracts@0.5.0 advertisement, never
+    // (rc.7)"): exactly the pinned admitted contracts advertisement, never
     // a painter-synthesized set. Consumers check it with checkContractHandshake.
     Object.defineProperty(this, 'contractHandshake', { value: contractHandshake, enumerable: true });
   }
 
-  /** The ContractHandshake this image provider advertises (contracts@0.5.0). */
+  /** The ContractHandshake this image provider advertises (pinned contracts package). */
   handshake() { return contractHandshake; }
   matchImageMaterials(input) { return matchImageMaterials(input); }
   matchCurrentImageMaterials(input) { return matchCurrentImageMaterials(input); }

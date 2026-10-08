@@ -1,11 +1,11 @@
 // Proposal validation for the local development page. Every sample and the
 // whole environment (world, session, connection, Catalogue, host facts) is the
-// vendored public contracts fixture; nothing here is a real world or model output.
+// pinned public contracts fixture; nothing here is a real world or model output.
 // Validation itself is Painter's unchanged public ValidateBuildProposal entry.
-import {readFileSync} from 'node:fs';
 import {ExteriorPainterV2, PROPOSAL_OPERATION} from '../src/index.mjs';
+import {contractFixture} from '../src/contract-package.mjs';
 
-const fixture=JSON.parse(readFileSync(new URL('../vendor/hanaworlds-contracts/fixtures/local/main.json',import.meta.url)));
+const fixture=contractFixture('main');
 const clone=structuredClone;
 const derive=change=>()=>{const request=clone(fixture.request);change(request);return request;};
 

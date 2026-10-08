@@ -16,7 +16,9 @@
     ".": "./src/index.mjs"
   },
   "imports": {
-    "#contracts": "./vendor/hanaworlds-contracts/dist/local/index.mjs"
+    "#contracts": "./vendor/hanaworlds-contracts/dist/local/index.mjs",
+    "#contracts/fixtures/*": "./vendor/hanaworlds-contracts/fixtures/local/*.json",
+    "#contracts/package.json": "./vendor/hanaworlds-contracts/package.json"
   },
   "files": [
     "src",
@@ -32,12 +34,13 @@
     }
   },
   "scripts": {
-    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs && node --check src/image-material.mjs && node --check src/pixels.mjs && node --check src/colour.mjs && node --check src/current-image-material.mjs && node --check src/region.mjs && node --check src/region-proposal.mjs",
+    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs && node --check src/image-material.mjs && node --check src/pixels.mjs && node --check src/colour.mjs && node --check src/current-image-material.mjs && node --check src/region.mjs && node --check src/region-proposal.mjs && node --check src/contract-package.mjs",
     "test": "node --test test/local-world.test.mjs",
     "test:local-world": "node --test test/local-world.test.mjs",
     "test:image-material": "node --test test/image-material.test.mjs",
     "test:material-sources": "node --test test/material-sources.test.mjs",
-    "test:region": "node --test test/region-v1.test.mjs"
+    "test:region": "node --test test/region-v1.test.mjs",
+    "verify:contracts": "node tools/verify-contracts.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",

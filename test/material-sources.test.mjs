@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {root,contracts,fixture,pixels,makeFacts,hash} from './material-sources-fixtures.mjs';
+import {root,contracts,contractPackage,fixture,pixels,makeFacts,hash} from './material-sources-fixtures.mjs';
+import {ADMITTED_CONTRACTS} from '../tools/admitted-contracts.mjs';
 const api=await import(pathToFileURL(resolve(root,'src/index.mjs')));
 const forbidden=new Proxy({}, {get(){throw new Error('pure consumer accessed an external port');}});
 function painter(){return new api.ExteriorPainterV2({llm:forbidden,attachments:forbidden,localFacts:forbidden});}
@@ -76,9 +77,9 @@ test('actual preserved texture bytes are measured under explicit public fixture 
  assert.equal(r.material.nodeName,'base:actual-texture-fixture');assert.equal(r.match.texture.bytesDigest,hash(imageBytes));
  assert.ok(r.match.rgb.every(c=>c>0&&c<255));assert.ok(!Object.hasOwn(r,'palette'));
 });
-test('exact vendored 0.5.0 handshake and media-bearing proposal contract are available',async()=>{
+test('exact pinned contracts handshake and media-bearing proposal contract are available',async()=>{
  assert.equal(typeof painter().matchCurrentImageMaterials,'function');
- assert.equal(api.contractHandshake.contracts,'hanaworlds-contracts@0.5.0');
+ assert.equal(api.contractHandshake.contracts,`${ADMITTED_CONTRACTS.name}@${ADMITTED_CONTRACTS.version}`);
  const bytes=await pixels(),context=structuredClone(fixture.facts.sourceContext);
  context.referenceBrief.media=[{attachmentRef:'fixture-current-image',storedBytesDigest:hash(bytes),
   projectionVariantId:null,projectionBytesDigest:null,mediaType:'image/png',bytes:bytes.length,width:2,height:1}];
@@ -86,5 +87,5 @@ test('exact vendored 0.5.0 handshake and media-bearing proposal contract are ava
  context.intent.referenceBriefDigest=context.referenceBriefDigest;
  context.intentDigest=contracts.digestValue('intent',context.intent).sha256;
  assert.equal(contracts.validateType('BuildProposalContext',context).referenceBrief.media.length,1);
- assert.equal(JSON.parse(readFileSync(resolve(root,'vendor/hanaworlds-contracts/package.json'))).version,'0.5.0');
+ assert.equal(contractPackage().version,ADMITTED_CONTRACTS.version);
 });
