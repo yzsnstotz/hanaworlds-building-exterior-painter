@@ -33,8 +33,10 @@ function readBody(request){return new Promise((accept,reject)=>{
 export function createImageWebServer(){return createServer(async(request,response)=>{
  try{
   const expectedHost=`127.0.0.1:${request.socket.localPort}`;
-  if(request.headers.host!==expectedHost)return json(response,403,{ok:false,code:'LOCAL_HOST_REQUIRED'});
-  if(request.headers.origin&&request.headers.origin!==`http://${expectedHost}`)return json(response,403,{ok:false,code:'SAME_ORIGIN_REQUIRED'});
+  // 127.0.0.1 and localhost both name this machine; anything else is refused (DNS rebinding).
+  const okHosts=[expectedHost,`localhost:${request.socket.localPort}`];
+  if(!okHosts.includes(request.headers.host))return json(response,403,{ok:false,code:'LOCAL_HOST_REQUIRED'});
+  if(request.headers.origin&&!okHosts.map(h=>`http://${h}`).includes(request.headers.origin))return json(response,403,{ok:false,code:'SAME_ORIGIN_REQUIRED'});
   const path=new URL(request.url,`http://${expectedHost}`).pathname;
   if(request.method==='GET'&&path==='/'){
    response.writeHead(302,{Location:'/image'});return response.end();
@@ -57,6 +59,10 @@ export function createImageWebServer(){return createServer(async(request,respons
    // Only listed fixture samples are validated; Painter's public entry decides the verdict.
    const result=await validateSample(input.sampleId);
    return result?json(response,200,result):json(response,404,{ok:false,code:'UNKNOWN_SAMPLE'});
+  }
+  // A copied link with trailing text still lands on the right page.
+  if(request.method==='GET'&&!path.startsWith('/api/')){
+   response.writeHead(302,{Location:path.startsWith('/validate')?'/validate':'/image'});return response.end();
   }
   if(path!=='/api/image')return json(response,404,{ok:false,code:'NOT_FOUND'});
   if(request.method!=='POST')return json(response,405,{ok:false,code:'POST_REQUIRED'});
