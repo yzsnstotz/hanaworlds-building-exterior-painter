@@ -175,7 +175,7 @@ test('confirmed portal ref with no portal producer is a named refusal', async ()
 test('stated light rule: CAPABILITY_UNAVAILABLE by capability name at Painter admission and at witness recheck', async () => {
   const light = variant({ siteRules: rules.ruleSets.light });
   await refused(light, 'CAPABILITY_UNAVAILABLE', 'REQUIRED_FACT_UNKNOWN');
-  assert.deepEqual(rules.perCell.reject.find(c => c.rules === 'light').capability, 'painter/v5:light-rule');
+  assert.deepEqual(rules.perCell.reject.find(c => c.rules === 'light').capability, 'painter/v6:light-rule');
   // Painter's own admission (independent of the contract request check) ...
   assert.throws(() => Painter.boundRules(light.request), e => e.code === 'CAPABILITY_UNAVAILABLE' && e.reason === 'REQUIRED_FACT_UNKNOWN');
   // ... and its witness recheck before releasing a BUILD.

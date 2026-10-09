@@ -39,7 +39,7 @@ cmp "$run/pack/$name" "image-material-panel/vendor/$name"; note painter-pack-equ
 (cd "$run/consumer" && echo '{"name":"painter-gate-consumer","private":true}' > package.json \
   && npm install "${c[@]}" "$run/pack/$name" > "$ev/packed-install.log" 2>&1); note packed-install $?
 installed=$run/consumer/node_modules/hanaworlds-building-exterior-painter
-for t in local-world region-v1; do
+for t in local-world region-v1 confirmed-placement; do
   PAINTER_TEST_PACKAGE=$installed node --test "test/$t.test.mjs" > "$ev/packed-$t.log" 2>&1; note "packed-$t" $?
 done
 (cd "$installed" && node -e "import('./src/contract-package.mjs').then(m=>console.log(JSON.stringify({version:m.contractPackage().version,dir:m.contractPackageDir()})))") > "$ev/packed-resolve.json" 2>&1

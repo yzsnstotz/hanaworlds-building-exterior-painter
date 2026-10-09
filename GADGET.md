@@ -1,6 +1,6 @@
-# HanaWorlds Building Exterior Painter 0.5.3 · painter/v5 · painter-region/v2 region proposals
+# HanaWorlds Building Exterior Painter 0.6.0 · painter/v6 · painter-region/v3 region proposals
 
-The plugin implements `painter/v5.ValidateBuildProposal` and retains image
+The plugin implements `painter/v6.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V4` plans (image planning can clarify).
 Painter never compiles, decides a transaction, reads or writes the world.
 Canvas decides transactions, Brush compiles purely, Adapter transports.
@@ -54,12 +54,38 @@ proposal and the image path, before any model call.
   `TARGET_FACTS_INCOMPLETE/REQUIRED_FACT_UNKNOWN`, naming the missing fact;
   `BUILD_INVALID` means the geometry fails regardless (0.5.3).
 - Hazards are checked against the confirmed values; no enum, no default.
-- A stated `optionalLightRule` is refused by capability name `painter/v5:light-rule`
+- A stated `optionalLightRule` is refused by capability name `painter/v6:light-rule`
   (CAPABILITY_UNAVAILABLE/REQUIRED_FACT_UNKNOWN) at Painter admission and again at
   the witness recheck before a BUILD is released; the same rules with no light rule
   plan normally.
-- Region proposals (`painter-region/v2`): the contract refuses a required entrance
-  (`painter-region/v2:entrance-rule`) and a light rule, and checks hazards per palette node.
+- Region proposals (`painter-region/v3`): the contract refuses a required entrance
+  (`painter-region/v3:entrance-rule`) and a light rule, and checks hazards per palette node.
+
+## Confirmed placement (contracts 2.x, confirmed-placement/v1; 0.6.0)
+
+A placement shown to the player before confirmation is a contract `PlacementProposal`
+(`Controls.placement` = `ConfirmedIntent.placement`, digest-bound by Workshop). Painter does
+not make, choose, move or clip it; it only refuses a plan whose effects are not the confirmed
+ones. `null` (nothing structured was confirmed) keeps the CURRENT_VIEW behaviour unchanged.
+- ValidateBuildProposal: the contract request/context validators run on the fresh Host facts
+  before planning and again before release (also on replay): the build must use exactly the
+  placement's source inspection (World, frame, world revision, inspection id, facts digest) and
+  the computed effect set must equal the exact cells (all and only) or lie inside the confirmed
+  extent. Painter's released BUILD has the same operations and COVERAGE positions.
+- CreateBuildPlan (model path): Painter applies the same public functions itself
+  (`confirmedPlacementOf`, `requirePlacementSource` before any model call,
+  `requirePlacementTarget` on the planned effects). The model prompt does not carry the
+  confirmed target, so a model plan that writes other cells is refused, never re-based.
+- ValidateRegionProposal (`painter-region/v3`): the block's specified world cells are matched
+  by the contract.
+- Refusals are the contract's named failures (`confirmedPlacement.namedFailures`, e.g.
+  `PLACEMENT_TARGET_MISMATCH` = INTENT_UNCONFIRMED/INVALID_GEOMETRY): a new proposal and a new
+  human confirmation are needed. Known-empty, body, hazard, entrance and size/material rules are
+  unchanged and still apply.
+
+Tests: `npm run test:confirmed-placement` (public `fixtures/confirmed-placement` per-cell and
+region cases through the real service, plus Painter-local re-sourced extent, retained-context,
+replay, stale-confirmation and CreateBuildPlan cases).
 
 Tests: `npm run test:site-rules` (public `fixtures/skill-site-rules` cases applied to
 `fixtures/main` with rebound digests, plus a Painter-local hut region).
@@ -73,8 +99,8 @@ fixture gate does not prove that full Host integration.
 ## Pinned bytes and settings
 
 Contracts are released hanaworlds-contracts tags by range, no vendor copy and no
-commit pin: dependency `git+https://github.com/yzsnstotz/hanaworlds-contracts.git#semver:^1.0.0`
-(formal v1.0.0, same content as the batch candidate v1.0.0-rc.4; after the formal v1.0.0 only the range becomes `^1.0.0`; npm
+commit pin: dependency `git+https://github.com/yzsnstotz/hanaworlds-contracts.git#semver:^2.0.0-rc.1`
+(candidate v2.0.0-rc.1, confirmed-placement/v1; after the formal v2.0.0 only the range becomes `^2.0.0`; npm
 resolves the highest matching tag and package-lock records the resolved commit). The advertised
 ContractHandshake is the resolved package's own; peers compare its major only.
 Code, tests, fixtures and the dev page reach it only through the package.json
@@ -82,7 +108,7 @@ Code, tests, fixtures and the dev page reach it only through the package.json
 `tools/admitted-contracts.mjs`. Check: `npm run verify:contracts [-- --package <tgz>]`
 (range spec, `npm ls` satisfaction, handshake; optional byte equality). Raise the
 floor only when Painter starts using a field from a newer release.
-Root API only; no prior wire (painter/v4, painter-region/v1, 0.x contracts) compatibility.
+Root API only; no prior wire (painter/v5, painter-region/v2, contracts 1.x) compatibility.
 
 Config/describe retain modelProvider `openai-codex`, modelId `gpt-5.6-luna` and
 read-only geometry invariants. Only the image path uses that route; image+text
