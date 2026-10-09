@@ -1,8 +1,9 @@
 // Pure P3 picture-blocks planning: a validated model proposal plus bound facts
-// becomes BUILD/V3 geometry. Nothing here reads a world, a Session or a model.
+// becomes BUILD/V4 geometry. Nothing here reads a world, a Session or a model.
 import {
   ContractError, decodeRawJSON, digestValue, validateType, validateStaticMaterials,
-  comparePosition, compareUTF16, validateWitnessCoherence,
+  comparePosition, compareUTF16, validateWitnessCoherence, canonicalJSON,
+  safetyProfileFromConfirmedIntent, requireSiteRuleChecks,
 } from '#contracts';
 
 export const PAINTER_ID = 'picture-blocks';
@@ -117,7 +118,7 @@ export function planGeometry({ proposal, catalogue, targetFacts }) {
   return { materials, operations, effects, declaredBounds };
 }
 
-/** Whether a final-state node lets the avatar occupy its cell: explicitly
+/** Whether a final-state node can be part of an entrance clearance box: explicitly
  * non-walkable, no collision box and within the bound hazard policy. Any
  * unknown (null) capability is not passable. */
 function passable(capability, hazardPolicy) {
@@ -128,25 +129,32 @@ function passable(capability, hazardPolicy) {
 }
 
 /**
- * The rule inputs the entrance and clearance checks read, bound from the
- * request in this one place. Contracts ^0.5.6 carry them on SafetyProfile
- * (requireEntranceConnectivity, avatarDimensions, hazardPolicy) and the
- * confirmed intent (entrancePortalRefs).
+ * The player-confirmed site rules every check reads, bound from the request in
+ * this one place. Their only source is the confirmed intent: the carried
+ * SafetyProfile must be exactly the one derived from it. A stated light rule
+ * is refused by capability name (no light check exists); a required entrance
+ * needs the confirmed design clearance. No player body or avatar size is read.
  */
 export function boundRules(request) {
   const { safetyProfile, intent } = request;
+  if (canonicalJSON(safetyProfile) !== canonicalJSON(safetyProfileFromConfirmedIntent(intent)))
+    fail('INTENT_UNCONFIRMED', 'validate', 'PAYLOAD_CHANGED');
+  const rules = intent.confirmedIntent.siteRules;
+  requireSiteRuleChecks(rules, { entrance: true });
+  if (rules.requireEntranceConnectivity && rules.entranceClearance === null)
+    fail('INTENT_UNCONFIRMED', 'validate', 'REQUIRED_FACT_UNKNOWN');
   return {
-    requireEntrance: safetyProfile.requireEntranceConnectivity,
-    clearance: safetyProfile.avatarDimensions,
+    requireEntrance: rules.requireEntranceConnectivity,
+    clearance: rules.entranceClearance,
     portalRefs: intent.confirmedIntent.entrancePortalRefs,
-    hazardPolicy: safetyProfile.hazardPolicy,
+    hazardPolicy: rules.hazardPolicy,
   };
 }
 
-/** Grid cells a clearance box spans, ceil per axis; only node units are known. */
+/** Grid cells a confirmed ClearanceCells box spans (whole nodes). */
 function clearanceSpan(clearance) {
   if (clearance?.unit !== 'node') fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
-  return [Math.ceil(clearance.width), Math.ceil(clearance.height), Math.ceil(clearance.depth)];
+  return [clearance.width, clearance.height, clearance.depth];
 }
 
 /** Final-state cells whose whole clearance box (anchored at the minimum
@@ -166,20 +174,21 @@ function usableCells(finalNode, span, empty) {
 /**
  * ENTRANCE_CONNECTIVITY for a new exterior, recomputed only from bound facts:
  * the final state (written effects over sampled known cells), catalogue
- * capabilities, the bound hazard policy and the actual avatar dimensions. A
- * usable position is a sampled cell whose whole avatar clearance box
- * (ceil(width) x ceil(height) x ceil(depth) grid cells, anchored at its
- * minimum corner) is verified empty air that the hazard policy allows. The declared use
- * space is the usable cells of an enclosed cavity (see below). Each confirmed
- * entrance portal must reach it by a six-neighbor path over usable positions. Returns [] when the safety profile does not
- * require entrance connectivity.
+ * capabilities, the confirmed hazard policy and the confirmed design
+ * clearance (ClearanceCells; a building design value, not a body guarantee). A
+ * usable position is a sampled cell whose whole clearance box (anchored at its
+ * minimum corner) is verified empty air that the hazard policy allows. The
+ * declared use space is the usable cells of an enclosed cavity (see below).
+ * Entrances: each confirmed portal, or, with no confirmed portal, the doorway on
+ * the `entranceFacing` side (portalRef null; see checkEntranceFacing). Each
+ * must reach the use space by a six-neighbor path over usable positions.
+ * Returns [] and checks nothing when the confirmed rules require no entrance.
  */
-export function planEntrances({ request, geometry }) {
+export function planEntrances({ request, geometry, entranceFacing = null }) {
   const { catalogue, targetFacts } = request;
   const rules = boundRules(request);
   if (!rules.requireEntrance) return [];
   const refs = rules.portalRefs;
-  if (refs.length === 0) fail('INTENT_UNCONFIRMED', 'validate', 'REQUIRED_FACT_UNKNOWN');
   const span = clearanceSpan(rules.clearance);
   // Final state of every sampled known cell: empty cells are 'air', occupied
   // cells keep their node, written effects replace either. Unknown and
@@ -198,12 +207,15 @@ export function planEntrances({ request, geometry }) {
   };
   const usable = usableCells(finalNode, span, empty);
   const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-  const portals = refs.map(portalRef => {
+  // A confirmed portal must exist in the bound facts (no portal producer today
+  // means a named refusal). Without one, the entrance is the doorway on the
+  // entranceFacing side; its clearance boxes are the entrance plane.
+  const portals = refs.length > 0 ? refs.map(portalRef => {
     const portal = targetFacts.portals.find(x => x.portalRef === portalRef);
     if (!portal) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
     return portal;
-  });
-  // Cavity (CONTRACT_RULES §TargetFacts): with the confirmed entrance planes
+  }) : [doorwayEntrance({ request, geometry, entranceFacing, span })];
+  // Cavity (CONTRACT_RULES §TargetFacts): with the entrance planes
   // temporarily sealed, flood every non-blocking cell 6-adjacently. A
   // component is interior only if it never reaches an unknown or unsampled
   // cell (sky, outside world) and is bounded only by proven collision.
@@ -231,7 +243,7 @@ export function planEntrances({ request, geometry }) {
   if (useSpace.size === 0) fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
   const usablePositions = [...usable.values()].sort(comparePosition);
   return portals.map(({ portalRef, ...portal }) => {
-    const starts = portal.positions.map(key).filter(k => usable.has(k));
+    const starts = (portal.starts ?? portal.positions).map(key).filter(k => usable.has(k));
     const previous = new Map(starts.map(k => [k, null]));
     const queue = [...starts];
     let goal = null;
@@ -251,25 +263,39 @@ export function planEntrances({ request, geometry }) {
   });
 }
 
+/** The unconfirmed-portal entrance: the doorway cells on the entranceFacing
+ * side plus their clearance boxes as the sealed plane. No doorway is BUILD_INVALID. */
+function doorwayEntrance({ request, geometry, entranceFacing, span }) {
+  const doorways = checkEntranceFacing({ request, geometry, entranceFacing });
+  if (doorways.length === 0) fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
+  const plane = new Map();
+  for (const p of doorways)
+    for (let dx = 0; dx < span[0]; dx++) for (let dy = 0; dy < span[1]; dy++) for (let dz = 0; dz < span[2]; dz++) {
+      const c = [p[0] + dx, p[1] + dy, p[2] + dz];
+      plane.set(key(c), c);
+    }
+  return { portalRef: null, positions: [...plane.values()].sort(comparePosition), starts: doorways };
+}
+
 /**
- * The trusted assembleBuild input for a first new building: exactly the
- * Adapter-produced RegionInspection relayed by Canvas (painter/v4). Nothing is
- * defaulted; a missing part is a typed rejection.
+ * The trusted assembleBuild input for a first new building: the frame and
+ * evidence of the Adapter-produced RegionInspection relayed by Canvas
+ * (painter/v5). It carries no player geometry: real bodies are checked inside
+ * the engine. Nothing is defaulted; a missing part is a typed rejection.
  */
 export function trustedFromRegion(regionInspection) {
   const ri = regionInspection;
-  if (!ri?.frame || !ri.evidence || !Array.isArray(ri.bodyOccupiedPositions))
-    fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
-  return { frame: ri.frame, evidence: ri.evidence,
-    body: { bodyOccupiedPositions: ri.bodyOccupiedPositions } };
+  if (!ri?.frame || !ri.evidence) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  return { frame: ri.frame, evidence: ri.evidence };
 }
 
 const HORIZONTAL_FACES = new Set(['+X', '-X', '+Z', '-Z']);
 
 /**
  * HW-A028 painter side: a first building's entrance faces the anchor player.
- * A doorway is a usable cell (full avatar clearance over verified empty air,
- * the same rule as planEntrances) on a side face of the structure's footprint
+ * Run only when the confirmed rules require an entrance and no portal is
+ * confirmed (planEntrances). A doorway is a usable cell (full confirmed
+ * clearance over verified empty air, the same rule as planEntrances) on a side face of the structure's footprint
  * that is 6-adjacent to a usable cell strictly inside the footprint. When the
  * structure has a usable interior, it must have a doorway on the face whose
  * outward normal is `entranceFacing`, and no doorway on any other side face.
@@ -308,13 +334,14 @@ export function checkEntranceFacing({ request, geometry, entranceFacing }) {
 /**
  * Assemble the complete BuildProjection. `trusted` must come from a public,
  * provider-verified source: the exact coordinate Frame whose digest equals
- * targetFacts.frameDigest and Adapter evidence for body
- * occupancy (painter/v4: trustedFromRegion). Missing trusted facts are a typed
- * rejection, never a default.
+ * targetFacts.frameDigest and Adapter evidence (painter/v5: trustedFromRegion).
+ * Missing trusted facts are a typed rejection, never a default.
  */
-export function assembleBuild({ request, geometry, documentId, trusted, entrances = planEntrances({ request, geometry }) }) {
+export function assembleBuild({ request, geometry, documentId, trusted,
+  entrances = planEntrances({ request, geometry, entranceFacing: request.regionInspection?.entranceFacing ?? null }) }) {
   const { catalogue, targetFacts, safetyProfile } = request;
-  if (!trusted?.frame || !trusted.evidence || !trusted.body)
+  const rules = boundRules(request);
+  if (!trusted?.frame || !trusted.evidence)
     fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
   if (digestValue('frame', trusted.frame).sha256 !== targetFacts.frameDigest)
     fail('TARGET_FACTS_STALE', 'validate', 'REVISION_CHANGED');
@@ -329,14 +356,11 @@ export function assembleBuild({ request, geometry, documentId, trusted, entrance
   const positions = geometry.effects.map(e => e.position);
   const written = new Set(positions.map(key));
   const evidence = trusted.evidence;
-  const restrict = list => list.filter(p => written.has(key(p)));
-  if (trusted.body.bodyOccupiedPositions.some(p => written.has(key(p))))
-    fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
   const hazardOk = geometry.effects.every(e => {
     const c = catalogue.nodes[e.nodeName];
     return c.liquidType !== null && c.damagePerSecond !== null &&
-      (!safetyProfile.hazardPolicy.forbidLiquid || c.liquidType === 'none') &&
-      c.damagePerSecond <= safetyProfile.hazardPolicy.maximumDamagePerSecond;
+      (!rules.hazardPolicy.forbidLiquid || c.liquidType === 'none') &&
+      c.damagePerSecond <= rules.hazardPolicy.maximumDamagePerSecond;
   });
   if (!hazardOk) fail('UNSUPPORTED_MATERIAL', 'validate', 'REQUIRED_FACT_UNKNOWN');
   const hazardCells = new Map(positions.map(p => [key(p), p]));
@@ -344,25 +368,25 @@ export function assembleBuild({ request, geometry, documentId, trusted, entrance
   const hazardPositions = [...hazardCells.values()].sort(comparePosition);
   const witnesses = [
     { witnessId: 'w1', predicate: 'COVERAGE', ...bound, facts: { evidence, positions } },
-    // Body overlap was rejected; the restricted occupancy list is empty.
-    { witnessId: 'w3', predicate: 'BODY_CLEARANCE', ...bound,
-      facts: { evidence, positions, bodyOccupiedPositions: restrict(trusted.body.bodyOccupiedPositions),
-        avatarDimensions: safetyProfile.avatarDimensions } },
+    // Binds the covered positions only; real bodies are checked inside the engine.
+    { witnessId: 'w3', predicate: 'BODY_CLEARANCE', ...bound, facts: { evidence, positions } },
     // Hazard is recomputed at every written cell and every entrance use/path cell.
     { witnessId: 'w4', predicate: 'HAZARD', ...bound,
-      facts: { evidence, positions: hazardPositions, forbidLiquid: safetyProfile.hazardPolicy.forbidLiquid,
-        maximumDamagePerSecond: safetyProfile.hazardPolicy.maximumDamagePerSecond } },
-    ...entrances.map(entrance => ({ witnessId: `w5-${entrance.portalRef}`,
+      facts: { evidence, positions: hazardPositions, forbidLiquid: rules.hazardPolicy.forbidLiquid,
+        maximumDamagePerSecond: rules.hazardPolicy.maximumDamagePerSecond } },
+    ...entrances.map(entrance => ({ witnessId: `w5-${entrance.portalRef ?? 'doorway'}`,
       predicate: 'ENTRANCE_CONNECTIVITY', ...bound,
       facts: { evidence, portalRef: entrance.portalRef, usablePositions: entrance.usablePositions,
-        path: entrance.path, avatarDimensions: safetyProfile.avatarDimensions } })),
+        path: entrance.path, clearance: rules.clearance } })),
   ].sort((a, b) => compareUTF16(a.witnessId, b.witnessId));
   const build = validateType('BuildProjection', {
-    contractVersion: 'BUILD/V3', documentId, coordinateFrame: trusted.frame, catalogueDigest,
+    contractVersion: 'BUILD/V4', documentId, coordinateFrame: trusted.frame, catalogueDigest,
     targetFactsDigest: request.targetFactsDigest, safetyProfileDigest: request.safetyProfileDigest,
     materials: geometry.materials, operations: geometry.operations,
     declaredBounds: geometry.declaredBounds, witnesses,
   });
+  // Witness recheck: a stated light rule stays refused by name here too.
+  requireSiteRuleChecks(safetyProfile, { entrance: true });
   validateWitnessCoherence({ build, finalEffects, targetFacts, safetyProfile, catalogue });
   return { build, buildDigest: digestValue('build', build).sha256, finalEffects };
 }

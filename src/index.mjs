@@ -12,7 +12,8 @@ export { REGION_PROPOSAL_TOOL, REGION_OPERATION, REGION_WIRE, REGION_CAPABILITY,
 export { matchImageMaterials, IMAGE_MATERIAL_TOOL, ImageMaterialError } from './image-material.mjs';
 export { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 export { PainterHostError, buildMessages, promptText } from './model.mjs';
-export { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, offeredMaterials } from './planner.mjs';
+export { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, offeredMaterials,
+  boundRules, trustedFromRegion } from './planner.mjs';
 
 export const name = 'hanaworlds-building-exterior-painter';
 export const inject = [];

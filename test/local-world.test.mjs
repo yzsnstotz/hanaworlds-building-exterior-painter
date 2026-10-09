@@ -23,7 +23,7 @@ async function rejected(f, code, request = f.request, options) {
   assert.equal(r.result, null); assert.equal(r.error.code, code);
   assert.equal(r.error.mutationState, 'NONE'); assert.equal(r.error.transactionRef, null);
 }
-test('current root handshake and text BUILD/V3, raw admission and three retained witnesses', async () => {
+test('current root handshake and text BUILD/V4, raw admission and three retained witnesses', async () => {
   const f = setup(); api.checkBuildProposalHandshake(f.painter.handshake());
   assert.deepEqual(DEFAULT_ROUTE, { provider: 'openai-codex', model: 'gpt-5.6-luna' });
   const response = await f.painter.call(op, JSON.stringify(f.request));
@@ -53,11 +53,11 @@ test('no default local facts or request/call-options facts injection', async () 
   await rejected({ ...f, painter: p }, 'CAPABILITY_UNAVAILABLE', f.request, { providerFacts: fixture.facts });
   await rejected(f, 'UNKNOWN_REQUIRED_FIELD', { ...f.request, authorizationRef: 'old' });
 });
-test('new public geometry/bad-param admission and body clearance retain rejection', async () => {
+test('new public geometry/bad-param admission; player body geometry is no longer an input', async () => {
   const f = setup(); f.request.proposal.materials.stone.param2 = 256;
   await rejected(f, 'SCHEMA_INVALID'); assert.equal(f.state.reads, 0);
   const outside = setup(); outside.request.proposal.boxes[0].max[0] = 2;
   await rejected(outside, 'BUILD_INVALID');
   const body = setup(); body.request.regionInspection.bodyOccupiedPositions = [[0,1,3]];
-  await rejected(body, 'BUILD_INVALID');
+  await rejected(body, 'UNKNOWN_REQUIRED_FIELD'); assert.equal(body.state.reads, 0);
 });
