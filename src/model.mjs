@@ -5,7 +5,7 @@ import { describeRegion, offeredMaterials } from './planner.mjs';
 
 export const PLUGIN_NAME = 'hanaworlds-building-exterior-painter';
 
-/** Host-capability failure outside the painter/v5 response envelope. The
+/** Host-capability failure outside the painter/v6 response envelope. The
  * frozen CreateBuildPlan failure list has no model/capability code, so this is
  * raised to the caller instead of being disguised as a domain result. */
 export class PainterHostError extends Error {

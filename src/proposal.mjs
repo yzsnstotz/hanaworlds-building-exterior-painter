@@ -5,7 +5,7 @@ import { ContractError, publicError, admitRequest, validateRequest, validateResp
 import { parseProposal, planGeometry, planEntrances, assembleBuild, trustedFromRegion } from './planner.mjs';
 import { readCurrentFacts } from './local-context.mjs';
 export const PROPOSAL_OPERATION = 'ValidateBuildProposal';
-const WIRE = 'painter/v5';
+const WIRE = 'painter/v6';
 const envelope = (id, error) => validateResponse(WIRE, PROPOSAL_OPERATION,
   { contractVersion: WIRE, requestId: id, result: null, error: publicError(error) });
 function requestId(raw) {
