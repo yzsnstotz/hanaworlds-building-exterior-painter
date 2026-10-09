@@ -29,8 +29,8 @@ npm start --prefix image-material-web
 
 入口：<http://127.0.0.1:47603/validate>，与 `/image` 同一个服务、同一条启动命令（`npm start --prefix image-material-web`）；`/image` 的页面、接口与行为不变。
 
-选一个样例提议，点「校验」：服务端用全新的 `ExteriorPainterV2` 调用 Painter 既有公开纯入口 `call('ValidateBuildProposal', request)`，显示通过（BUILD/V3 建筑摘要：文档、操作数、方块格数、范围、材质、安全见证、计划摘要）或拒绝（一句话原因 + 公开错误码 + 世界变化「无」）。切换样例会清空旧结果，拒绝后可以继续校验其他样例。
+选一个样例提议，点「校验」：服务端用全新的 `ExteriorPainterV2` 调用 Painter 既有公开纯入口 `call('ValidateBuildProposal', request)`，显示通过（BUILD/V4 建筑摘要：文档、操作数、方块格数、范围、材质、安全见证、计划摘要）或拒绝（一句话原因 + 公开错误码 + 世界变化「无」）。切换样例会清空旧结果，拒绝后可以继续校验其他样例。
 
-**示例数据 · 示例环境**：样例提议、世界、会话、连接、方块目录与宿主当前事实全部来自所钉合约包的公开 fixture `hanaworlds-contracts/fixtures/main`（`#contracts/fixtures/main`）；合法样例就是 fixture 原样请求，其余 6 个不合法样例各改一处（越界、挡住身体、param2=256、未声明材质、多余字段、同一项写两次）。页面与每条结果都醒目标出。网页只能选列出的样例，不接受任意请求；不调用模型，不写世界，不提交给 Brush/Canvas/Adapter，没有新增校验语义。
+**示例数据 · 示例环境**：样例提议、世界、会话、连接、方块目录与宿主当前事实全部来自所钉合约包的公开 fixture `hanaworlds-contracts/fixtures/main`（`#contracts/fixtures/main`）；合法样例就是 fixture 原样请求，其余 6 个不合法样例各改一处（越界、确认的场地规则要求最低光照、param2=256、未声明材质、多余字段、同一项写两次）。光照样例的规则值取自公开 fixture `fixtures/skill-site-rules` 的示例规则组，Painter 按能力名明确拒绝。合约 major 1 起不再有人物身体输入（真实身体只在引擎内检查），原「挡住身体」样例随之去掉。页面与每条结果都醒目标出。网页只能选列出的样例，不接受任意请求；不调用模型，不写世界，不提交给 Brush/Canvas/Adapter，没有新增校验语义。
 
 传输检查：`node --test test/validate-web.test.mjs`（7 个样例经 HTTP 的结论、拒绝后再通过、`/image` 仍可用、来源边界）。它不代替浏览器主流程。

@@ -2,11 +2,10 @@
 import { ContractError, publicError, admitRequest, validateRequest, validateResponse,
   decodeRawJSON, canonicalJSON,
   validateBuildProposalResponse } from '#contracts';
-import { parseProposal, planGeometry, planEntrances, checkEntranceFacing, assembleBuild,
-  trustedFromRegion } from './planner.mjs';
+import { parseProposal, planGeometry, planEntrances, assembleBuild, trustedFromRegion } from './planner.mjs';
 import { readCurrentFacts } from './local-context.mjs';
 export const PROPOSAL_OPERATION = 'ValidateBuildProposal';
-const WIRE = 'painter/v4';
+const WIRE = 'painter/v5';
 const envelope = (id, error) => validateResponse(WIRE, PROPOSAL_OPERATION,
   { contractVersion: WIRE, requestId: id, result: null, error: publicError(error) });
 function requestId(raw) {
@@ -55,8 +54,8 @@ export class BuildProposalValidator {
         try {
           const proposal = parseProposal(canonicalJSON(body.proposal));
           const geometry = planGeometry({ proposal, catalogue: body.catalogue, targetFacts: body.targetFacts });
-          const entrances = planEntrances({ request: body, geometry });
-          checkEntranceFacing({ request: body, geometry, entranceFacing: body.regionInspection.entranceFacing });
+          // Entrance rules run only when the confirmed site rules require one.
+          const entrances = planEntrances({ request: body, geometry, entranceFacing: body.regionInspection.entranceFacing });
           const { build, buildDigest } = assembleBuild({ request: body, geometry,
             documentId: `exterior-${body.invocationId}`, trusted: trustedFromRegion(body.regionInspection), entrances });
           response = { contractVersion: WIRE, requestId: body.requestId,

@@ -1,7 +1,7 @@
-# HanaWorlds Building Exterior Painter 0.4.2 · painter-region/v1 region proposals
+# HanaWorlds Building Exterior Painter 0.5.0 · painter/v5 · painter-region/v2 region proposals
 
-The plugin implements `painter/v4.ValidateBuildProposal` and retains image
-`CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
+The plugin implements `painter/v5.ValidateBuildProposal` and retains image
+`CreateBuildPlan`. Both emit `BUILD/V4` plans (image planning can clarify).
 Painter never compiles, decides a transaction, reads or writes the world.
 Canvas decides transactions, Brush compiles purely, Adapter transports.
 
@@ -28,9 +28,35 @@ re-reads them after awaits before release, including its existing plan receipt
 cache. Cancellation, changed world/incarnation/selection/brief and provider
 replacement reject stale output. Missing host facts are CAPABILITY_UNAVAILABLE;
 no default grant or context exists. Request-shape, geometry, bounds, material,
-body and hazard errors are typed no-mutation outcomes. Coverage,
+site-rule and hazard errors are typed no-mutation outcomes. Coverage,
 BODY_CLEARANCE, HAZARD and required entrance witnesses use the new digest domain.
 PROTECTION and protected clearance are absent.
+
+## Site rules (contracts major 1)
+
+Rules come only from the player-confirmed intent (`ConfirmedIntent.siteRules`,
+skill-proposed): the carried SafetyProfile must equal
+`safetyProfileFromConfirmedIntent(intent)` (otherwise INTENT_UNCONFIRMED), on the
+proposal and the image path, before any model call.
+- No player geometry is read: no `bodyOccupiedPositions`, no `avatarDimensions`, no
+  early body-overlap check. Real bodies are checked inside the engine; BODY_CLEARANCE
+  binds the written positions only.
+- Entrance rules run only when the confirmed rules require an entrance, sized by the
+  confirmed `entranceClearance` (a design value, not a body guarantee). A confirmed
+  portal must exist in the bound facts (none is produced today → named
+  TARGET_FACTS_INCOMPLETE). With no confirmed portal the entrance is the doorway on the
+  `regionInspection.entranceFacing` side (no doorway on another face) and its
+  ENTRANCE_CONNECTIVITY witness has `portalRef: null` and `clearance` = confirmed.
+- Hazards are checked against the confirmed values; no enum, no default.
+- A stated `optionalLightRule` is refused by capability name `painter/v5:light-rule`
+  (CAPABILITY_UNAVAILABLE/REQUIRED_FACT_UNKNOWN) at Painter admission and again at
+  the witness recheck before a BUILD is released; the same rules with no light rule
+  plan normally.
+- Region proposals (`painter-region/v2`): the contract refuses a required entrance
+  (`painter-region/v2:entrance-rule`) and a light rule, and checks hazards per palette node.
+
+Tests: `npm run test:site-rules` (public `fixtures/skill-site-rules` cases applied to
+`fixtures/main` with rebound digests, plus a Painter-local hut region).
 
 Receipts are ephemeral plan receipts, never durable transaction history. A public
 RETURN_STORED instruction requires an existing stored receipt and never triggers
@@ -41,17 +67,16 @@ fixture gate does not prove that full Host integration.
 ## Pinned bytes and settings
 
 Contracts are released hanaworlds-contracts tags by range, no vendor copy and no
-commit pin: dependency `github:yzsnstotz/hanaworlds-contracts#semver:^0.5.6`
-(floor 0.5.6 = first release whose handshake/version checks decide by major,
-`checkContractsVersion`; npm resolves the highest matching tag — for 0.x npm's caret
-means >=0.5.6 <0.6.0 — and package-lock records the resolved commit). The advertised
+commit pin: dependency `github:yzsnstotz/hanaworlds-contracts#semver:^1.0.0-rc.1`
+(major 1 candidate; after the formal v1.0.0 only the range becomes `^1.0.0`; npm
+resolves the highest matching tag and package-lock records the resolved commit). The advertised
 ContractHandshake is the resolved package's own; peers compare its major only.
 Code, tests, fixtures and the dev page reach it only through the package.json
 `#contracts` imports (`src/contract-package.mjs`); the range lives in
 `tools/admitted-contracts.mjs`. Check: `npm run verify:contracts [-- --package <tgz>]`
 (range spec, `npm ls` satisfaction, handshake; optional byte equality). Raise the
 floor only when Painter starts using a field from a newer release.
-Root API only; no `/v4` binding or prior wire compatibility.
+Root API only; no prior wire (painter/v4, painter-region/v1, 0.x contracts) compatibility.
 
 Config/describe retain modelProvider `openai-codex`, modelId `gpt-5.6-luna` and
 read-only geometry invariants. Only the image path uses that route; image+text
@@ -88,7 +113,7 @@ const hint = await painter.matchCurrentImageMaterials({
 
 `describe().tools` advertises exactly one current tool,
 `CURRENT_IMAGE_MATERIAL_TOOL` (`MatchCurrentImageMaterials`). This is an own pure
-method, not an added painter/v4 wire operation. Host reads public NativeFacts,
+method, not an added painter/v5 wire operation. Host reads public NativeFacts,
 checks current selection/provider/Catalogue, and calls this method with actual
 media bytes. The consumer itself rereads no peer, file, path, URL, model or world.
 It synchronously validates Catalogue and calls `validateMaterialSources` before
@@ -138,7 +163,7 @@ Protected 0.3.0 text and 0.3.1 image artifacts/E are not overwritten or retested
 
 The registered Painter service exposes `matchImageMaterials({imageBytes, catalogue})`
 and root exports `matchImageMaterials`, `IMAGE_MATERIAL_TOOL`, `ImageMaterialError`.
-This is an own-plugin computation method, not a new frozen painter/v4 operation.
+This is an own-plugin computation method, not a new frozen painter/v5 operation.
 This retained historical method is not advertised by describe().tools in 0.3.2.
 It must not be used as the current-world material consumer. Its old descriptor says:
 resolve the actual attachment bytes for the current brief and obtain the current
@@ -178,7 +203,7 @@ exact commit, executes only these5 affected tests, packs/installs independently,
 and runs the new method in actual fixed Cordis with external public Catalogue
 fixtures. Historical text/geometry/route/admission gates are not rerun.
 
-## Region proposal: painter-region/v1 ValidateRegionProposal (0.4.0)
+## Region proposal: painter-region/v2 ValidateRegionProposal (0.4.0; v2 since 0.5.0)
 
 Same service and same Host business port as text/image proposals:
 `hanaworldsPainterV2PictureBlocks.call('ValidateRegionProposal', request, {signal})`
@@ -196,7 +221,7 @@ decoded JSON). The text/image path (`proposal.mjs`, `planner.mjs`,
   of the same Session/turn, `localContext.worldRef === worldRef`.
 - Host `hanaworldsPainterLocalFacts.read(request, 'ValidateRegionProposal',
   {signal})` returns public `LocalRequestFacts`; Painter applies
-  `validateCurrentRequest('painter-region/v1', ...)` before planning and again
+  `validateCurrentRequest('painter-region/v2', ...)` before planning and again
   before release, so a changed world, connection incarnation, selection, turn,
   brief (including verified image media) or cancellation refuses the result.
 - Result: `RegionBuildPlan` whose `build` is `region-build/v1` with the proposal
@@ -210,7 +235,7 @@ decoded JSON). The text/image path (`proposal.mjs`, `planner.mjs`,
 
 `protocolHandshake()` returns the contract `ProtocolHandshake`:
 painter 4.0 and painter-region 1.0, capability
-`painter-region/v1:validate-region-proposal`, package version as provenance
+`painter-region/v2:validate-region-proposal`, package version as provenance
 only. Consumers decide with `checkProtocolCompatibility` (same major, minor,
 capabilities); a different patch or artifact digest is still compatible, a
 wrong major or missing capability is refused. The exact-package

@@ -1,4 +1,4 @@
-// painter/v4 provider for painterId "picture-blocks". Planning only: no world,
+// painter/v5 provider for painterId "picture-blocks". Planning only: no world,
 // Canvas, Adapter or Brush call exists in this module.
 import { createHash } from 'node:crypto';
 import canonicalize from 'canonicalize';
@@ -7,7 +7,7 @@ import {
   digestValue, decodeRawJSON, contractHandshake,
 } from '#contracts';
 import { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, trustedFromRegion,
-  checkEntranceFacing } from './planner.mjs';
+  boundRules } from './planner.mjs';
 import { invokeModel, PainterHostError } from './model.mjs';
 import { BuildProposalValidator, PROPOSAL_OPERATION } from './proposal.mjs';
 import { readCurrentFacts } from './local-context.mjs';
@@ -16,8 +16,8 @@ import { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './curre
 import { RegionProposalValidator } from './region-proposal.mjs';
 import { REGION_PROPOSAL_TOOL, REGION_OPERATION, protocolHandshake } from './region.mjs';
 
-export const WIRE = 'painter/v4';
-export const PACKAGE_VERSION = '0.4.2';
+export const WIRE = 'painter/v5';
+export const PACKAGE_VERSION = '0.5.0';
 export const OPERATION = 'CreateBuildPlan';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -26,15 +26,17 @@ const sha = text => createHash('sha256').update(text).digest('hex');
  * and `describe()`; nothing else alters painter behaviour. */
 export const DEFAULT_ROUTE = Object.freeze({ provider: 'openai-codex', model: 'gpt-5.6-luna' });
 export const INVARIANTS = Object.freeze([
-  'No world, Canvas, Adapter or Brush call; output is a BUILD/V3 plan or a ClarificationNeed only.',
+  'No world, Canvas, Adapter or Brush call; output is a BUILD/V4 plan or a ClarificationNeed only.',
   'CreateBuildPlan structure intent requires at least one bound user image and non-empty text; ValidateBuildProposal validates confirmed proposals with supplied current media facts and calls no model.',
   'CreateBuildPlan requires an image-capable model route; ValidateBuildProposal calls no model or attachment service.',
   'Written cells must be sampled known-empty target cells; occupied cells are never replaced and unknown cells are never written.',
-  'When the safety profile requires entrance connectivity, every confirmed entrance portal must reach the enclosed interior by a six-neighbor path of cells with full avatar clearance, recomputed from bound facts; otherwise BUILD_INVALID.',
+  'Site rules come only from the player-confirmed intent: the carried SafetyProfile must equal safetyProfileFromConfirmedIntent (otherwise INTENT_UNCONFIRMED); a stated light rule is refused by capability name painter/v5:light-rule (CAPABILITY_UNAVAILABLE) at admission and at witness recheck; hazards are checked against the confirmed values with no enum or default.',
+  'No player body or avatar input is read: real bodies are checked inside the engine; BODY_CLEARANCE binds the written positions only.',
+  'Entrance rules run only when the confirmed site rules require an entrance: every confirmed portal (which must exist in the bound facts, otherwise TARGET_FACTS_INCOMPLETE) or, with none confirmed, the doorway on the entranceFacing side must reach the enclosed interior by a six-neighbor path of cells with the confirmed entranceClearance, recomputed from bound facts; otherwise BUILD_INVALID.',
   'A first new building uses only the Canvas-relayed Adapter regionInspection: BUILD.coordinateFrame = regionInspection.frame and BODY_CLEARANCE witnesses carry regionInspection.evidence; the painter never inspects the world, chooses or relocates a placement.',
-  'With a usable interior, a first building has its entrance on the footprint face whose outward normal is regionInspection.entranceFacing and on no other face; otherwise BUILD_INVALID.',
-  'BODY_CLEARANCE witnesses require relayed inspection evidence; absent evidence or frame (INSPECTED facts carry none in painter/v4) is a typed TARGET_FACTS_INCOMPLETE rejection, never a default safe claim.',
-  'PLANNED facts are rejected (TARGET_REQUIRED) because painter/v4 carries no proof of a real preceding plan.',
+  'When an entrance is required and no portal is confirmed, a first building with a usable interior has its entrance on the footprint face whose outward normal is regionInspection.entranceFacing and on no other face; otherwise BUILD_INVALID.',
+  'BODY_CLEARANCE witnesses require relayed inspection evidence; absent evidence or frame (INSPECTED facts carry none in painter/v5) is a typed TARGET_FACTS_INCOMPLETE rejection, never a default safe claim.',
+  'PLANNED facts are rejected (TARGET_REQUIRED) because painter/v5 carries no proof of a real preceding plan.',
   'Same requestId with the same exact payload returns the original response after fresh current local facts; a changed payload is REPLAY_MISMATCH.',
   'A region proposal (decision BUILD_REGION) writes only specified cells that the bound inspection proves KNOWN; a null cell is never written and never means carve; carve is explicit air; unknown, unsampled or stateful replaced cells are rejected; same Host current facts as text/image proposals.',
   'Region protocol compatibility is protocol major (major 0 also needs the same minor) plus required capabilities; patch or package hash never decides it; a wrong major is UNSUPPORTED_VERSION.',
@@ -90,7 +92,7 @@ export class ExteriorPainterV2 {
   describe() {
     return {
       painterId: PAINTER_ID, wire: WIRE, operations: [OPERATION, PROPOSAL_OPERATION, REGION_OPERATION],
-      consumes: ['painter/v4', 'ReferenceBrief/v3'], factProfiles: ['target-facts/v4'], emits: ['BUILD/V3', 'ClarificationNeed'],
+      consumes: ['painter/v5', 'ReferenceBrief/v4'], factProfiles: ['target-facts/v4'], emits: ['BUILD/V4', 'ClarificationNeed'],
       settings: { modelProvider: this.route.provider, modelId: this.route.model },
       settingDefaults: { modelProvider: DEFAULT_ROUTE.provider, modelId: DEFAULT_ROUTE.model },
       invariants: INVARIANTS, worldWrites: 0,
@@ -158,7 +160,7 @@ export class ExteriorPainterV2 {
 
   async #plan(body, signal) {
     // Painter-scoped digest coherence of every carried projection before any
-    // provider query (the generic contract codes are not painter/v4 failure codes).
+    // provider query (the generic contract codes are not painter/v5 failure codes).
     for (const [field, digestField, kind, code] of BOUND)
       if (digestValue(kind, body[field]).sha256 !== body[digestField]) fail(code, 'validate', 'PAYLOAD_CHANGED');
     if (body.painterId !== PAINTER_ID) fail('UNSUPPORTED_OPERATION', 'validate', 'INVALID_SHAPE');
@@ -188,6 +190,8 @@ export class ExteriorPainterV2 {
     const region = body.regionInspection;
     const trusted = region === null ? null : trustedFromRegion(region);
     if (targetFacts.knownEmptyCells.length === 0) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+    // Confirmed site rules (only source of the SafetyProfile; light refused by name) before any model call.
+    boundRules(body);
 
     const answer = await invokeModel({ llm: this.llm, attachments: this.attachments,
       route: this.route, request: body, signal });
@@ -201,10 +205,9 @@ export class ExteriorPainterV2 {
       });
     }
     const geometry = planGeometry({ proposal, catalogue: body.catalogue, targetFacts });
-    // Entrance rules depend only on bound facts, so they are decided now.
-    const entrances = planEntrances({ request: body, geometry });
-    if (region !== null) checkEntranceFacing({ request: body, geometry, entranceFacing: region.entranceFacing });
-    // Only REGION_INSPECTED facts carry trusted frame/evidence in painter/v4;
+    // Entrance rules depend only on bound facts and confirmed site rules, so they are decided now.
+    const entrances = planEntrances({ request: body, geometry, entranceFacing: region?.entranceFacing ?? null });
+    // Only REGION_INSPECTED facts carry trusted frame/evidence in painter/v5;
     // any other source is a typed rejection at assembly.
     const { build, buildDigest } = assembleBuild({ request: body, geometry,
       documentId: `exterior-${body.invocationId}`, trusted, entrances });

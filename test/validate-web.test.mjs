@@ -14,7 +14,7 @@ test('standalone HTTP validates labelled fixture proposals through Painter and k
  const list=await (await fetch(base+'/api/validate/samples')).json();
  assert.equal(list.ok,true);assert.match(list.environment,/fixture/);
  const call=sampleId=>fetch(base+'/api/validate',{method:'POST',headers:{'Content-Type':'application/json',Origin:base},body:JSON.stringify({sampleId})}).then(r=>r.json());
- const expected={'valid-stone':'ACCEPTED','out-of-bounds':'BUILD_INVALID','body-blocked':'BUILD_INVALID','bad-param2':'SCHEMA_INVALID',
+ const expected={'valid-stone':'ACCEPTED','out-of-bounds':'BUILD_INVALID','light-rule':'CAPABILITY_UNAVAILABLE','bad-param2':'SCHEMA_INVALID',
   'unknown-material':'UNSUPPORTED_MATERIAL','extra-field':'UNKNOWN_REQUIRED_FIELD','duplicate-key':'NON_CANONICAL_AMBIGUITY'};
  assert.deepEqual(list.samples.map(s=>s.id),Object.keys(expected));
  // rejected → valid again: each verdict belongs only to the current sample

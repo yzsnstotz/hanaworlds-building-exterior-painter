@@ -5,7 +5,7 @@ import { describeRegion, offeredMaterials } from './planner.mjs';
 
 export const PLUGIN_NAME = 'hanaworlds-building-exterior-painter';
 
-/** Host-capability failure outside the painter/v4 response envelope. The
+/** Host-capability failure outside the painter/v5 response envelope. The
  * frozen CreateBuildPlan failure list has no model/capability code, so this is
  * raised to the caller instead of being disguised as a domain result. */
 export class PainterHostError extends Error {
@@ -29,8 +29,9 @@ const SYSTEM = [
   '- Use only the offered materials, with an offered param2 value.',
   '- Boxes are applied in order; a later box overwrites earlier cells (use this to cut openings',
   '  with "air" only if "air" is offered).',
-  '- If entrance.required is true, leave a walk-through opening at every listed portal cell into an',
-  '  enclosed interior large enough for avatarCells (x,y,z), e.g. by cutting it with "air".',
+  '- If entrance.required is true, leave a walk-through opening at every listed portal cell (or, with no',
+  '  portal listed, one doorway on the firstBuilding.entranceFacing side) into an enclosed interior whose',
+  '  free space fits clearanceCells (x,y,z), e.g. by cutting it with "air".',
   '- If firstBuilding is set, the region is the exact free footprint chosen for this new building; build',
   '  inside it only. If the building has a walkable interior, put its only entrance on the side whose outward',
   '  direction is firstBuilding.entranceFacing (e.g. "-Z" = the side at local z = 0), facing the player.',
@@ -55,9 +56,9 @@ export function promptText(request) {
       unknownCells: region.unknown },
     offeredMaterials: offeredMaterials(request.catalogue),
     imageCount: brief.media.length,
-    entrance: request.safetyProfile.requireEntranceConnectivity ? {
+    entrance: intent.confirmedIntent.siteRules.requireEntranceConnectivity ? {
       required: true,
-      avatarCells: ['width', 'height', 'depth'].map(k => Math.ceil(request.safetyProfile.avatarDimensions[k])),
+      clearanceCells: ['width', 'height', 'depth'].map(k => intent.confirmedIntent.siteRules.entranceClearance[k]),
       portals: request.targetFacts.portals
         .filter(x => intent.confirmedIntent.entrancePortalRefs.includes(x.portalRef))
         .map(x => ({ portalRef: x.portalRef, cells: x.positions.map(p => p.map((v, i) => v - request.targetFacts.sampledBounds.min[i])) })),

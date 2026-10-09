@@ -1,6 +1,6 @@
 {
   "name": "hanaworlds-painter-image-material-panel",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -35,7 +35,7 @@
     }
   },
   "dependencies": {
-    "hanaworlds-building-exterior-painter": "file:vendor/hanaworlds-building-exterior-painter-0.4.2.tgz"
+    "hanaworlds-building-exterior-painter": "file:vendor/hanaworlds-building-exterior-painter-0.5.0.tgz"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
