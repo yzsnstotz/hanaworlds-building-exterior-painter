@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.6.0 · painter/v6 · painter-region/v3 region proposals
+# HanaWorlds Building Exterior Painter 0.6.1 · painter/v6 · painter-region/v3 region proposals
 
 The plugin implements `painter/v6.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V4` plans (image planning can clarify).
@@ -61,7 +61,7 @@ proposal and the image path, before any model call.
 - Region proposals (`painter-region/v3`): the contract refuses a required entrance
   (`painter-region/v3:entrance-rule`) and a light rule, and checks hazards per palette node.
 
-## Confirmed placement (contracts 2.x, confirmed-placement/v1; 0.6.0)
+## Confirmed placement (contracts 2.x, confirmed-placement/v1; 0.6.0, model input 0.6.1)
 
 A placement shown to the player before confirmation is a contract `PlacementProposal`
 (`Controls.placement` = `ConfirmedIntent.placement`, digest-bound by Workshop). Painter does
@@ -74,8 +74,11 @@ ones. `null` (nothing structured was confirmed) keeps the CURRENT_VIEW behaviour
   extent. Painter's released BUILD has the same operations and COVERAGE positions.
 - CreateBuildPlan (model path): Painter applies the same public functions itself
   (`confirmedPlacementOf`, `requirePlacementSource` before any model call,
-  `requirePlacementTarget` on the planned effects). The model prompt does not carry the
-  confirmed target, so a model plan that writes other cells is refused, never re-based.
+  `requirePlacementTarget` on the planned effects). Since 0.6.1 the model input carries the
+  confirmed target as `confirmedPlacement` in the same local grid as `region` (exact `cells`
+  or extent `bounds`, with its rule text), taken only from the contract value after the source
+  check; without a confirmed placement the model input is byte-identical to 0.6.0. A model plan
+  that still writes other cells is refused, never re-based.
 - ValidateRegionProposal (`painter-region/v3`): the block's specified world cells are matched
   by the contract.
 - Refusals are the contract's named failures (`confirmedPlacement.namedFailures`, e.g.
