@@ -128,6 +128,42 @@ function passable(capability, hazardPolicy) {
 }
 
 /**
+ * The rule inputs the entrance and clearance checks read, bound from the
+ * request in this one place. Contracts ^0.5.6 carry them on SafetyProfile
+ * (requireEntranceConnectivity, avatarDimensions, hazardPolicy) and the
+ * confirmed intent (entrancePortalRefs).
+ */
+export function boundRules(request) {
+  const { safetyProfile, intent } = request;
+  return {
+    requireEntrance: safetyProfile.requireEntranceConnectivity,
+    clearance: safetyProfile.avatarDimensions,
+    portalRefs: intent.confirmedIntent.entrancePortalRefs,
+    hazardPolicy: safetyProfile.hazardPolicy,
+  };
+}
+
+/** Grid cells a clearance box spans, ceil per axis; only node units are known. */
+function clearanceSpan(clearance) {
+  if (clearance?.unit !== 'node') fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+  return [Math.ceil(clearance.width), Math.ceil(clearance.height), Math.ceil(clearance.depth)];
+}
+
+/** Final-state cells whose whole clearance box (anchored at the minimum
+ * corner) is `empty`; key -> position. */
+function usableCells(finalNode, span, empty) {
+  const usable = new Map();
+  for (const k of finalNode.keys()) {
+    const p = k.split(',').map(Number);
+    let clear = true;
+    for (let dx = 0; clear && dx < span[0]; dx++) for (let dy = 0; clear && dy < span[1]; dy++)
+      for (let dz = 0; clear && dz < span[2]; dz++) clear = empty(key([p[0] + dx, p[1] + dy, p[2] + dz]));
+    if (clear) usable.set(k, p);
+  }
+  return usable;
+}
+
+/**
  * ENTRANCE_CONNECTIVITY for a new exterior, recomputed only from bound facts:
  * the final state (written effects over sampled known cells), catalogue
  * capabilities, the bound hazard policy and the actual avatar dimensions. A
@@ -139,13 +175,12 @@ function passable(capability, hazardPolicy) {
  * require entrance connectivity.
  */
 export function planEntrances({ request, geometry }) {
-  const { catalogue, targetFacts, safetyProfile, intent } = request;
-  if (!safetyProfile.requireEntranceConnectivity) return [];
-  const refs = intent.confirmedIntent.entrancePortalRefs;
+  const { catalogue, targetFacts } = request;
+  const rules = boundRules(request);
+  if (!rules.requireEntrance) return [];
+  const refs = rules.portalRefs;
   if (refs.length === 0) fail('INTENT_UNCONFIRMED', 'validate', 'REQUIRED_FACT_UNKNOWN');
-  const avatar = safetyProfile.avatarDimensions;
-  if (avatar.unit !== 'node') fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
-  const span = [Math.ceil(avatar.width), Math.ceil(avatar.height), Math.ceil(avatar.depth)];
+  const span = clearanceSpan(rules.clearance);
   // Final state of every sampled known cell: empty cells are 'air', occupied
   // cells keep their node, written effects replace either. Unknown and
   // unsampled cells are absent.
@@ -154,21 +189,14 @@ export function planEntrances({ request, geometry }) {
   for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
   // Use and path cells must be verified EMPTY and passable ("walkable=false
   // plants are not empty"): final node 'air' whose catalogue capability passes.
-  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, safetyProfile.hazardPolicy);
+  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, rules.hazardPolicy);
   // Only a proven collision seals a cavity side. A non-colliding non-air node
   // (plant, vine, liquid) or a node with unknown collision lets sky through.
   const blocks = k => {
     const c = catalogue.nodes[finalNode.get(k)];
     return !!c && (c.walkable === true || (Array.isArray(c.collisionBoxes) && c.collisionBoxes.length > 0));
   };
-  const usable = new Map();
-  for (const k of finalNode.keys()) {
-    const p = k.split(',').map(Number);
-    let clear = true;
-    for (let dx = 0; clear && dx < span[0]; dx++) for (let dy = 0; clear && dy < span[1]; dy++)
-      for (let dz = 0; clear && dz < span[2]; dz++) clear = empty(key([p[0] + dx, p[1] + dy, p[2] + dz]));
-    if (clear) usable.set(k, p);
-  }
+  const usable = usableCells(finalNode, span, empty);
   const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
   const portals = refs.map(portalRef => {
     const portal = targetFacts.portals.find(x => x.portalRef === portalRef);
@@ -250,21 +278,13 @@ const HORIZONTAL_FACES = new Set(['+X', '-X', '+Z', '-Z']);
  */
 export function checkEntranceFacing({ request, geometry, entranceFacing }) {
   if (!HORIZONTAL_FACES.has(entranceFacing)) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
-  const { catalogue, targetFacts, safetyProfile } = request;
-  const avatar = safetyProfile.avatarDimensions;
-  if (avatar.unit !== 'node') fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
-  const span = [Math.ceil(avatar.width), Math.ceil(avatar.height), Math.ceil(avatar.depth)];
+  const { catalogue, targetFacts } = request;
+  const rules = boundRules(request);
+  const span = clearanceSpan(rules.clearance);
   const finalNode = new Map(targetFacts.knownEmptyCells.map(p => [key(p), 'air']));
   for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
-  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, safetyProfile.hazardPolicy);
-  const usable = new Set();
-  for (const k of finalNode.keys()) {
-    const p = k.split(',').map(Number);
-    let clear = true;
-    for (let dx = 0; clear && dx < span[0]; dx++) for (let dy = 0; clear && dy < span[1]; dy++)
-      for (let dz = 0; clear && dz < span[2]; dz++) clear = empty(key([p[0] + dx, p[1] + dy, p[2] + dz]));
-    if (clear) usable.add(k);
-  }
+  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, rules.hazardPolicy);
+  const usable = new Set(usableCells(finalNode, span, empty).keys());
   const { min, max } = geometry.declaredBounds;
   const inY = p => p[1] >= min[1] && p[1] <= max[1];
   const strictlyInside = p => inY(p) && p[0] > min[0] && p[0] < max[0] && p[2] > min[2] && p[2] < max[2];
