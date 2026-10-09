@@ -77,9 +77,11 @@ test('actual preserved texture bytes are measured under explicit public fixture 
  assert.equal(r.material.nodeName,'base:actual-texture-fixture');assert.equal(r.match.texture.bytesDigest,hash(imageBytes));
  assert.ok(r.match.rgb.every(c=>c>0&&c<255));assert.ok(!Object.hasOwn(r,'palette'));
 });
-test('exact pinned contracts handshake and media-bearing proposal contract are available',async()=>{
+test('resolved contracts handshake and media-bearing proposal contract are available',async()=>{
  assert.equal(typeof painter().matchCurrentImageMaterials,'function');
- assert.equal(api.contractHandshake.contracts,`${ADMITTED_CONTRACTS.name}@${ADMITTED_CONTRACTS.version}`);
+ assert.equal(api.contractHandshake.contracts,`${ADMITTED_CONTRACTS.name}@${contractPackage().version}`);
+ assert.equal(contracts.checkContractsVersion(api.contractHandshake.contracts).result,'CONTRACTS_MAJOR_MATCH');
+ assert.equal(contracts.checkContractHandshake(api.contractHandshake).result,'HANDSHAKE_VERSION_MATCH');
  const bytes=await pixels(),context=structuredClone(fixture.facts.sourceContext);
  context.referenceBrief.media=[{attachmentRef:'fixture-current-image',storedBytesDigest:hash(bytes),
   projectionVariantId:null,projectionBytesDigest:null,mediaType:'image/png',bytes:bytes.length,width:2,height:1}];
@@ -87,5 +89,5 @@ test('exact pinned contracts handshake and media-bearing proposal contract are a
  context.intent.referenceBriefDigest=context.referenceBriefDigest;
  context.intentDigest=contracts.digestValue('intent',context.intent).sha256;
  assert.equal(contracts.validateType('BuildProposalContext',context).referenceBrief.media.length,1);
- assert.equal(contractPackage().version,ADMITTED_CONTRACTS.version);
+ assert.equal(contractPackage().name,ADMITTED_CONTRACTS.name);
 });

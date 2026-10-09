@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Replace the image panel's bundled Painter tar with a fresh pack of this
 # (already repinned) Painter source, keeping the panel's interface unchanged.
-# Run from the Painter root after tools/repin-contracts.mjs and `npm install`:
+# Run from the Painter root after `npm install`:
 #   tools/repack-panel-painter.sh <pack-dir> [npm-cache]
 # Refuses a Painter pack that still carries vendor/hanaworlds-contracts. Only a
-# Painter repinned to a released contracts tag may be committed this way.
+# Painter depending on released contracts by range may be committed this way.
 set -eu
 pack=${1:?pack dir}; cache=${2:-}
 root=$(cd "$(dirname "$0")/.." && pwd)

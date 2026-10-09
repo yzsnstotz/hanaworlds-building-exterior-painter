@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
-# Released-contracts gate on a committed source (no repin, lock-driven installs):
-# archive <commit> -> npm ci -> build and suites -> verify:contracts against the
-# released pack (and refuse <other.tgz>) -> dev page tests and paths -> Painter
-# pack equals the committed panel tar -> installed Painter suites -> panel engine
-# outputs equal <before-commit>'s panel, from source and from an installed panel tar.
-#   tools/gate-released-contracts.sh <commit> <released.tgz> <sha256> <before-commit> <other.tgz> <run-dir>
+# Released-contracts gate on a committed source (lock-driven installs; contracts by
+# range, see tools/admitted-contracts.mjs): archive <commit> -> npm ci -> build and
+# suites -> verify:contracts (range spec, npm ls, handshake; optional byte compare
+# with <contracts.tgz>) -> dev page tests and paths -> Painter pack equals the
+# committed panel tar -> installed Painter suites -> panel engine outputs equal
+# <before-commit>'s panel, from source and from an installed panel tar.
+#   tools/gate-released-contracts.sh <commit> <before-commit> <run-dir> [<contracts.tgz>]
 # <run-dir> is wiped first; keep earlier evidence elsewhere.
 set -u
-commit=${1:?commit}; tarball=${2:?released tarball}; want_sha=${3:?sha256}; before=${4:?before commit}; other=${5:?other tarball}; run=${6:?run dir}
+commit=${1:?commit}; before=${2:?before commit}; run=${3:?run dir}; tarball=${4:-}
 src=$(cd "$(dirname "$0")/.." && pwd)
 cache=${HANAWORLDS_NPM_CACHE:-$HOME/.cache/hanaworlds-deps/npm}  # shared dependency cache (WORKER §3)
 rm -rf "$run"; mkdir -p "$run/evidence" "$run/copy" "$run/before" "$run/pack" "$run/consumer" "$run/panel-consumer"
 ev=$run/evidence; c=(--cache "$cache" --no-audit --no-fund)
 note() { echo "$1=$2" >> "$ev/exit.txt"; }
-got_sha=$(shasum -a 256 "$tarball" | cut -d' ' -f1)
-[ "$got_sha" = "$want_sha" ] || { echo "tarball sha $got_sha != $want_sha"; exit 2; }
 git -C "$src" archive "$commit" | tar -x -C "$run/copy"
 git -C "$src" archive "$before" | tar -x -C "$run/before"
 
@@ -27,8 +26,7 @@ npm ci "${c[@]}" > "$ev/install.log" 2>&1; note install $?
 for s in build test test:region test:image-material test:material-sources; do
   npm run -s "$s" > "$ev/$s.log" 2>&1; note "$s" $?
 done
-node tools/verify-contracts.mjs --package "$tarball" > "$ev/verify-contracts.json" 2>&1; note verify:contracts $?
-node tools/verify-contracts.mjs --package "$other" > "$ev/verify-contracts-other.json" 2>&1; [ $? -ne 0 ]; note other-package-refused $?
+node tools/verify-contracts.mjs ${tarball:+--package "$tarball"} > "$ev/verify-contracts.json" 2>&1; note verify:contracts $?
 for d in image-material-panel image-material-web; do
   (cd "$d" && npm ci "${c[@]}" > "$ev/install-$d.log" 2>&1); note "install-$d" $?
 done

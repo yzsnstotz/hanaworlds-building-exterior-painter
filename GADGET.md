@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.4.1 · painter-region/v1 region proposals
+# HanaWorlds Building Exterior Painter 0.4.2 · painter-region/v1 region proposals
 
 The plugin implements `painter/v4.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V3` plans (image planning can clarify).
@@ -40,14 +40,17 @@ fixture gate does not prove that full Host integration.
 
 ## Pinned bytes and settings
 
-Contracts are the released hanaworlds-contracts v0.5.4 package, no vendor copy:
-dependency `github:yzsnstotz/hanaworlds-contracts#85687fc3811e4c8ee6e69410d46d8026e19d2c75` (tag v0.5.4,
-tag object b3721db8), released pack SHA256 `b920097dee8bf57ef44cc9ca964829e568b14c9e1b15a77bf4599f69391062ec`
-(157837 B, 26 files). Code, tests, fixtures and the dev page reach it only through
-the package.json `#contracts` imports (`src/contract-package.mjs`); the identity
-lives in `tools/admitted-contracts.mjs`. Check: `npm run verify:contracts -- --package
-<hanaworlds-contracts-0.5.4.tgz>` (lock revision + byte equality). Repin:
-`node tools/repin-contracts.mjs --spec <spec#commit> --version <v> --sha256 <pack sha>`.
+Contracts are released hanaworlds-contracts tags by range, no vendor copy and no
+commit pin: dependency `github:yzsnstotz/hanaworlds-contracts#semver:^0.5.6`
+(floor 0.5.6 = first release whose handshake/version checks decide by major,
+`checkContractsVersion`; npm resolves the highest matching tag — for 0.x npm's caret
+means >=0.5.6 <0.6.0 — and package-lock records the resolved commit). The advertised
+ContractHandshake is the resolved package's own; peers compare its major only.
+Code, tests, fixtures and the dev page reach it only through the package.json
+`#contracts` imports (`src/contract-package.mjs`); the range lives in
+`tools/admitted-contracts.mjs`. Check: `npm run verify:contracts [-- --package <tgz>]`
+(range spec, `npm ls` satisfaction, handshake; optional byte equality). Raise the
+floor only when Painter starts using a field from a newer release.
 Root API only; no `/v4` binding or prior wire compatibility.
 
 Config/describe retain modelProvider `openai-codex`, modelId `gpt-5.6-luna` and

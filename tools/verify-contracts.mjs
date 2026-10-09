@@ -1,15 +1,15 @@
-// verify:contracts — the contracts package this Painter actually resolves is
-// exactly the pinned one.
+// verify:contracts — the contracts package this Painter resolves is a release
+// inside the declared range and is advertised unchanged.
 //   node tools/verify-contracts.mjs                    identity only
 //   node tools/verify-contracts.mjs --package <tgz>    also byte-compare with a package tarball
-// Identity: resolved package.json name/version == tools/admitted-contracts.mjs,
-// the advertised ContractHandshake names that exact package, and the Painter
-// service advertises the contracts handshake unchanged. When the pin records a
-// released revision, the package.json dependency and the package-lock both name
-// that exact commit (a source checkout; an installed Painter has no lock). With
-// --package, the tarball is the admitted released pack (sha256) and every file of
-// its package/ is present with identical bytes in the resolved package directory
-// and no other file is (a vendor copy may add only VENDOR.json).
+// Identity: in a source checkout the package.json dependency is the range spec in
+// tools/admitted-contracts.mjs (no commit pin) and `npm ls` reports the resolved
+// package as satisfying it (npm's own semver); the contracts handshake names the
+// resolved package and passes the package's own same-major predicate
+// (checkContractsVersion) and checkContractHandshake; the
+// Painter service advertises it unchanged. With --package, every file of the
+// tarball's package/ is present with identical bytes in the resolved package
+// directory and no other file is.
 // Prints one JSON receipt; exit 0 only when every check holds.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -29,34 +29,42 @@ const arg = process.argv.indexOf('--package');
 const tarball = arg > 0 ? resolve(process.argv[arg + 1] ?? '') : null;
 
 const pkg = contractPackage(), dir = contractPackageDir();
-const expected = `${ADMITTED_CONTRACTS.name}@${ADMITTED_CONTRACTS.version}`;
+const resolved = `${pkg.name}@${pkg.version}`;
 const forbidden = new Proxy({}, { get() { throw new Error('verify:contracts touched an external port'); } });
 const advertised = new ExteriorPainterV2({ llm: forbidden, attachments: forbidden, localFacts: forbidden }).handshake();
-const receipt = { pinned: expected, resolvedDir: dir, resolved: `${pkg.name}@${pkg.version}`,
+const receipt = { range: `${ADMITTED_CONTRACTS.name}@${ADMITTED_CONTRACTS.range}`, resolvedDir: dir, resolved,
   handshake: contracts.contractHandshake.contracts, checks: {} };
 const check = (name, fn) => { try { fn(); receipt.checks[name] = 'PASS'; } catch (e) { receipt.checks[name] = `FAIL: ${e.message.split('\n')[0]}`; } };
 
-check('resolved package is the pinned name/version', () => assert.equal(receipt.resolved, expected));
-check('contracts handshake names the pinned package', () => assert.equal(receipt.handshake, expected));
+check('resolved package is hanaworlds-contracts', () => assert.equal(pkg.name, ADMITTED_CONTRACTS.name));
+check('contracts handshake names the resolved package', () => assert.equal(receipt.handshake, resolved));
+check('contracts version decides by major (checkContractsVersion)', () => assert.equal(contracts.checkContractsVersion(receipt.handshake).result, 'CONTRACTS_MAJOR_MATCH'));
+check('contracts accept their own handshake', () => contracts.checkContractHandshake(contracts.contractHandshake));
 check('Painter advertises the contracts handshake unchanged', () => assert.deepEqual(advertised, contracts.contractHandshake));
-const rev = ADMITTED_CONTRACTS.revision, root = fileURLToPath(new URL('..', import.meta.url));
-if (rev && existsSync(join(root, 'package-lock.json'))) {
+const root = fileURLToPath(new URL('..', import.meta.url));
+if (existsSync(join(root, 'package-lock.json'))) {
   const own = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const locked = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8')).packages['node_modules/hanaworlds-contracts'];
-  receipt.revision = { admitted: rev, tag: ADMITTED_CONTRACTS.tag, dependency: own.dependencies?.[ADMITTED_CONTRACTS.name] ?? null, lockResolved: locked?.resolved ?? null };
-  check('package.json dependency pins the released revision', () => assert.ok(receipt.revision.dependency?.endsWith(`#${rev}`), receipt.revision.dependency));
-  check('package-lock resolves the released revision', () => assert.ok(receipt.revision.lockResolved?.endsWith(`#${rev}`), receipt.revision.lockResolved));
+  receipt.dependency = { spec: own.dependencies?.[ADMITTED_CONTRACTS.name] ?? null, lockVersion: locked?.version ?? null, lockResolved: locked?.resolved ?? null };
+  check('package.json dependency is the range spec (no commit pin)', () => assert.equal(receipt.dependency.spec, ADMITTED_CONTRACTS.spec));
+  check('package-lock version is the resolved package', () => assert.equal(receipt.dependency.lockVersion, pkg.version));
+  check('npm ls: resolved package satisfies the range', () => {
+    let out;
+    try { out = execFileSync('npm', ['ls', ADMITTED_CONTRACTS.name, '--json'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch (e) { out = e.stdout; receipt.npmLs = JSON.parse(out || '{}'); throw new Error(`npm ls exit ${e.status}`); }
+    const dep = JSON.parse(out).dependencies?.[ADMITTED_CONTRACTS.name];
+    receipt.npmLs = dep;
+    assert.ok(dep && !dep.invalid && !dep.missing && dep.version === pkg.version, JSON.stringify(dep));
+  });
 }
 
 if (tarball) {
   const bytes = readFileSync(tarball);
   receipt.package = { path: tarball, bytes: statSync(tarball).size, sha256: sha(bytes) };
-  if (ADMITTED_CONTRACTS.packageSha256)
-    check('tarball is the admitted released pack', () => assert.equal(receipt.package.sha256, ADMITTED_CONTRACTS.packageSha256));
   const unpacked = mkdtempSync(join(tmpdir(), 'painter-verify-contracts-'));
   try {
     execFileSync('tar', ['-xzf', tarball, '-C', unpacked]);
-    const want = files(join(unpacked, 'package')), have = files(dir).filter(f => f !== 'VENDOR.json');
+    const want = files(join(unpacked, 'package')), have = files(dir);
     const missing = want.filter(f => !have.includes(f)), extra = have.filter(f => !want.includes(f));
     const differ = want.filter(f => have.includes(f)
       && sha(readFileSync(join(unpacked, 'package', f))) !== sha(readFileSync(join(dir, f))));
