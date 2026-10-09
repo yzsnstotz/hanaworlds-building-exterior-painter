@@ -22,7 +22,7 @@ test('plugin default export matches cordis plugin shape', () => {
 });
 
 test('Config declares every setting with its visible default', () => {
-  assert.deepEqual(Config({}), { modelProvider: 'codex-oauth', modelId: 'gpt-5.6-luna' });
+  assert.deepEqual(Config({}), { modelProvider: 'openai-codex', modelId: 'gpt-5.6-luna' });
   const json = JSON.stringify(Config.toJSON());
   assert.match(json, /must accept image input/);
   assert.match(json, /Fixed invariants/);
@@ -46,7 +46,7 @@ test('apply provides the painter service and resolves host services per call', a
 test('source imports only the contracts package, canonicalize, schemastery and node:crypto', async () => {
   const dir = new URL('../src/', import.meta.url);
   const allowed = new Set(['#contracts', '#contracts/painter/v3', 'canonicalize', '@deepseek-ai/schemastery', 'node:crypto',
-    './planner.mjs', './model.mjs', './service.mjs']);
+    './planner.mjs', './model.mjs', './service.mjs', './proposal.mjs']);
   for (const file of await readdir(dir)) {
     const source = await readFile(new URL(file, dir), 'utf8');
     for (const [, spec] of source.matchAll(/(?:import|export)[^'"]*from\s+'([^']+)'/g))

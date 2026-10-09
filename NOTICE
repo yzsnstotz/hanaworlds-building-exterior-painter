@@ -10,13 +10,19 @@ This package depends on the following packages and does not relicense them. Thei
   (transitive, via schemastery)
 - @standard-schema/spec 1.1.0 — MIT — https://github.com/standard-schema/standard-schema
   (transitive, via schemastery)
-- hanaworlds-contracts 0.3.0 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
-  (commit e82735780bdfd4ea8e662781455040a6e5306121, pack sha256 47a2e5cc…8f5c). An unmodified subset of the
-  admitted package bytes is vendored under vendor/hanaworlds-contracts/ with its own
-  LICENSE, NOTICE and licenses/canonicalize-Apache-2.0.txt; see VENDOR.json.
+- hanaworlds-contracts ^0.5.6 — MIT — https://github.com/yzsnstotz/hanaworlds-contracts
+  (released tags by semver range; currently resolves v0.5.6, commit f84974eb07e30b683f4c1b1712145b756d5671ed).
+  An external dependency installed with its own LICENSE/NOTICE; nothing is vendored.
+  canonicalize remains an external Apache-2.0 dependency with its own installed license.
 
 At runtime the plugin uses the DSH host services `llm` and `attachments`
 (@deepseek-ai/dsh-llm, @deepseek-ai/dsh-attachment, MIT, deepseek-harness) and
 whatever model provider plugin the user installs (for example
 dsh-coding-subscription-oauth, Apache-2.0 with NOTICE). None of their code is
 bundled here.
+
+- sharp0.35.3 — Apache-2.0 — https://github.com/lovell/sharp
+  External raster decoder, with native prebuilt/libvips notices retained by its packages.
+- Colour transform and node/texture associations reuse HanaWorlds picture-blocks
+  structure-painter db87d6f802d975f63144986ca56b979abfacaa23. Numeric material colours
+  are remeasured from actual VoxeLibre0.92.3 texture bytes; game images are not bundled.

@@ -4,8 +4,13 @@ import Schema from '@deepseek-ai/schemastery';
 import { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
 
 export { ExteriorPainterV2, DEFAULT_ROUTE, INVARIANTS } from './service.mjs';
-/** ContractHandshake this provider advertises: exactly the admitted contracts@0.3.0 set. */
+/** ContractHandshake this image provider advertises: the resolved contracts package's own (range in tools/admitted-contracts.mjs). */
 export { contractHandshake } from '#contracts';
+export { PROPOSAL_OPERATION } from './proposal.mjs';
+export { REGION_PROPOSAL_TOOL, REGION_OPERATION, REGION_WIRE, REGION_CAPABILITY, admitRegionProposal,
+  regionBuildPlan, protocolHandshake } from './region.mjs';
+export { matchImageMaterials, IMAGE_MATERIAL_TOOL, ImageMaterialError } from './image-material.mjs';
+export { matchCurrentImageMaterials, CURRENT_IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 export { PainterHostError, buildMessages, promptText } from './model.mjs';
 export { PAINTER_ID, parseProposal, planGeometry, planEntrances, assembleBuild, offeredMaterials } from './planner.mjs';
 
@@ -27,12 +32,12 @@ function hostService(ctx, serviceName) {
 }
 
 /** Host services are resolved at each call, so a later-registered or
- * revoked authority/model/attachment provider is observed, never cached. */
+ * changed business-facts/model/attachment provider is observed, never cached. */
 export function apply(ctx, config = {}) {
   const route = { provider: config.modelProvider ?? DEFAULT_ROUTE.provider,
     model: config.modelId ?? DEFAULT_ROUTE.model };
   const painter = new ExteriorPainterV2({ route });
-  for (const [field, serviceName] of [['authority', 'hanaworldsAuthority'], ['llm', 'llm'],
+  for (const [field, serviceName] of [['localFacts', 'hanaworldsPainterLocalFacts'], ['llm', 'llm'],
     ['attachments', 'attachments']])
     Object.defineProperty(painter, field, { get: () => hostService(ctx, serviceName), configurable: true });
   if (typeof ctx.provide === 'function') ctx.provide(SERVICE, painter);

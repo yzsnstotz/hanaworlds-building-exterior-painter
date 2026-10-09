@@ -1,0 +1,13 @@
+# Image material tool · approved scope MVP-IMAGE-SKILL-S1-02-20261007
+
+One Host-callable `MatchImageMaterials` tool consumes actual image Uint8Array bytes and a current public Catalogue. It returns dominant colour and a material hint only. It never resolves URLs/files, asks a model, runs CreateBuildPlan, compiles or writes a world. Host supplies bytes from its public attachment path; model interpretation stays in the existing skill. Missing media and unknown material colours never become defaults.
+
+Reuse: original picture-blocks structure-painter `palette.ts`, `palette-data.ts`, `tools/palette_build.py` at db87d6f802d975f63144986ca56b979abfacaa23. Reuse sRGB/Oklab transform, squared Euclidean distance, and the 63 existing node/texture associations. Remeasure actual VoxeLibre0.92.3 PNG pixels; preserve texture hash, source-file hash and game.conf version. This is an explicit measured index from that source, not a claim about current live-world textures. Current root Catalogue filters static legal names/param2 through existing offeredMaterials/validateStaticMaterials. Unknown colours remain excluded and counted; planner safety remains mandatory for later proposals.
+
+Use sharp0.35.3 with a pinned lock to decode PNG/JPEG/WebP only, a single frame, EXIF orientation and sRGB RGBA raw pixels. Limits (visible tool descriptor): 32MiB input and 16,777,216 pixels. No resize. Dominant colour: 16x16x16 RGB bins, alpha-byte weight, largest weight; exact ties choose smallest packed RGB-bin key. Representative colour is the alpha-weighted linear-light mean of the winning bin. Nearest indexed legal material: Euclidean Oklab; exact distance ties use UTF16 node name then smallest allowed param2. Whole results include image/Catalogue/palette digests and measured palette provenance. Material RGB is never read from model fields or node/filename text.
+
+Implementation/verification plan (own origin only):
+1. Add black-box new-tool tests and watch the missing tool fail.
+2. Port reusable colour functions and build measured index from actual texture bytes; record provenance. Add byte decoder/algorithm and isolated Cordis method plus tool descriptor; retain all text-source functions unchanged.
+3. Run only affected new-tool source tests; commit/push each deliverable. Archive exact commit, pack/install independently, compare shipped files and exercise installed tool/real Cordis with actual PNG/JPEG/WebP bytes. Catalogue/media binding facts explicitly FIXTURE.
+4. Preserve prior0.3.0 tar/source/E, write exact receipt/INDEX and own REPORT; clean only owned new regenerable dependency/build directories allowed by SPACE. Full App/model/world/Undo NOT_RUN. No old geometry/route/admission gates rerun.

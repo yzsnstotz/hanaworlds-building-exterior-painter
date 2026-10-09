@@ -1,0 +1,1022 @@
+{
+  "source": {
+    "origin": "HanaWorlds picture-blocks structure-painter",
+    "revision": "db87d6f802d975f63144986ca56b979abfacaa23",
+    "mappingSha256": "2b803d65e17da8b7b85b8bbc4a610976729c21f438149d9480279dc2cb00f137",
+    "gameConfSha256": "1a22b041985f98228323e3e1136e8836f5f6287d86d732ae00ea1676efb46289",
+    "gameVersion": "0.92.3",
+    "evidence": "MEASURED_VOXELIBRE_TEXTURE_INDEX; CURRENT_WORLD_TEXTURE_BINDING_UNKNOWN",
+    "entries": 63,
+    "method": "alpha-byte-weighted linear-light mean, original node/texture associations; no filename colour inference"
+  },
+  "entries": [
+    {
+      "nodeName": "mcl_core:wood",
+      "texture": "default_wood.png",
+      "textureSha256": "275c8d25b28eea48c862ad7539690060c0693881e4becd9de0b1398b165ab1b2",
+      "rgb": [
+        116,
+        89,
+        69
+      ],
+      "oklab": [
+        0.4871982874975197,
+        0.024208095966608334,
+        0.040604139746107604
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:tree",
+      "texture": "default_tree.png",
+      "textureSha256": "cfed4aa80b0eeb97f28c56508fa9308fe336e9ed9f598a0618a7de4d4805366c",
+      "rgb": [
+        101,
+        79,
+        60
+      ],
+      "oklab": [
+        0.44495963229417923,
+        0.018506286023488888,
+        0.03738903331484261
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:stone",
+      "texture": "default_stone.png",
+      "textureSha256": "f741bae514fa506fed3daf9977e629509c730431afe06d9d144c027cc8c17352",
+      "rgb": [
+        132,
+        123,
+        119
+      ],
+      "oklab": [
+        0.5901404726327156,
+        0.00800015446946839,
+        0.009268464982009783
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:cobble",
+      "texture": "default_cobble.png",
+      "textureSha256": "baf23e5753c440397ab20c4d5a3b336266e3d2477be3cb1c238685804c1fea57",
+      "rgb": [
+        115,
+        108,
+        106
+      ],
+      "oklab": [
+        0.5376781154642684,
+        0.0062299325959006,
+        0.0062119924490231515
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:glass",
+      "texture": "default_glass.png",
+      "textureSha256": "9600272c0255d508304f83d2b7f5ae718a1af892ef5763c127954a3222ed57df",
+      "rgb": [
+        216,
+        224,
+        236
+      ],
+      "oklab": [
+        0.9047248902636419,
+        -0.004939153574472388,
+        -0.017601727613529183
+      ],
+      "alphaWeight": 15300
+    },
+    {
+      "nodeName": "mcl_core:brick_block",
+      "texture": "default_brick.png",
+      "textureSha256": "7b4a6a3526f0e6a86eb120db49de45103b2de103d55dc488d9cceee3478d7911",
+      "rgb": [
+        141,
+        94,
+        83
+      ],
+      "oklab": [
+        0.528948348824883,
+        0.05366532975597854,
+        0.03621596925743903
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:leaves",
+      "texture": "default_leaves.png",
+      "textureSha256": "b7678d51990bc8686cd3309a57c25c8bcb4e6cfdbc2ca7ea7d54c3eeae82dda5",
+      "rgb": [
+        142,
+        131,
+        114
+      ],
+      "oklab": [
+        0.6154014132567912,
+        0.004777723947041346,
+        0.028204950532468742
+      ],
+      "alphaWeight": 46410
+    },
+    {
+      "nodeName": "mcl_ocean:sea_lantern",
+      "texture": "mcl_ocean_sea_lantern.png",
+      "textureSha256": "5f5fb5dd983c3dd6ff696cad1a5f36d61cf92235a2a4c03e86c07ab1a888e2f4",
+      "rgb": [
+        144,
+        155,
+        154
+      ],
+      "oklab": [
+        0.6805831124409272,
+        -0.012172817292206317,
+        -0.00285579861028995
+      ],
+      "alphaWeight": 261120
+    },
+    {
+      "nodeName": "mcl_nether:glowstone",
+      "texture": "mcl_nether_glowstone.png",
+      "textureSha256": "9578211066cfdebb56bdbf431f45f03aa73d312af832679d2f91a882821d5b72",
+      "rgb": [
+        207,
+        162,
+        105
+      ],
+      "oklab": [
+        0.7413412347396555,
+        0.027398391677952272,
+        0.08750010898055027
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:dirt",
+      "texture": "default_dirt.png",
+      "textureSha256": "ca53d237c809111c0f1bf2618bd7482e458e8ee880b13cb4dc7e8b6447e5c1b0",
+      "rgb": [
+        109,
+        84,
+        71
+      ],
+      "oklab": [
+        0.46868262810958644,
+        0.02567683847106289,
+        0.030293446359294873
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:sand",
+      "texture": "default_sand.png",
+      "textureSha256": "0710fe5e8f194c2037ec792024e00894d7e0d149710d715caa352c6e3a153488",
+      "rgb": [
+        221,
+        172,
+        127
+      ],
+      "oklab": [
+        0.7784500082004309,
+        0.03803175515192314,
+        0.07398591885657357
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:snowblock",
+      "texture": "default_snow.png",
+      "textureSha256": "cd4e066144c43212a987c44192083499acbd07bb0fac1a44bbc08f4238a30f91",
+      "rgb": [
+        222,
+        230,
+        235
+      ],
+      "oklab": [
+        0.9194438178455578,
+        -0.006456832985232808,
+        -0.009012081655981108
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_white",
+      "texture": "mcl_colorblocks_concrete_white.png",
+      "textureSha256": "068aea3f1e07b895d592e0130281ef4690eaa45f3305b4f21fcf4bca9dab123c",
+      "rgb": [
+        209,
+        214,
+        215
+      ],
+      "oklab": [
+        0.8728752629678334,
+        -0.005567144033041205,
+        -0.003114553659314123
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_silver",
+      "texture": "mcl_colorblocks_concrete_silver.png",
+      "textureSha256": "f9e94b095c1476db3e86dec86d767599132368ccf8f02b488e4c589877baf7cc",
+      "rgb": [
+        129,
+        129,
+        119
+      ],
+      "oklab": [
+        0.6005317064244408,
+        -0.004725863243282724,
+        0.014408155166775738
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_grey",
+      "texture": "mcl_colorblocks_concrete_grey.png",
+      "textureSha256": "e438e243d4cb104a9258bae5b3dd462e61b6ca931a4b9d3995ad1a30fe9d13d2",
+      "rgb": [
+        57,
+        60,
+        64
+      ],
+      "oklab": [
+        0.3545240857377277,
+        -0.0021673748404034687,
+        -0.008041223920885743
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_black",
+      "texture": "mcl_colorblocks_concrete_black.png",
+      "textureSha256": "d52d2e4dc839327c7ce5b2c0067ac88fb6d19cfe3eb70cc29be3ab6dfa9d28c0",
+      "rgb": [
+        8,
+        10,
+        16
+      ],
+      "oklab": [
+        0.14533041847098396,
+        -0.0002788432886076525,
+        -0.012942704379688558
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_red",
+      "texture": "mcl_colorblocks_concrete_red.png",
+      "textureSha256": "e0ab3eddc699d864ef726ef3e86eb611f344de053461bfa7a3c598ba65f318ef",
+      "rgb": [
+        147,
+        34,
+        34
+      ],
+      "oklab": [
+        0.43810062149609064,
+        0.133685659087533,
+        0.06473262158474041
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_orange",
+      "texture": "mcl_colorblocks_concrete_orange.png",
+      "textureSha256": "d856a7c79ab64e89bc8dab0c4cb3219c55385ceb9ab3b80b1e80abdd579b5929",
+      "rgb": [
+        226,
+        101,
+        1
+      ],
+      "oklab": [
+        0.6510918213803183,
+        0.11896577394304789,
+        0.13155094534731931
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_yellow",
+      "texture": "mcl_colorblocks_concrete_yellow.png",
+      "textureSha256": "0f3311754116a439afb04e3f51e0eedf76affad7c4888cda8a80f2730c628dfa",
+      "rgb": [
+        241,
+        178,
+        22
+      ],
+      "oklab": [
+        0.8008168659166464,
+        0.022615523341756316,
+        0.15980854849459042
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_lime",
+      "texture": "mcl_colorblocks_concrete_lime.png",
+      "textureSha256": "eed0b67912a87d4d54fa8552f15b82d2d7ee311a6fee10e6aeb5e32615a2be3a",
+      "rgb": [
+        97,
+        172,
+        25
+      ],
+      "oklab": [
+        0.6684611349335244,
+        -0.1282133271939321,
+        0.1319899665738708
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_green",
+      "texture": "mcl_colorblocks_concrete_green.png",
+      "textureSha256": "cfac3ffc078eee08b60992b5b8c413ea3159c0ae5ebc49eab3d73b42577812e6",
+      "rgb": [
+        75,
+        94,
+        37
+      ],
+      "oklab": [
+        0.4526641066484034,
+        -0.04867577239110876,
+        0.06957747370993339
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_cyan",
+      "texture": "mcl_colorblocks_concrete_cyan.png",
+      "textureSha256": "3bdf767e6d6016b0a985a8e2f3142250e06bff7ad4b9c06af7692f9a20756877",
+      "rgb": [
+        22,
+        123,
+        140
+      ],
+      "oklab": [
+        0.5372837839211905,
+        -0.07473846600210704,
+        -0.04758363872902066
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_light_blue",
+      "texture": "mcl_colorblocks_concrete_light_blue.png",
+      "textureSha256": "fc279e889394902bab6880137ed9a4aa2f3452c9f0723da1554e9d9c268cb292",
+      "rgb": [
+        37,
+        141,
+        201
+      ],
+      "oklab": [
+        0.6143159921473241,
+        -0.06386919320576934,
+        -0.11073776831497883
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_blue",
+      "texture": "mcl_colorblocks_concrete_blue.png",
+      "textureSha256": "366cde655422d5d6ae30825b7a4daa94ba0638837dfea498db853ae186db2f1a",
+      "rgb": [
+        46,
+        49,
+        148
+      ],
+      "oklab": [
+        0.3787651739578217,
+        0.013116435493532475,
+        -0.1581277916541673
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_purple",
+      "texture": "mcl_colorblocks_concrete_purple.png",
+      "textureSha256": "5a845604092e316ef8b125b0e408c7af71d2169deb5036dbb5da0df31ded0c37",
+      "rgb": [
+        103,
+        33,
+        159
+      ],
+      "oklab": [
+        0.42568346832945514,
+        0.1070079750778935,
+        -0.1562006283439838
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_magenta",
+      "texture": "mcl_colorblocks_concrete_magenta.png",
+      "textureSha256": "f781371e3e732a7424022f9f4a1973d2b710227465cf775ee9f722b01193f185",
+      "rgb": [
+        172,
+        50,
+        162
+      ],
+      "oklab": [
+        0.540808183823364,
+        0.17567659115979134,
+        -0.0959950182685026
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_pink",
+      "texture": "mcl_colorblocks_concrete_pink.png",
+      "textureSha256": "79627011cd1c48bbf1e512b398826e63bc89a3c80595ae222da6d2a99c51f15b",
+      "rgb": [
+        213,
+        103,
+        145
+      ],
+      "oklab": [
+        0.656932734305892,
+        0.14467850938748794,
+        -0.00513715560488448
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:concrete_brown",
+      "texture": "mcl_colorblocks_concrete_brown.png",
+      "textureSha256": "fab7599891fb8aa2b469f06973cc0e183e70f42dff210722929885346e1276ec",
+      "rgb": [
+        99,
+        61,
+        32
+      ],
+      "oklab": [
+        0.3983984925118469,
+        0.03768555073329152,
+        0.056926639827589776
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_white",
+      "texture": "hardened_clay_stained_white.png",
+      "textureSha256": "4346709cbd8829c94406e63b6334cbb5be100df6e1dc759662d167c46eab54a7",
+      "rgb": [
+        213,
+        198,
+        185
+      ],
+      "oklab": [
+        0.8348844634114388,
+        0.011890368019430275,
+        0.021806934508396325
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_silver",
+      "texture": "hardened_clay_stained_silver.png",
+      "textureSha256": "b9fac13d60855652e1c0cfc4273247c22e7314ed40a8210a23ea4c35c5fde801",
+      "rgb": [
+        150,
+        130,
+        118
+      ],
+      "oklab": [
+        0.6211196859696859,
+        0.018440794015318285,
+        0.024537105444944307
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_grey",
+      "texture": "hardened_clay_stained_grey.png",
+      "textureSha256": "512c7c1eae3de403af3dad3db1349d15a2a94ad8e4b3d68e07b4f47ef77f9131",
+      "rgb": [
+        111,
+        93,
+        86
+      ],
+      "oklab": [
+        0.492554074374233,
+        0.019284859312666908,
+        0.017707266739673544
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_black",
+      "texture": "hardened_clay_stained_black.png",
+      "textureSha256": "93f9f7ad774c23deb40ac908e91e3014f69187a96ef8439fad76d71d9c91da4f",
+      "rgb": [
+        70,
+        53,
+        46
+      ],
+      "oklab": [
+        0.3464121269985003,
+        0.020053669743800823,
+        0.018294046625414784
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_red",
+      "texture": "hardened_clay_stained_red.png",
+      "textureSha256": "a231497157799038adf0636f772fd72398525ef7b0f8f4df0c53370a9003a0ce",
+      "rgb": [
+        160,
+        82,
+        67
+      ],
+      "oklab": [
+        0.5301536616637024,
+        0.08991048585363456,
+        0.05661874673240763
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_orange",
+      "texture": "hardened_clay_stained_orange.png",
+      "textureSha256": "a1a432f91cb2b299e91c86cca7430ad3616bed2566cf89902b979fd411172674",
+      "rgb": [
+        157,
+        96,
+        70
+      ],
+      "oklab": [
+        0.5503544567041367,
+        0.06509423257501284,
+        0.06071820663866484
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_yellow",
+      "texture": "hardened_clay_stained_yellow.png",
+      "textureSha256": "5d2c33d275b4eaee14b9f798c9362ad7f3ef6c1636671cfd535578e2cd55dccf",
+      "rgb": [
+        178,
+        129,
+        52
+      ],
+      "oklab": [
+        0.6368531245710664,
+        0.027907588634561387,
+        0.1068221836116845
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_lime",
+      "texture": "hardened_clay_stained_lime.png",
+      "textureSha256": "de1782bec91f60458d519bca2312d655e21973fdb2728e3f932e6db8b4d58ce2",
+      "rgb": [
+        106,
+        135,
+        74
+      ],
+      "oklab": [
+        0.5860658266335436,
+        -0.05925681173448971,
+        0.07165173198376479
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_green",
+      "texture": "hardened_clay_stained_green.png",
+      "textureSha256": "20c734a85a395fd54ec44e327d28fea0691e7ce8ce47d8be714487a0b6590bc9",
+      "rgb": [
+        75,
+        102,
+        64
+      ],
+      "oklab": [
+        0.4786725323572628,
+        -0.04919185491502545,
+        0.04600818167224835
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_cyan",
+      "texture": "hardened_clay_stained_cyan.png",
+      "textureSha256": "cd9dd172a01c05b96b0d8f66383adc962103bfc714f90b5988ed4b0f176d099a",
+      "rgb": [
+        72,
+        108,
+        124
+      ],
+      "oklab": [
+        0.5107360059103191,
+        -0.03307327139485228,
+        -0.035598981842312416
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_light_blue",
+      "texture": "hardened_clay_stained_light_blue.png",
+      "textureSha256": "6306804aeb63267750fa6b0aa9b626a0e47504563ecf9043e7679adba226a220",
+      "rgb": [
+        91,
+        129,
+        172
+      ],
+      "oklab": [
+        0.5918205753852572,
+        -0.023149653884119492,
+        -0.07548747486011198
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_blue",
+      "texture": "hardened_clay_stained_blue.png",
+      "textureSha256": "ff37cafe251958143444c4c3f158245b3260182fbf409bd3a44bbe15006ae796",
+      "rgb": [
+        69,
+        92,
+        144
+      ],
+      "oklab": [
+        0.47974414655797654,
+        -0.007697414355032073,
+        -0.08825296958656098
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_purple",
+      "texture": "hardened_clay_stained_purple.png",
+      "textureSha256": "53e7e98a083a44bc12841bba31ca30218330942990987fe66c0bb21b89ea040b",
+      "rgb": [
+        82,
+        72,
+        124
+      ],
+      "oklab": [
+        0.4357920595466374,
+        0.03099196117232808,
+        -0.0791188888519998
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_magenta",
+      "texture": "hardened_clay_stained_magenta.png",
+      "textureSha256": "6a965f63f4be36865a6d65c6f935141aef104bc215a5eaec79b53f99cd7ed443",
+      "rgb": [
+        150,
+        80,
+        86
+      ],
+      "oklab": [
+        0.5181086478568133,
+        0.08972849192883944,
+        0.025881484230004415
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_pink",
+      "texture": "hardened_clay_stained_pink.png",
+      "textureSha256": "eee39325fe8931b0879ddf87501fa39c09ba15d798b9863fc1b75cdd8c2c4d74",
+      "rgb": [
+        165,
+        80,
+        77
+      ],
+      "oklab": [
+        0.5359995514791664,
+        0.10252552329017442,
+        0.04570709794500638
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay_brown",
+      "texture": "hardened_clay_stained_brown.png",
+      "textureSha256": "513d5f7a55d94e5d0a9555883f90343190e898ca24408877fffee52eb17e3458",
+      "rgb": [
+        97,
+        70,
+        61
+      ],
+      "oklab": [
+        0.4200416181895835,
+        0.03137312592863489,
+        0.024524384937946286
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:white",
+      "texture": "wool_white.png",
+      "textureSha256": "cff91fa4e76b333828e72bf7f0903e99b99a98af5b016a222386adae51c570e2",
+      "rgb": [
+        213,
+        200,
+        184
+      ],
+      "oklab": [
+        0.8385290879493463,
+        0.007818290312154086,
+        0.02522263502155897
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:grey",
+      "texture": "wool_grey.png",
+      "textureSha256": "49ac3d8d79842673b3e0b1b6d1c08dc769ba70f5c412cddc487335ff52f830d2",
+      "rgb": [
+        144,
+        135,
+        136
+      ],
+      "oklab": [
+        0.6323051934096025,
+        0.010127075240973338,
+        0.0026288713111781714
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:black",
+      "texture": "wool_black.png",
+      "textureSha256": "94eec16544caea6b3a70326a3f5268c3f7684975cbcc5340e4ba5ae9cf0efce1",
+      "rgb": [
+        47,
+        44,
+        44
+      ],
+      "oklab": [
+        0.29512552467495307,
+        0.004647684806659447,
+        0.0014150454912817134
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:red",
+      "texture": "wool_red.png",
+      "textureSha256": "743542f93e902a06acd71eb6f1e917d7a266bd61ef52a9aa610053af95e5c2a2",
+      "rgb": [
+        134,
+        43,
+        46
+      ],
+      "oklab": [
+        0.42630586577369467,
+        0.11460864209403313,
+        0.04727226198754686
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:orange",
+      "texture": "wool_orange.png",
+      "textureSha256": "eafd61d3a04740aab737673ca2abf6796845c1285344bd82bdeea137355ea992",
+      "rgb": [
+        189,
+        108,
+        46
+      ],
+      "oklab": [
+        0.6115339749151888,
+        0.07382982838488492,
+        0.10365486459855966
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:yellow",
+      "texture": "wool_yellow.png",
+      "textureSha256": "66fbe6fa731799fbeaf4412e3b373766ea8a027f9b250fc4b6ff83237c3ec895",
+      "rgb": [
+        202,
+        165,
+        70
+      ],
+      "oklab": [
+        0.7368759112517965,
+        0.005459865419486787,
+        0.12008107296916448
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:cyan",
+      "texture": "wool_cyan.png",
+      "textureSha256": "b4d1f03f2d3cbe585f1b51da8d2ee08e1b64f8305ffb92bb3a2a5af2d64aaacc",
+      "rgb": [
+        31,
+        96,
+        114
+      ],
+      "oklab": [
+        0.4552577538312057,
+        -0.05363222969380721,
+        -0.045304514786619676
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:blue",
+      "texture": "wool_blue.png",
+      "textureSha256": "a6a26b4f99155acf84af14ea57fd3e70a31a09b8dd74b1a6f2dc879b26dcc30e",
+      "rgb": [
+        44,
+        75,
+        127
+      ],
+      "oklab": [
+        0.41629032380470365,
+        -0.017131785597773203,
+        -0.09240356599200372
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:magenta",
+      "texture": "wool_magenta.png",
+      "textureSha256": "7e6fa8efc4286ab70a473bf578f8a65828f313b7aa399f2c1633ad5123dd3b37",
+      "rgb": [
+        142,
+        87,
+        126
+      ],
+      "oklab": [
+        0.531773637895019,
+        0.08434142101188774,
+        -0.03344513640070801
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:pink",
+      "texture": "wool_pink.png",
+      "textureSha256": "8bf82704b4849201d7953ca93d7ab9b7d1ab9226ae1dbd9ad01628ef189edcec",
+      "rgb": [
+        172,
+        93,
+        109
+      ],
+      "oklab": [
+        0.5734143236387285,
+        0.10293917710021588,
+        0.014536217802132101
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_wool:brown",
+      "texture": "wool_brown.png",
+      "textureSha256": "e3b423e2e28498b684ee1cc39d0f50c9194b158d992f080002ae30431c9bfac2",
+      "rgb": [
+        87,
+        58,
+        44
+      ],
+      "oklab": [
+        0.378252763631723,
+        0.032846340335801666,
+        0.03459522691299083
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:goldblock",
+      "texture": "default_gold_block.png",
+      "textureSha256": "22e70d72fab6f1191a8e2242593f918d3faedf7f97eecb22c38b2b2554c921e2",
+      "rgb": [
+        198,
+        155,
+        71
+      ],
+      "oklab": [
+        0.7131768515417303,
+        0.015350203816440033,
+        0.1124519018835583
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_deepslate:deepslate",
+      "texture": "mcl_deepslate.png",
+      "textureSha256": "e08d318e0b40fbfe8d2fc87b15e947c8c41bc9e0531e179242309dfac32085f3",
+      "rgb": [
+        72,
+        70,
+        69
+      ],
+      "oklab": [
+        0.3951946031978911,
+        0.0021593045002332445,
+        0.002107289414970459
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_deepslate:deepslate_bricks",
+      "texture": "mcl_deepslate_bricks.png",
+      "textureSha256": "78025224d500476f2a1d18e79fd8b905e51a668f0782e54d3277bd16055166c1",
+      "rgb": [
+        65,
+        63,
+        63
+      ],
+      "oklab": [
+        0.3697105134751003,
+        0.0020187677375783086,
+        0.0016308984506646085
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_deepslate:deepslate_tiles",
+      "texture": "mcl_deepslate_tiles.png",
+      "textureSha256": "5ba1f8bc25111658eadcd47475c90aa6e8bc07f3af6661c239e379681e8de255",
+      "rgb": [
+        52,
+        50,
+        50
+      ],
+      "oklab": [
+        0.3196424129436161,
+        0.001768008250635722,
+        0.0008325699480588589
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_deepslate:deepslate_cobbled",
+      "texture": "mcl_cobbled_deepslate.png",
+      "textureSha256": "fc61e61f83f3ae584ec510cf25b34aefc5a0f50fb4990cd7a48f4e48b04f696c",
+      "rgb": [
+        81,
+        78,
+        77
+      ],
+      "oklab": [
+        0.4273308728139901,
+        0.0021621166976741324,
+        0.0029367929671401116
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_nether:netherrack",
+      "texture": "mcl_nether_netherrack.png",
+      "textureSha256": "933debf2934d1688478e42b0ceebe0421893729030d604f9926de5e805614afe",
+      "rgb": [
+        134,
+        52,
+        40
+      ],
+      "oklab": [
+        0.43852793394145645,
+        0.09852948281948287,
+        0.0586609554000081
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_colorblocks:hardened_clay",
+      "texture": "hardened_clay.png",
+      "textureSha256": "854cf82b0c2918c02c28e4e914f6d0ac9125c544e5d298f880a8cdd81e9d9aef",
+      "rgb": [
+        144,
+        105,
+        88
+      ],
+      "oklab": [
+        0.55519168163595,
+        0.04101343587980158,
+        0.038780277600645396
+      ],
+      "alphaWeight": 65280
+    },
+    {
+      "nodeName": "mcl_core:stonebrick",
+      "texture": "default_stone_brick.png",
+      "textureSha256": "ee6b56d185db69f6c0b5673bb0500dbb3fe6d4c331f37ceb1bf8a20e1387ee82",
+      "rgb": [
+        99,
+        92,
+        89
+      ],
+      "oklab": [
+        0.48060913319411397,
+        0.0075443419939162926,
+        0.008092640294265485
+      ],
+      "alphaWeight": 65280
+    }
+  ]
+}

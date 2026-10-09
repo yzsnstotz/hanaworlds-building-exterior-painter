@@ -1,25 +1,14 @@
-// The independently admitted hanaworlds-contracts artifact this painter vendors
-// (S1-02 contracts-v4 component admission, ADMITTED_COMPONENT_INPUT).
+// The hanaworlds-contracts range this Painter depends on: package.json
+// dependency github:yzsnstotz/hanaworlds-contracts#semver:<range>, resolved by npm
+// against the released tags (package-lock records the resolved commit). No commit
+// or pack-SHA pin: peers compare the contracts major only. Floor 0.5.6: the first
+// release whose checkContractsVersion / checkContractHandshake decide by major
+// (0.5.4 carried painter/v4, painter-region/v1, ReferenceBrief/v3,
+// MaterialSources and ProtocolHandshake but still compared the whole version).
+// `npm run verify:contracts` checks the spec, that npm resolves inside the range,
+// and that the advertised handshake is the resolved package's own.
 export const ADMITTED_CONTRACTS = Object.freeze({
-  name: 'hanaworlds-contracts',
-  version: '0.3.0',
+  name: 'hanaworlds-contracts', range: '^0.5.6',
   origin: 'https://github.com/yzsnstotz/hanaworlds-contracts',
-  revision: 'e82735780bdfd4ea8e662781455040a6e5306121',
-  sourceTarball: 'https://codeload.github.com/yzsnstotz/hanaworlds-contracts/tar.gz/e82735780bdfd4ea8e662781455040a6e5306121',
-  sha256: '47a2e5cc77590fb471ffedde715682564e169a0d88dbc5005b71d8d542b38f5c',
-  entries: 923,
+  spec: 'github:yzsnstotz/hanaworlds-contracts#semver:^0.5.6',
 });
-
-/** Unmodified subset vendored: the import closure of dist/v4 entry points used
- * by the painter, license/notice files and the conformance fixtures its tests read. */
-export const VENDORED_FILES = Object.freeze([
-  'LICENSE', 'NOTICE', 'package.json', 'licenses/canonicalize-Apache-2.0.txt',
-  'dist/errors.mjs', 'dist/geometry.mjs', 'dist/names.mjs', 'dist/strict-json.mjs',
-  'dist/v4/index.mjs', 'dist/v4/runtime.mjs', 'dist/v4/domain.mjs', 'dist/v4/schema-validator.mjs',
-  'dist/v4/generated/contracts.mjs',
-  'dist/v4/bindings/BUILD-V2.mjs', 'dist/v4/bindings/ReferenceBrief-v2.mjs', 'dist/v4/bindings/canvas-v4.mjs',
-  'dist/v4/bindings/interaction-surface-v3.mjs', 'dist/v4/bindings/operations-v2.mjs',
-  'dist/v4/bindings/painter-v3.mjs', 'dist/v4/bindings/session-v2.mjs', 'dist/v4/bindings/world-adapter-v4.mjs',
-  'fixtures/v4/candidate/closure-oracles.json', 'fixtures/v4/candidate/placement-region-chain-v4.json',
-  'fixtures/v4/candidate/wire-inputs-v4.json',
-]);

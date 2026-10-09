@@ -1,0 +1,47 @@
+{
+  "name": "hanaworlds-painter-image-material-panel",
+  "version": "0.1.4",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "图片 → 材质：本机 Painter 确定性取色开发面板",
+  "exports": {
+    ".": "./host.mjs",
+    "./client": "./client.cjs"
+  },
+  "files": [
+    "host.mjs",
+    "engine.mjs",
+    "client.cjs",
+    "cordis.patch.yml",
+    "README.md",
+    "vendor",
+    "LICENSE",
+    "LICENSE_AUDIT.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-session"
+      ],
+      "external": []
+    }
+  },
+  "dependencies": {
+    "hanaworlds-building-exterior-painter": "file:vendor/hanaworlds-building-exterior-painter-0.4.2.tgz"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2"
+  },
+  "bundledDependencies": [
+    "hanaworlds-building-exterior-painter"
+  ]
+}

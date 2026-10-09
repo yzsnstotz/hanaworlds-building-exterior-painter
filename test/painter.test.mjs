@@ -30,7 +30,7 @@ test('image and text go together through the host model route by durable attachm
   const model = F.llm();
   await painter({ llm: model }).call('CreateBuildPlan', F.request());
   const [options] = model.requests;
-  assert.equal(options.provider, 'codex-oauth');
+  assert.equal(options.provider, 'openai-codex');
   assert.equal(options.model, 'gpt-5.6-luna');
   assert.equal(options.messages.length, 1);
   const content = options.messages[0].content;
