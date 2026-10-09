@@ -183,8 +183,40 @@ function usableCells(finalNode, span, empty) {
  * the `entranceFacing` side (portalRef null; see checkEntranceFacing). Each
  * must reach the use space by a six-neighbor path over usable positions.
  * Returns [] and checks nothing when the confirmed rules require no entrance.
+ * Passage needs proven facts: an unknown capability is never passable (air) and
+ * never seals a cavity (other nodes). A refusal that only unknown capabilities
+ * cause is TARGET_FACTS_INCOMPLETE/REQUIRED_FACT_UNKNOWN; BUILD_INVALID means the
+ * geometry fails even with every unknown resolved in its favour.
  */
-export function planEntrances({ request, geometry, entranceFacing = null }) {
+export function planEntrances(args) {
+  try { return entrancesFrom(args); }
+  catch (error) {
+    if (!(error instanceof ContractError) || error.code !== 'BUILD_INVALID') throw error;
+    // Tell a missing fact from invalid geometry: if the same plan would pass with
+    // every unknown Catalogue capability resolved in the entrance's favour, the
+    // refusal is caused by facts nobody supplied, not by the building. This only
+    // chooses the refusal; nothing is ever planned or released on assumed facts.
+    let resolvable = true;
+    try { entrancesFrom({ ...args, request: { ...args.request, catalogue: favourableCatalogue(args.request.catalogue) } }); }
+    catch (probe) { if (!(probe instanceof ContractError)) throw probe; resolvable = false; }
+    if (resolvable) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
+    throw error;
+  }
+}
+
+/** The bound Catalogue with each unknown (null) capability resolved in the
+ * entrance's favour: `air` passable, every other node blocking. Known values are
+ * kept. Used only by planEntrances to attribute a refusal. */
+function favourableCatalogue(catalogue) {
+  const box = [[-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]];
+  return { ...catalogue, nodes: Object.fromEntries(Object.entries(catalogue.nodes).map(([name, c]) => [name,
+    name === 'air'
+      ? { ...c, walkable: c.walkable ?? false, collisionBoxes: c.collisionBoxes ?? [],
+          liquidType: c.liquidType ?? 'none', damagePerSecond: c.damagePerSecond ?? 0 }
+      : { ...c, walkable: c.walkable ?? true, collisionBoxes: c.collisionBoxes ?? box }])) };
+}
+
+function entrancesFrom({ request, geometry, entranceFacing = null }) {
   const { catalogue, targetFacts } = request;
   const rules = boundRules(request);
   if (!rules.requireEntrance) return [];

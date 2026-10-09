@@ -226,3 +226,39 @@ test('Painter output is what the public witness checks bind: tampered entrance/b
     }, e => e.code === c.error.code, c.title);
   }
 });
+
+/** Hut region whose bound Catalogue has `edit` applied (digests rebound). A null
+ * capability field is listed in unknownFields, as the contract's domain rule requires. */
+const unknown = (node, field) => { node[field] = null; node.unknownFields = [...new Set([...node.unknownFields, field])].sort(); };
+const hutWith = edit => r => {
+  edit(r.catalogue.nodes);
+  r.targetFacts.catalogueDigest = digest('catalogue', r.catalogue);
+  hutRegion(r);
+};
+const airUnknown = hutWith(nodes => unknown(nodes.air, 'collisionBoxes'));
+
+test('entrance needs proven passable air: unknown air collisionBoxes is named REQUIRED_FACT_UNKNOWN, not invalid geometry', async () => {
+  const entrance = rules.ruleSets.entrance;
+  for (const height of [1, 2]) { // independent of the confirmed clearance height
+    const siteRules = { ...entrance, entranceClearance: { ...entrance.entranceClearance, height } };
+    await refused(variant({ siteRules, region: airUnknown, proposal: hut() }), 'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+    // The same plan with the air fact supplied (known, no collision box) passes.
+    await accepted(variant({ siteRules, region: hutRegion, proposal: hut() }));
+  }
+});
+
+test('unknown facts never mask or replace a real verdict', async () => {
+  const entrance = rules.ruleSets.entrance;
+  // No entrance required: entrance facts are not consulted, the plan passes.
+  await accepted(variant({ siteRules: rules.ruleSets.strict, region: airUnknown, proposal: hut() }));
+  // Geometry that fails even if every unknown fact were favourable stays BUILD_INVALID.
+  for (const proposal of [hut({ door: false }), hut({ face: '+Z' })])
+    await refused(variant({ siteRules: entrance, region: airUnknown, proposal }), 'BUILD_INVALID', 'INVALID_GEOMETRY');
+  // Air known to collide: a known fact, so no usable doorway is invalid geometry.
+  const solidAir = hutWith(nodes => { nodes.air.collisionBoxes = [[-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]]; });
+  await refused(variant({ siteRules: entrance, region: solidAir, proposal: hut() }), 'BUILD_INVALID', 'INVALID_GEOMETRY');
+  // A wall node with unknown collision cannot prove the interior is enclosed.
+  // (walkable:true alone already proves a node blocks, so both facts are unknown here.)
+  const wallUnknown = hutWith(nodes => { unknown(nodes['fixture:stone'], 'collisionBoxes'); unknown(nodes['fixture:stone'], 'walkable'); });
+  await refused(variant({ siteRules: entrance, region: wallUnknown, proposal: hut() }), 'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+});

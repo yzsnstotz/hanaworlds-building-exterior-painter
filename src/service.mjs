@@ -17,7 +17,7 @@ import { RegionProposalValidator } from './region-proposal.mjs';
 import { REGION_PROPOSAL_TOOL, REGION_OPERATION, protocolHandshake } from './region.mjs';
 
 export const WIRE = 'painter/v5';
-export const PACKAGE_VERSION = '0.5.2';
+export const PACKAGE_VERSION = '0.5.3';
 export const OPERATION = 'CreateBuildPlan';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -32,7 +32,7 @@ export const INVARIANTS = Object.freeze([
   'Written cells must be sampled known-empty target cells; occupied cells are never replaced and unknown cells are never written.',
   'Site rules come only from the player-confirmed intent: the carried SafetyProfile must equal safetyProfileFromConfirmedIntent (otherwise INTENT_UNCONFIRMED); a stated light rule is refused by capability name painter/v5:light-rule (CAPABILITY_UNAVAILABLE) at admission and at witness recheck; hazards are checked against the confirmed values with no enum or default.',
   'No player body or avatar input is read: real bodies are checked inside the engine; BODY_CLEARANCE binds the written positions only.',
-  'Entrance rules run only when the confirmed site rules require an entrance: every confirmed portal (which must exist in the bound facts, otherwise TARGET_FACTS_INCOMPLETE) or, with none confirmed, the doorway on the entranceFacing side must reach the enclosed interior by a six-neighbor path of cells with the confirmed entranceClearance, recomputed from bound facts; otherwise BUILD_INVALID.',
+  'Entrance rules run only when the confirmed site rules require an entrance: every confirmed portal (which must exist in the bound facts, otherwise TARGET_FACTS_INCOMPLETE) or, with none confirmed, the doorway on the entranceFacing side must reach the enclosed interior by a six-neighbor path of cells with the confirmed entranceClearance, recomputed from bound facts; passage needs proven Catalogue capabilities (an unknown one is never passable and never seals); a refusal caused only by unknown capabilities is TARGET_FACTS_INCOMPLETE/REQUIRED_FACT_UNKNOWN, otherwise BUILD_INVALID.',
   'A first new building uses only the Canvas-relayed Adapter regionInspection: BUILD.coordinateFrame = regionInspection.frame and BODY_CLEARANCE witnesses carry regionInspection.evidence; the painter never inspects the world, chooses or relocates a placement.',
   'When an entrance is required and no portal is confirmed, a first building with a usable interior has its entrance on the footprint face whose outward normal is regionInspection.entranceFacing and on no other face; otherwise BUILD_INVALID.',
   'BODY_CLEARANCE witnesses require relayed inspection evidence; absent evidence or frame (INSPECTED facts carry none in painter/v5) is a typed TARGET_FACTS_INCOMPLETE rejection, never a default safe claim.',
