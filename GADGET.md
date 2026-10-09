@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.5.1 · painter/v5 · painter-region/v2 region proposals
+# HanaWorlds Building Exterior Painter 0.5.2 · painter/v5 · painter-region/v2 region proposals
 
 The plugin implements `painter/v5.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V4` plans (image planning can clarify).
@@ -67,9 +67,8 @@ fixture gate does not prove that full Host integration.
 ## Pinned bytes and settings
 
 Contracts are released hanaworlds-contracts tags by range, no vendor copy and no
-commit pin: dependency `github:yzsnstotz/hanaworlds-contracts#semver:^1.0.0-rc.2`
-(major 1 batch candidate; rc.2 changed only engine-guard/receipt/region-commit shapes
-that Painter does not use; after the formal v1.0.0 only the range becomes `^1.0.0`; npm
+commit pin: dependency `git+https://github.com/yzsnstotz/hanaworlds-contracts.git#semver:^1.0.0`
+(formal v1.0.0, same content as the batch candidate v1.0.0-rc.4; after the formal v1.0.0 only the range becomes `^1.0.0`; npm
 resolves the highest matching tag and package-lock records the resolved commit). The advertised
 ContractHandshake is the resolved package's own; peers compare its major only.
 Code, tests, fixtures and the dev page reach it only through the package.json
