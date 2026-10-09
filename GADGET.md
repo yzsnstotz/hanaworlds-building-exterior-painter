@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.5.2 · painter/v5 · painter-region/v2 region proposals
+# HanaWorlds Building Exterior Painter 0.5.3 · painter/v5 · painter-region/v2 region proposals
 
 The plugin implements `painter/v5.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V4` plans (image planning can clarify).
@@ -47,6 +47,12 @@ proposal and the image path, before any model call.
   TARGET_FACTS_INCOMPLETE). With no confirmed portal the entrance is the doorway on the
   `regionInspection.entranceFacing` side (no doorway on another face) and its
   ENTRANCE_CONNECTIVITY witness has `portalRef: null` and `clearance` = confirmed.
+- Passage needs proven Catalogue facts (CONTRACT_RULES: a cavity/path forms only on
+  facts that prove collision passability): an unknown (null) capability is never
+  passable for `air` and never seals a cavity for other nodes. A refusal caused only
+  by unknown capabilities (the same plan would pass with them resolved favourably) is
+  `TARGET_FACTS_INCOMPLETE/REQUIRED_FACT_UNKNOWN`, naming the missing fact;
+  `BUILD_INVALID` means the geometry fails regardless (0.5.3).
 - Hazards are checked against the confirmed values; no enum, no default.
 - A stated `optionalLightRule` is refused by capability name `painter/v5:light-rule`
   (CAPABILITY_UNAVAILABLE/REQUIRED_FACT_UNKNOWN) at Painter admission and again at
