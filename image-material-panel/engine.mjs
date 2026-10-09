@@ -1,4 +1,4 @@
-// Same-origin UI adapter only. All pixel and matching algorithms live in Painter 0.5.0 (unchanged since 0.4.0).
+// Same-origin UI adapter only. All pixel and matching algorithms live in Painter 0.5.1 (unchanged since 0.4.0).
 import {createRequire} from 'node:module';
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';

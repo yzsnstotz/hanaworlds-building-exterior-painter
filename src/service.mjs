@@ -17,7 +17,7 @@ import { RegionProposalValidator } from './region-proposal.mjs';
 import { REGION_PROPOSAL_TOOL, REGION_OPERATION, protocolHandshake } from './region.mjs';
 
 export const WIRE = 'painter/v5';
-export const PACKAGE_VERSION = '0.5.0';
+export const PACKAGE_VERSION = '0.5.1';
 export const OPERATION = 'CreateBuildPlan';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
 const sha = text => createHash('sha256').update(text).digest('hex');
