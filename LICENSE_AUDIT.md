@@ -1,8 +1,8 @@
-# License audit · hanaworlds-building-exterior-painter 0.6.0
+# License audit · hanaworlds-building-exterior-painter 0.6.1
 
 | Component | Version | License | Source | Use | Copied into this repo? |
 |---|---|---|---|---|---|
-| HanaWorlds Exterior Painter source (`src/`, `test/`, `tools/`) | 0.6.0 | MIT | this repository | plugin | original work |
+| HanaWorlds Exterior Painter source (`src/`, `test/`, `tools/`) | 0.6.1 | MIT | this repository | plugin | original work |
 | hanaworlds-contracts | ^2.0.0-rc.1 (released tags; lock resolves 2.0.0-rc.1 @ 7e410d5b) | MIT (own LICENSE/NOTICE preserved; canonicalize external Apache-2.0 dependency) | github.com/yzsnstotz/hanaworlds-contracts | root painter/v6, painter-region/v3, ReferenceBrief/v5, confirmed-placement/v1 functions, BUILD/V4, SiteRules/safetyProfileFromConfirmedIntent, region-voxels/v1 validation, digests and ProtocolHandshake; public fixtures main, skill-site-rules and confirmed-placement in tests | no: external dependency by semver range on released tags; verify:contracts checks the range and handshake |
 | canonicalize | 5.1.0 | Apache-2.0 | npm / github.com/erdtman/canonicalize | JCS for replay identity | no (dependency) |
 | @deepseek-ai/schemastery | 3.18.2 | MIT | npm / github.com/deepseek-ai/deepseek-harness | visible DSH Config schema | no (dependency) |

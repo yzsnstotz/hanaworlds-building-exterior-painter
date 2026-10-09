@@ -177,11 +177,20 @@ function planRequest(from) {
     projectionVariantId: null, projectionBytesDigest: null, mediaType: 'image/png', bytes: 1024, width: 16, height: 16 }];
   return rebind(r);
 }
-function scriptedModel(proposal) {
-  const state = { calls: 0 };
+/** Scripted in-process llm port (not a model): `answer` is a fixed proposal or a function of the
+ * request facts the model actually received in its prompt text. */
+function scriptedModel(answer) {
+  const state = { calls: 0, received: [] };
   return { state, llm: {
     async resolveModelInfo() { return { inputModalities: ['text', 'image'] }; },
-    async *stream() { state.calls++; yield { type: 'text-delta', index: 0, text: JSON.stringify(proposal) }; yield { type: 'finish', reason: { kind: 'stop' } }; },
+    async *stream({ messages }) {
+      state.calls++;
+      const text = messages[0].content.find(c => c.type === 'text').text;
+      const facts = JSON.parse(text.slice(text.indexOf('\n') + 1));
+      state.received.push(facts);
+      const proposal = typeof answer === 'function' ? answer(facts) : answer;
+      yield { type: 'text-delta', index: 0, text: JSON.stringify(proposal) }; yield { type: 'finish', reason: { kind: 'stop' } };
+    },
   } };
 }
 async function plan(request, proposal) {
@@ -207,4 +216,49 @@ test('CreateBuildPlan: confirmed A planned as A; model boxes writing B, or a re-
   const before = await plan(resampled, a.request.proposal);
   refused(before.response, failure('PLACEMENT_REVISION_STALE'));
   assert.equal(before.model.state.calls, 0, 'source binding is refused before any model call');
+});
+
+const localOf = (request, p) => p.map((v, i) => v - request.targetFacts.sampledBounds.min[i]);
+const PROMPT_KEYS = ['request', 'confirmedIntent', 'purpose', 'styleText', 'region', 'offeredMaterials', 'imageCount', 'entrance', 'firstBuilding'];
+
+test('CreateBuildPlan model input: the model receives exactly the confirmed target and plans A from it; without one the input is unchanged', async () => {
+  // Exact A: the scripted model plans only from the cells it received (one 1x1x1 box per cell).
+  const a = planRequest(accept('confirmed A').request);
+  const fromPrompt = facts => ({ decision: 'BUILD', materials: { stone: { nodeName: 'fixture:stone', param2: 0 } },
+    boxes: facts.confirmedPlacement.cells.map(c => ({ min: c, max: c, materialRef: 'stone' })) });
+  const ok = await plan(a, fromPrompt);
+  assert.equal(ok.model.state.calls, 1);
+  const got = ok.model.state.received[0];
+  assert.deepEqual(Object.keys(got), [...PROMPT_KEYS, 'confirmedPlacement']);
+  assert.equal(got.confirmedPlacement.kind, 'EXACT_CELLS');
+  assert.deepEqual(got.confirmedPlacement.cells, fx.placements.A.target.cells.map(p => localOf(a, p)));
+  assert.equal(ok.response.error, null, JSON.stringify(ok.response.error));
+  assert.deepEqual(written(ok.response.result.build).map(key).sort(), fx.placements.A.target.cells.map(key).sort());
+  // A model that ignores the received target and writes B is refused, never re-based.
+  const toB = fx.perCell.reject.find(x => x.title.includes('the boxes write B')).request.proposal;
+  const ignored = await plan(a, toB);
+  assert.deepEqual(ignored.model.state.received[0].confirmedPlacement, got.confirmedPlacement);
+  refused(ignored.response, failure('PLACEMENT_TARGET_MISMATCH'));
+  // Extent: the received bounds are the confirmed ones in the same local grid.
+  const ext = accept('confirmed extent');
+  const e = planRequest(ext.request);
+  const inExtent = await plan(e, ext.request.proposal);
+  const bounds = fx.placements.extentA.target.bounds;
+  assert.deepEqual(inExtent.model.state.received[0].confirmedPlacement,
+    { kind: 'ANCHORED_EXTENT', rule: inExtent.model.state.received[0].confirmedPlacement.rule,
+      bounds: { min: localOf(e, bounds.min), max: localOf(e, bounds.max) } });
+  assert.equal(inExtent.response.error, null, JSON.stringify(inExtent.response.error));
+  // No structured placement: no confirmedPlacement key, the prompt facts keep the earlier key set.
+  const none = accept('no structured placement');
+  const n = await plan(planRequest(none.request), none.request.proposal);
+  assert.deepEqual(Object.keys(n.model.state.received[0]), PROMPT_KEYS);
+  assert.equal(n.response.error, null, JSON.stringify(n.response.error));
+  assert.equal(Painter.promptText(planRequest(none.request)).includes('confirmedPlacement'), false);
+  // Old source: refused before the model is called, so it never sees a stale target.
+  const stale = clone(a);
+  stale.regionInspection = clone(fx.inspections.view1Later); stale.targetFacts = clone(fx.inspections.view1Later.targetFacts);
+  rebind(stale);
+  const before = await plan(stale, fromPrompt);
+  refused(before.response, failure('PLACEMENT_REVISION_STALE'));
+  assert.equal(before.model.state.calls, 0);
 });

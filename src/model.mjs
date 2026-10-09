@@ -1,6 +1,7 @@
 // The only model path: the DSH host `llm` service with durable `attachments`
 // image references. The painter never reads, encodes or logs image bytes.
 import { randomUUID } from 'node:crypto';
+import { confirmedPlacementOf } from '#contracts';
 import { describeRegion, offeredMaterials } from './planner.mjs';
 
 export const PLUGIN_NAME = 'hanaworlds-building-exterior-painter';
@@ -43,10 +44,27 @@ const SYSTEM = [
   '{"decision":"CLARIFY","clarification":{"code":"AMBIGUOUS_INTENT"|"AMBIGUOUS_GEOMETRY","question":"<question>"}}',
 ].join('\n');
 
+/** The player-confirmed structured placement (confirmed-placement/v1) in the same local grid as
+ * `region`, or null when none was confirmed. #plan has already required that the request's
+ * inspection is the placement's source, so the local frame is the one it was confirmed in. The
+ * rule text travels with the value; without a placement the model input is unchanged. */
+function confirmedPlacementFacts(request) {
+  const placement = confirmedPlacementOf(request.intent, request.referenceBrief);
+  if (placement === null) return null;
+  const local = p => p.map((v, i) => v - request.targetFacts.sampledBounds.min[i]);
+  const { target } = placement;
+  return target.kind === 'EXACT_CELLS'
+    ? { kind: 'EXACT_CELLS', rule: 'The player confirmed exactly these cells: the final written cells must be every listed cell and no other cell.',
+      cells: target.cells.map(local) }
+    : { kind: 'ANCHORED_EXTENT', rule: 'The player confirmed this located range: every written cell must be inside it (min..max inclusive).',
+      bounds: { min: local(target.bounds.min), max: local(target.bounds.max) } };
+}
+
 /** Exact model-visible text for one request. Image bytes are separate blocks. */
 export function promptText(request) {
   const { referenceBrief: brief, intent } = request;
   const region = describeRegion(request.targetFacts);
+  const placement = confirmedPlacementFacts(request);
   const facts = {
     request: brief.text,
     confirmedIntent: intent.confirmedIntent.text,
@@ -68,6 +86,7 @@ export function promptText(request) {
       footprintIsFixed: true,
       entranceFacing: request.regionInspection.entranceFacing,
     } : null,
+    ...(placement === null ? {} : { confirmedPlacement: placement }),
   };
   return `Confirmed request facts (JSON):\n${JSON.stringify(facts)}`;
 }
