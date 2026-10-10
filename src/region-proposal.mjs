@@ -1,4 +1,4 @@
-// painter-region/v3 on the same Painter service and the same Host business
+// painter-region/v2 on the same Painter service and the same Host business
 // port as text/image proposals: current facts are read before planning and
 // again before release; same exact replay rule; no model, media fetch,
 // compiler or world call.

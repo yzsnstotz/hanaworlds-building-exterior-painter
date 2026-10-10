@@ -1,9 +1,9 @@
 # HanaWorlds Building Exterior Painter
 
 建筑外形画师 / P3 `picture-blocks` (照片积木) for HanaWorlds Stage 1. It is a DSH
-plugin that validates confirmed text proposals through `painter/v6` and returns
+plugin that validates confirmed text proposals through `painter/v5` and returns
 `BUILD/V4` plans. Site rules come only from the player-confirmed intent; no player
-body or avatar input is read; a confirmed structured placement must equal the final effect set (contracts major 2). It also retains image-plus-text planning and clarification.
+body or avatar input is read; an optional confirmed structured placement must equal the final effect set (contracts 1.1). It also retains image-plus-text planning and clarification.
 Both paths consume Canvas-relayed `regionInspection`; neither mutates a world.
 
 See [GADGET.md](GADGET.md) for the host boundary, settings, invariants, known

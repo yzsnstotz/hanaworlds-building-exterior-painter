@@ -11,7 +11,7 @@ export async function readCurrentFacts(getLocalFacts, body, operation, signal, i
   if (getLocalFacts() !== provider) fail('CURRENT_WORLD_MISMATCH', 'REVISION_CHANGED');
   const proposal = operation === 'ValidateBuildProposal';
   const facts = validateType(proposal ? 'BuildProposalProviderFacts' : 'LocalRequestFacts', observed);
-  const admission = validateCurrentRequest('painter/v6', operation, body, proposal ? facts.requestFacts : facts);
+  const admission = validateCurrentRequest('painter/v5', operation, body, proposal ? facts.requestFacts : facts);
   if (proposal) validateBuildProposalContext(body, facts);
   return { provider, facts, admission };
 }

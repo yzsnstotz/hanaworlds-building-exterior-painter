@@ -1,4 +1,4 @@
-// Actual source/installed Painter, painter-region/v3 from the pinned real
+// Actual source/installed Painter, painter-region/v2 from the pinned real
 // hanaworlds-contracts package (src/contract-package.mjs). FIXTURE boundary: the contract's published
 // region scenario (Session/world/brief/catalogue) and the Host business port.
 // No world, Canvas, Adapter, Brush, model or attachment is reached.
@@ -13,7 +13,7 @@ const { ExteriorPainterV2 } = Painter;
 const region = contractFixture('region');
 const main = contractFixture('main');
 const op = 'ValidateRegionProposal';
-const CAP = 'painter-region/v3:validate-region-proposal';
+const CAP = 'painter-region/v2:validate-region-proposal';
 const clone = structuredClone;
 const forbidden = () => new Proxy({}, { get(t, k) { if (typeof k === 'symbol') return Reflect.get(t, k); throw new Error('region entry touched model/media'); } });
 
@@ -87,14 +87,14 @@ test('palette legality against the current Catalogue (carve air included) is ref
 
 test('protocol major + capability: Painter handshake is consumable by same major with any provenance; wrong major/minor/capability refused', async () => {
   const p = setup().painter, hs = p.protocolHandshake();
-  const need = [api.protocolRequirement('painter-region/v3', [CAP])];
+  const need = [api.protocolRequirement('painter-region/v2', [CAP])];
   assert.equal(api.checkProtocolCompatibility(hs, need).result, 'PROTOCOL_COMPATIBLE');
   const otherPatch = { ...clone(hs), provenance: { ...hs.provenance, packageVersion: '0.4.9', artifactDigest: 'f'.repeat(64) } };
   assert.equal(api.checkProtocolCompatibility(otherPatch, need).result, 'PROTOCOL_COMPATIBLE');
-  for (const [req, code] of [[api.protocolRequirement('painter-region/v4', [CAP]), 'UNSUPPORTED_VERSION'],
+  for (const [req, code] of [[api.protocolRequirement('painter-region/v3', [CAP]), 'UNSUPPORTED_VERSION'],
     [api.protocolRequirement('painter-region/v1', []), 'UNSUPPORTED_VERSION'],
-    [api.protocolRequirement('painter-region/v3', [CAP], 1), 'UNSUPPORTED_VERSION'],
-    [api.protocolRequirement('painter-region/v3', ['painter-region/v3:other']), 'CAPABILITY_UNAVAILABLE']])
+    [api.protocolRequirement('painter-region/v2', [CAP], 1), 'UNSUPPORTED_VERSION'],
+    [api.protocolRequirement('painter-region/v2', ['painter-region/v2:other']), 'CAPABILITY_UNAVAILABLE']])
     assert.throws(() => api.checkProtocolCompatibility(hs, [req]), e => e.code === code);
   const v1 = setup({ mutate: r => { r.contractVersion = 'painter-region/v1'; } });
   await rejected(v1, 'UNSUPPORTED_VERSION'); assert.equal(v1.state.reads, 0);
