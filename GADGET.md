@@ -1,4 +1,4 @@
-# HanaWorlds Building Exterior Painter 0.7.0 · painter/v5 · painter-region/v2 region proposals
+# HanaWorlds Building Exterior Painter 0.7.1 · painter/v5 · painter-region/v2 region proposals
 
 The plugin implements `painter/v5.ValidateBuildProposal` and retains image
 `CreateBuildPlan`. Both emit `BUILD/V4` plans (image planning can clarify).
@@ -61,7 +61,7 @@ proposal and the image path, before any model call.
 - Region proposals (`painter-region/v2`): the contract refuses a required entrance
   (`painter-region/v2:entrance-rule`) and a light rule, and checks hazards per palette node.
 
-## Confirmed placement (contracts 1.1, confirmed-placement/v1; 0.7.0)
+## Confirmed placement (contracts 1.1, confirmed-placement/v1; 0.7.0, formal v1.1.0 pin 0.7.1)
 
 A placement shown to the player before confirmation is a contract `PlacementProposal`
 (`Controls.placement` = `ConfirmedIntent.placement`, digest-bound by Workshop). Painter does
@@ -105,8 +105,8 @@ fixture gate does not prove that full Host integration.
 ## Pinned bytes and settings
 
 Contracts are released hanaworlds-contracts tags by range, no vendor copy and no
-commit pin: dependency `git+https://github.com/yzsnstotz/hanaworlds-contracts.git#semver:^1.1.0-rc.1`
-(candidate v1.1.0-rc.1, additive confirmed-placement/v1; after the formal v1.1.0 only the range becomes `^1.1.0`; npm
+commit pin: dependency `git+https://github.com/yzsnstotz/hanaworlds-contracts.git#semver:^1.1.0`
+(formal v1.1.0, additive confirmed-placement/v1, same content as the candidate v1.1.0-rc.1; npm
 resolves the highest matching tag and package-lock records the resolved commit). The advertised
 ContractHandshake is the resolved package's own; peers compare its major only.
 Code, tests, fixtures and the dev page reach it only through the package.json
