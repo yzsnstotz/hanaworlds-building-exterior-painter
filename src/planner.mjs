@@ -312,7 +312,7 @@ function doorwayEntrance({ request, geometry, entranceFacing, span }) {
 /**
  * The trusted assembleBuild input for a first new building: the frame and
  * evidence of the Adapter-produced RegionInspection relayed by Canvas
- * (painter/v6). It carries no player geometry: real bodies are checked inside
+ * (painter/v5). It carries no player geometry: real bodies are checked inside
  * the engine. Nothing is defaulted; a missing part is a typed rejection.
  */
 export function trustedFromRegion(regionInspection) {
@@ -366,7 +366,7 @@ export function checkEntranceFacing({ request, geometry, entranceFacing }) {
 /**
  * Assemble the complete BuildProjection. `trusted` must come from a public,
  * provider-verified source: the exact coordinate Frame whose digest equals
- * targetFacts.frameDigest and Adapter evidence (painter/v6: trustedFromRegion).
+ * targetFacts.frameDigest and Adapter evidence (painter/v5: trustedFromRegion).
  * Missing trusted facts are a typed rejection, never a default.
  */
 export function assembleBuild({ request, geometry, documentId, trusted,

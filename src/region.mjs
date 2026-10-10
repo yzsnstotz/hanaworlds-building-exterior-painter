@@ -1,4 +1,4 @@
-// painter-region/v3 ValidateRegionProposal: a skill-confirmed region-voxels/v1
+// painter-region/v2 ValidateRegionProposal: a skill-confirmed region-voxels/v1
 // block becomes a RegionBuildProjection for Brush. Pure: nothing here reads a
 // world, a Session or a model, and nothing writes. Block decoding (origin/size
 // overflow, axis order, canonical runs, explicit air carve, null = UNSPECIFIED)
@@ -7,9 +7,9 @@
 import { ContractError, validateRegionProposalRequest, regionBlockBox, digestValue, validateType } from '#contracts';
 
 const fail = (code, reason) => { throw new ContractError(code, 'validate', reason); };
-export const REGION_WIRE = 'painter-region/v3';
+export const REGION_WIRE = 'painter-region/v2';
 export const REGION_OPERATION = 'ValidateRegionProposal';
-export const REGION_CAPABILITY = 'painter-region/v3:validate-region-proposal';
+export const REGION_CAPABILITY = 'painter-region/v2:validate-region-proposal';
 
 /** Contract admission plus Painter coherence; returns the frozen request. */
 export function admitRegionProposal(input) {
@@ -40,7 +40,7 @@ export function regionBuildPlan(request) {
 export function protocolHandshake(packageVersion) {
   return validateType('ProtocolHandshake', {
     profileVersion: 'protocol-handshake/v1', component: 'hanaworlds-building-exterior-painter',
-    protocols: [{ protocol: 'painter', major: 6, minor: 0 }, { protocol: 'painter-region', major: 3, minor: 0 }],
+    protocols: [{ protocol: 'painter', major: 5, minor: 0 }, { protocol: 'painter-region', major: 2, minor: 0 }],
     capabilities: [REGION_CAPABILITY],
     provenance: { packageName: 'hanaworlds-building-exterior-painter', packageVersion, sourceRevision: null, artifactDigest: null },
   });
