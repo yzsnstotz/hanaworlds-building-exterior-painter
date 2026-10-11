@@ -44,7 +44,7 @@ const painter = ctx.get('hanaworldsPainterV2PictureBlocks')
 const response = await painter.call('ValidateBuildProposal', request, { signal })
 const region = await painter.call('ValidateRegionProposal', regionRequest, { signal })
 const hint = await ctx.get('hanaworlds_image_material').execute({
-  imageBytes, catalogue, materialColours,
+  imageBytes, catalogue, currentConnection, materialSources,
 })
 ```
 
@@ -52,7 +52,7 @@ const hint = await ctx.get('hanaworlds_image_material').execute({
 |---|---|---|
 | ValidateBuildProposal | painter/v6 ValidateBuildProposalRequest | ValidateBuildProposalResponse with BUILD/V5 or typed refusal |
 | ValidateRegionProposal | painter-region/v3 ValidateRegionProposalRequest | ValidateRegionProposalResponse with region-build/v2 or typed refusal |
-| hanaworlds_image_material | Uint8Array image + fresh Catalogue + world-source materialColours | dominant RGB and nearest legal `{materialRef, orientation}` |
+| hanaworlds_image_material | Uint8Array image + fresh Catalogue + currentConnection + ReadMaterialSources `{snapshot, textures}` | dominant RGB and nearest legal opaque `{materialRef, orientation}` with sourceRevision |
 
 Workshop carries confirmed intent, target facts and the world-source Catalogue.
 Painter treats material refs as opaque and reads only neutral tags: passable,
@@ -83,28 +83,33 @@ raises UNSUPPORTED_OPERATION. The public contract defines the exact error fields
 
 ## Image material tool
 
-`materialColours` is a world-source supplied array of
-`{materialRef, orientation, rgb: [R, G, B]}` with finite sRGB values in 0–255.
-Refs/orientations must pass the public Catalogue's static legality checks.
-Duplicate or missing colour facts are refused. No colour is inferred from a name.
+`matchCurrentImageMaterials` is the sole image matching entry point and backs
+the registered tool. Host supplies the C-world-facts `ReadMaterialSources`
+response as `materialSources: {snapshot, textures}` (material-sources/v2), a fresh
+Catalogue and `currentConnection: {worldRef, connectionRef, connectionIncarnationRef}`.
+The published validator admits connection, Catalogue digest, engine revisions,
+sourceRevision, opaque materialRef/orientation, definition revisions and the
+typed texture bytes' digests/lengths before decoding. Materials must also pass
+the Catalogue's static legality checks. Host owns source reads and live currentness;
+Painter consumes the supplied facts without calling a peer. No colour is inferred
+from a material name, and no direct RGB-only or built-in palette input remains.
 
 sharp 0.35.3 decodes actual PNG/JPEG/WebP bytes. The dominant colour uses
 alpha-weighted 16-bin sRGB channels and a linear-light mean. color-diff 1.4.0
 provides CIEDE2000; ties use UTF16 materialRef then numeric neutral orientation.
-Inputs are copied before decoding awaits. Missing legal colour candidates raise
+Source texture colours use an alpha-weighted linear-light mean. Inputs are copied
+before decoding awaits. Missing legal colour candidates raise
 CAPABILITY_UNAVAILABLE; image errors preserve IMAGE_REQUIRED, IMAGE_DECODE_FAILED,
 IMAGE_LIMIT_EXCEEDED or NO_VISIBLE_PIXELS. Every result records zero modelCalls
 and worldWrites and is a hint requiring proposal validation.
 
-`matchCurrentImageMaterials` remains a pure MaterialSources v2 consumer. It
-validates connection, Catalogue, sourceRevision and supplied texture bytes before
-measuring source colours; matching uses the same CIEDE2000 library. UNKNOWN or
-non-placeable materials receive no fallback. Corrupt eligible textures raise
+UNKNOWN or non-placeable materials receive no fallback. Corrupt eligible textures raise
 MATERIAL_TEXTURE_UNAVAILABLE. No cross-call colour cache exists. Host must recheck
 live selection, provider and media association before using a hint.
 
 `examples/provider-v2.mjs` demonstrates both operations and image matching using
-published fixtures. `examples/mock-facts.mjs` supplies a minimal mutable in-process
+published fixtures and a minimal `readMaterialSources` mock with authored texture
+bytes. `examples/mock-facts.mjs` supplies a minimal mutable in-process
 facts port for testing stale/cancelled states; it never establishes live facts.
 
 Historical panels, web pages, gates, acceptance documents and the self-invoked

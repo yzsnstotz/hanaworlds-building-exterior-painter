@@ -2,8 +2,7 @@
 import { ContractError, contractHandshake } from '#contracts';
 import { PAINTER_ID } from './planner.mjs';
 import { BuildProposalValidator, PROPOSAL_OPERATION, PROPOSAL_WIRE } from './proposal.mjs';
-import { matchImageMaterials, IMAGE_MATERIAL_TOOL } from './image-material.mjs';
-import { matchCurrentImageMaterials } from './current-image-material.mjs';
+import { matchCurrentImageMaterials, IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 import { RegionProposalValidator } from './region-proposal.mjs';
 import { REGION_PROPOSAL_TOOL, REGION_OPERATION, protocolHandshake } from './region.mjs';
 export const WIRE = PROPOSAL_WIRE;
@@ -15,7 +14,7 @@ export const INVARIANTS = Object.freeze([
  'Per-cell writes require sampled known-empty cells. Region null cells remain UNSPECIFIED; carve uses the Catalogue emptyMaterialRef.',
  'Confirmed site rules, hazard tags, entrance clearance and placement are rechecked by the public contracts.',
  'Current Host facts are read before planning and before release, including replay.',
- 'Image colours use sharp and CIEDE2000 over world-source colours; missing facts are refused.',
+ 'Image colours use sharp and CIEDE2000 over validated ReadMaterialSources texture bytes; missing facts are refused.',
 ]);
 export class ExteriorPainterV2 {
  constructor({localFacts}={}) {
@@ -26,7 +25,6 @@ export class ExteriorPainterV2 {
  }
  handshake(){return contractHandshake;}
  protocolHandshake(){return protocolHandshake(PACKAGE_VERSION);}
- matchImageMaterials(input){return matchImageMaterials(input);}
  matchCurrentImageMaterials(input){return matchCurrentImageMaterials(input);}
  describe(){return {
   painterId:PAINTER_ID,wire:WIRE,operations:[PROPOSAL_OPERATION,REGION_OPERATION],
