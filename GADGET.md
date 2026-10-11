@@ -6,7 +6,7 @@
 
 - 服务：hanaworldsPainterV2PictureBlocks。
 - 合约方法：ValidateBuildProposal、ValidateRegionProposal。
-- 注册工具：hanaworlds_image_material，execute 接收图片字节、Catalogue、materialColours。
+- 注册工具：hanaworlds_image_material，execute 接收图片字节、当前 Catalogue、currentConnection、C-world-facts ReadMaterialSources 的 materialSources（snapshot + textures）。唯一配色入口是 matchCurrentImageMaterials。
 - 配色：sharp 解码，color-diff 1.4.0 的 CIEDE2000，零模型调用、零写世界。
 - 设置：空 schema；旧模型路由和 CreateBuildPlan 路径已归档。
 

@@ -1,6 +1,7 @@
 // Published v2 contract fixtures are example data, never live world evidence.
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
+import {createHash} from 'node:crypto';
 import { ExteriorPainterV2, buildMessages } from '../src/index.mjs';
 import { contractFixture, contracts } from '../src/contract-package.mjs';
 import { mockFacts } from './mock-facts.mjs';
@@ -20,8 +21,25 @@ assert.equal(build.error,null);assert.equal(regionBuild.error,null);
 contracts.validateBuildProposalResponse(main.request,build);contracts.validateRegionProposalResponse(region,regionBuild);
 const material=main.request.proposal.materials.stone;
 const imageBytes=await sharp(Buffer.from([180,20,20,255]),{raw:{width:1,height:1,channels:4}}).png().toBuffer();
-const hint=await painter.matchImageMaterials({imageBytes,catalogue:main.request.catalogue,
- materialColours:[{...material,rgb:[180,20,20]}]});
+// Minimal C-world-facts ReadMaterialSources mock: authored fixture bytes and
+// opaque refs, never a live source read or a material-name colour heuristic.
+const catalogue=main.request.catalogue;
+const currentConnection={worldRef:'fixture-world',connectionRef:'fixture-connection',connectionIncarnationRef:'fixture-incarnation'};
+const bytesDigest=createHash('sha256').update(imageBytes).digest('hex');
+const projection={profileVersion:'material-sources/v2',connection:currentConnection,
+ catalogueDigest:contracts.digestValue('catalogue',catalogue).sha256,
+ engineRevisions:catalogue.engineRevisions,sourceBasis:'WORLD_SOURCE_ASSET_ONLY',
+ materials:[{availability:'KNOWN',...material,definitionRevision:catalogue.materials[material.materialRef].definitionRevision,
+  texture:{textureName:'fixture.png',sourceKind:'GAME',sourceRef:'fixture-game/textures/fixture.png',
+   interpretation:'SIMPLE_UNIFORM_NODE_TILES',mediaType:'image/png',bytesDigest,byteLength:imageBytes.length}}]};
+const mockSource={async readMaterialSources(worldRef){
+ assert.equal(worldRef,currentConnection.worldRef);
+ return {snapshot:{...structuredClone(projection),sourceRevision:contracts.digestValue('material-sources',projection).sha256},
+  textures:[{bytesDigest,bytes:new Uint8Array(imageBytes)}]};
+}};
+const materialSources=await mockSource.readMaterialSources(currentConnection.worldRef);
+contracts.validateMaterialSources(materialSources,catalogue,currentConnection);
+const hint=await painter.matchCurrentImageMaterials({imageBytes,catalogue,currentConnection,materialSources});
 assert.equal(hint.match.distance,0);
 console.log(JSON.stringify({build:build.result.build.contractVersion,region:regionBuild.result.build.contractVersion,
  material:hint.material,mockReads:mock.state.reads,modelCalls:0,worldWrites:0},null,2));
