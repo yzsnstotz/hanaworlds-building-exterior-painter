@@ -53,7 +53,8 @@
   "devDependencies": {
     "acorn": "8.15.0",
     "esbuild": "0.25.12",
-    "pnpm": "11.28.5",
-    "hanaworlds-contracts": "git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0"
+    "hanaworlds-contracts": "git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0",
+    "node": "24.13.1",
+    "pnpm": "11.28.5"
   }
 }

@@ -18,7 +18,10 @@ The build records tag, SHA, input hashes and generated output hashes in
 `dist/build-source.json`. acorn 8.15.0 (MIT, https://github.com/acornjs/acorn)
 inspects packed module loading; pnpm 11.28.5 (MIT, https://github.com/pnpm/pnpm)
 verifies isolated production installation under its default strict policy. These
-three tools are development-only and are not distributed. Other runtime libraries
+tools, plus node 24.13.1 (MIT, https://github.com/aredridel/node-bin-gen;
+Node binary and its original notices from https://nodejs.org/) and its locked
+installer node-bin-setup 1.1.4 (ISC, https://github.com/aredridel/node-bin-setup),
+are development-only and are not distributed. Other runtime libraries
 stay external normal dependencies, with their own licenses retained.
 Exact platform/native dependencies are in the lock.
 World sources own material colours and neutral tags (D-17). The sole image tool

@@ -37,8 +37,14 @@ npm run verify:contracts && npm test
 npm run build
 npm run test:package-boundary
 npm pack
-node examples/provider-v2.mjs
+npm run example
 ```
+
+Development installs include the exact Node 24.13.1 binary as a devDependency;
+normal npm scripts select it through npm's local executable PATH. The project
+`.npmrc` uses the standard `${HOME}/.npm` global user cache for installation and
+packing, without modifying user configuration. No shell runtime alias or manual
+cache export is needed. Node is excluded from the production dependency graph.
 
 The default suite includes local-world, confirmed placement, site rules,
 image-material, material-sources, region-v1 (now the v2 contract shapes) and plugin
@@ -54,7 +60,9 @@ decodes actual images using sharp/CIEDE2000 without a runtime SDK. Original prod
 gates also run against the installed artifact with a separate development fixture
 oracle. Negative tgz cases must actually fail installation, loading or inspection.
 No dependency policy relaxation, approval whitelist or ignored install scripts
-is used. Set `PAINTER_BOUNDARY_EVIDENCE` only to choose where receipts are kept.
+is used. Receipts and fresh consumers default to a unique OS temporary directory outside
+the source tree. `PAINTER_BOUNDARY_EVIDENCE` can choose another directory outside
+development trees; consumers must never inherit a development `node_modules`.
 The nested pack performs the normal source verification/rebuild; an exclusive active receipt with a nonce, exact workspace and live parent ancestry
 terminates only the repeated boundary gate. An externally set legacy marker never
 skips the gate. Exact artifact inventory rejects leftover fixture/source files. Corrupt negative

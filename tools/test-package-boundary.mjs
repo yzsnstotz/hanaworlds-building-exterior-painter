@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, cpSync, realpathSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { inspectTarball, inspectPackage, sha } from './package-boundary.mjs';
 import { contractFixture, contracts } from './contract-package.mjs';
 import { ADMITTED_CONTRACTS } from './admitted-contracts.mjs';
 import { makeFacts, pixels } from '../test/material-sources-fixtures.mjs';
 const root = resolve(new URL('..', import.meta.url).pathname);
-const base = process.env.PAINTER_BOUNDARY_EVIDENCE ?? join(root, 'artifacts/package-boundary');
+// The default must be outside the source tree: Node searches ancestor node_modules.
+const base = process.env.PAINTER_BOUNDARY_EVIDENCE ?? tmpdir();
 mkdirSync(base, { recursive: true });
-const evidence = mkdtempSync(join(base, 'painter-boundary-'));
+const evidence = mkdtempSync(join(realpathSync(base), 'painter-boundary-'));
 console.log(`Package boundary evidence: ${evidence}`);
 const receiptPath = join(evidence, 'pack-parent.json');
 const parent = { kind: 'painter-boundary-pack/v1', root, parentPid: process.pid, nonce: randomUUID(), active: true };
@@ -33,7 +35,7 @@ assert.equal(inspected.provenance.generator.scriptSha256, sha(readFileSync(join(
 for (const input of inspected.provenance.inputs) assert.equal(sha(readFileSync(join(root, input.path))), input.sha256, `build input changed: ${input.path}`);
 const pnpm = join(root, 'node_modules/pnpm/bin/pnpm.cjs');
 assert.equal(JSON.parse(readFileSync(join(root, 'node_modules/pnpm/package.json'))).version, '11.28.5');
-assert.match(process.version, /^v24\./, 'production gate requires target Node 24');
+assert.equal(process.version, 'v24.13.1', 'production gate requires pinned target Node 24.13.1');
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(?:npm_config_|PNPM_|NODE_PATH$|NODE_OPTIONS$)/i.test(key)));
 const run = (args, cwd, log) => {
  const result = spawnSync(process.execPath, [pnpm, ...args], { cwd, env: { ...env, XDG_CONFIG_HOME: join(cwd, 'empty-config') }, encoding: 'utf8' });
@@ -55,7 +57,7 @@ const installation = run(['install', '--prod'], installed, 'install.log');
 assert.equal(installation.status, 0, `normal production install failed:\n${installation.stdout}\n${installation.stderr}`);
 const graph = run(['list', '--prod', '--depth', 'Infinity', '--json'], installed, 'production-graph.json'); assert.equal(graph.status, 0);
 assert.doesNotMatch(readFileSync(join(installed, 'pnpm-lock.yaml'), 'utf8'), /hanaworlds-contracts/, 'production lock includes SDK');
-assert.doesNotMatch(graph.stdout, /hanaworlds-contracts|esbuild|acorn|pnpm@/, 'development packages in production graph');
+assert.doesNotMatch(graph.stdout, /hanaworlds-contracts|esbuild|acorn|pnpm@|node_modules\/(?:node|node-bin-setup|node-(?:bin-)?[a-z]+-[a-z0-9]+)(?:[\/"\s]|$)/, 'development packages in production graph');
 const bytes = await pixels(); const materialFacts = makeFacts([{ name: 'opaque-red', bytes }]);
 const input = { packageName: inspected.manifest.name, entries: inspected.publicEntries,
  main: contractFixture('main'), region: contractFixture('region'),
