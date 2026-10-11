@@ -13,20 +13,15 @@
     "node": ">=24.13.1 <25"
   },
   "exports": {
-    ".": "./src/index.mjs"
-  },
-  "imports": {
-    "#contracts": "hanaworlds-contracts",
-    "#contracts/fixtures/*": "hanaworlds-contracts/fixtures/*",
-    "#contracts/package.json": "hanaworlds-contracts/package.json"
+    ".": "./dist/index.mjs"
   },
   "files": [
-    "src",
+    "dist",
     "cordis.patch.yml",
     "GADGET.md",
     "LICENSE_AUDIT.md",
     "NOTICE",
-    "examples"
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
@@ -34,8 +29,8 @@
     }
   },
   "scripts": {
-    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs && node --check src/pixels.mjs && node --check src/colour.mjs && node --check src/current-image-material.mjs && node --check src/region.mjs && node --check src/region-proposal.mjs && node --check src/contract-package.mjs && node --check src/model.mjs",
-    "test": "node --test test/*.test.mjs",
+    "build": "npm run build:runtime && npm run test:package-boundary",
+    "test": "npm run test:unit && npm run test:package-boundary",
     "test:confirmed-placement": "node --test test/confirmed-placement.test.mjs",
     "test:site-rules": "node --test test/site-rules-v1.test.mjs",
     "test:local-world": "node --test test/local-world.test.mjs",
@@ -43,13 +38,22 @@
     "test:material-sources": "node --test test/material-sources.test.mjs",
     "test:region": "node --test test/region-v1.test.mjs",
     "verify:contracts": "node tools/verify-contracts.mjs",
-    "example": "node examples/provider-v2.mjs"
+    "example": "node examples/provider-v2.mjs",
+    "build:runtime": "node tools/build.mjs",
+    "prepack": "node tools/prepack.mjs",
+    "test:unit": "node --test test/*.test.mjs",
+    "test:package-boundary": "node tools/test-package-boundary.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
     "canonicalize": "5.1.0",
     "color-diff": "1.4.0",
-    "hanaworlds-contracts": "git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0",
     "sharp": "0.35.3"
+  },
+  "devDependencies": {
+    "acorn": "8.15.0",
+    "esbuild": "0.25.12",
+    "pnpm": "11.28.5",
+    "hanaworlds-contracts": "git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0"
   }
 }

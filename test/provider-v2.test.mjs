@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { apply, Config, SERVICE, IMAGE_MATERIAL_TOOL, ExteriorPainterV2 } from '../src/index.mjs';
-import { contractFixture, contracts } from '../src/contract-package.mjs';
-import { planGeometry } from '../src/planner.mjs';
+import { Painter as runtime } from './painter-under-test.mjs';
+const { apply, Config, SERVICE, IMAGE_MATERIAL_TOOL, ExteriorPainterV2 } = runtime;
+import { contractFixture, contracts } from '../tools/contract-package.mjs';
+const { planGeometry } = runtime;
 const fixture=contractFixture('main');
 test('plugin registers painter and the named image material tool; configuration has no model route',()=>{
  const provided=new Map(),ctx={provide:(name,value)=>provided.set(name,value)};

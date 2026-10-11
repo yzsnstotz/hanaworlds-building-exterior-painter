@@ -3,8 +3,10 @@
 // again before release; same exact replay rule; no model, media fetch,
 // compiler or world call.
 import { ContractError, publicError, validateResponse, validateType, validateCurrentRequest,
-  validateRegionProposalResponse, decodeRawJSON, admitRequest, canonicalJSON } from '#contracts';
+  validateRegionProposalResponse, decodeRawJSON, admitRequest, canonicalJSON } from 'hanaworlds-contracts';
 import { admitRegionProposal, regionBuildPlan, REGION_WIRE, REGION_OPERATION } from './region.mjs';
+
+import { readProviderFacts } from './local-context.mjs';
 
 const fail = (code, reason) => { throw new ContractError(code, 'validate', reason); };
 const envelope = (id, error) => validateResponse(REGION_WIRE, REGION_OPERATION,
@@ -26,7 +28,7 @@ export class RegionProposalValidator {
     const provider = this.getLocalFacts();
     if (typeof provider?.read !== 'function') fail('CAPABILITY_UNAVAILABLE', 'POLICY_UNAVAILABLE');
     if (initial && initial.provider !== provider) fail('CURRENT_WORLD_MISMATCH', 'REVISION_CHANGED');
-    const observed = await provider.read(body, REGION_OPERATION, { signal });
+    const observed = await readProviderFacts(provider, body, REGION_OPERATION, { signal });
     if (signal?.aborted) fail('REQUEST_CANCELLED', 'REVISION_CHANGED');
     if (this.getLocalFacts() !== provider) fail('CURRENT_WORLD_MISMATCH', 'REVISION_CHANGED');
     const facts = validateType('LocalRequestFacts', observed);

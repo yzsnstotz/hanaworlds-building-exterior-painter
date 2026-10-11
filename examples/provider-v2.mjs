@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import {createHash} from 'node:crypto';
 import { apply, buildMessages } from '../src/index.mjs';
-import { contractFixture, contracts } from '../src/contract-package.mjs';
+import { contractFixture, contracts } from '../tools/contract-package.mjs';
 import { mockFacts } from './mock-facts.mjs';
 const main=contractFixture('main'),region=structuredClone(contractFixture('region').proposalRequest);
 // Region example: opaque source refs and declared nonzero orientations, including

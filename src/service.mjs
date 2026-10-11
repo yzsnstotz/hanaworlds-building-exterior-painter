@@ -1,5 +1,5 @@
 // C-painter v2 provider. Plans only from confirmed proposals and supplied facts.
-import { ContractError, contractHandshake } from '#contracts';
+import { ContractError, contractHandshake } from 'hanaworlds-contracts';
 import { PAINTER_ID } from './planner.mjs';
 import { BuildProposalValidator, PROPOSAL_OPERATION, PROPOSAL_WIRE } from './proposal.mjs';
 import { matchCurrentImageMaterials, IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';

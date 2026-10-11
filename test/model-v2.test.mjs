@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as Painter from '../src/index.mjs';
-import { contractFixture, contracts as api } from '../src/contract-package.mjs';
+import { Painter as Painter } from './painter-under-test.mjs';
+import { contractFixture, contracts as api } from '../tools/contract-package.mjs';
 const main = contractFixture('main');
 const digest = (kind, value) => api.digestValue(kind, value).sha256;
 const contextOf = request => Object.fromEntries(Object.keys(main.facts.sourceContext).map(k => [k, structuredClone(request[k])]));
