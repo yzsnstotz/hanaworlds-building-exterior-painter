@@ -7,7 +7,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } 
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contracts, contractPackage, contractPackageDir } from '../src/contract-package.mjs';
+import { contracts, contractPackage, contractPackageDir } from './contract-package.mjs';
 import { ExteriorPainterV2 } from '../src/index.mjs';
 import { ADMITTED_CONTRACTS } from './admitted-contracts.mjs';
 
@@ -35,10 +35,10 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 if (existsSync(join(root, 'package-lock.json'))) {
   const own = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const locked = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8')).packages['node_modules/hanaworlds-contracts'];
-  receipt.dependency = { spec: own.dependencies?.[ADMITTED_CONTRACTS.name] ?? null, lockVersion: locked?.version ?? null, lockResolved: locked?.resolved ?? null };
-  check('package.json dependency is the exact released tag', () => assert.equal(receipt.dependency.spec, ADMITTED_CONTRACTS.spec));
+  receipt.dependency = { spec: own.devDependencies?.[ADMITTED_CONTRACTS.name] ?? null, lockVersion: locked?.version ?? null, lockResolved: locked?.resolved ?? null };
+  check('package.json development supply is the exact released tag', () => assert.equal(receipt.dependency.spec, ADMITTED_CONTRACTS.spec));
   const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
-  check('lock root dependency is the exact released tag', () => assert.equal(lock.packages[''].dependencies[ADMITTED_CONTRACTS.name], ADMITTED_CONTRACTS.spec));
+  check('lock root development supply is the exact released tag', () => assert.equal(lock.packages[''].devDependencies[ADMITTED_CONTRACTS.name], ADMITTED_CONTRACTS.spec));
   check('lock commit matches the published release tag', () => {
     const refs = execFileSync('git', ['ls-remote', '--tags', `${ADMITTED_CONTRACTS.origin}.git`,
       `refs/tags/v${ADMITTED_CONTRACTS.version}`, `refs/tags/v${ADMITTED_CONTRACTS.version}^{}`],
@@ -46,8 +46,11 @@ if (existsSync(join(root, 'package-lock.json'))) {
     const tag = refs.find(([, ref]) => ref.endsWith('^{}')) ?? refs.find(([, ref]) => ref === `refs/tags/v${ADMITTED_CONTRACTS.version}`);
     assert.ok(tag, 'published release tag missing');
     receipt.releaseCommit = tag[0];
+    assert.equal(tag[0], ADMITTED_CONTRACTS.commit, 'admitted release commit changed');
+    assert.equal(locked.dev, true, 'contract lock must be development only');
     assert.equal(receipt.dependency.lockResolved?.split('#').at(-1), tag[0]);
   });
+  for (const section of ['dependencies', 'peerDependencies', 'optionalDependencies']) check(`no production ${section} contracts`, () => assert.ok(!own[section]?.[ADMITTED_CONTRACTS.name]));
   check('package-lock version is the resolved package', () => assert.equal(receipt.dependency.lockVersion, pkg.version));
   check('npm ls: resolved package satisfies the release spec', () => {
     let out;

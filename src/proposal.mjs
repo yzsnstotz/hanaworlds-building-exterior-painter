@@ -2,7 +2,7 @@
 // becomes BUILD/V5. Deterministic: no model, media, compiler or world service.
 import { ContractError, publicError, admitRequest, validateRequest, validateResponse,
   decodeRawJSON, canonicalJSON,
-  validateBuildProposalResponse } from '#contracts';
+  validateBuildProposalResponse } from 'hanaworlds-contracts';
 import { planGeometry, planEntrances, assembleBuild, trustedFromRegion } from './planner.mjs';
 import { readCurrentFacts } from './local-context.mjs';
 export const PROPOSAL_OPERATION = 'ValidateBuildProposal';

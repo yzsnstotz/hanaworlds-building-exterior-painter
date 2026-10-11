@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 export const root=process.env.PAINTER_TEST_PACKAGE??resolve(new URL('..',import.meta.url).pathname);
-const pinned=await import(pathToFileURL(resolve(root,'src/contract-package.mjs')));
+const pinned=await import('../tools/contract-package.mjs');
 export const contracts=pinned.contracts;
 export const contractPackage=pinned.contractPackage;
 export const fixture=pinned.contractFixture('main');

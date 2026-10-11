@@ -1,6 +1,6 @@
 // Pure current-world texture consumer. No peer reads, palette fallback or cache.
 import {diff,rgbaToLab} from 'color-diff';
-import {validateType,validateMaterialSources,validateStaticMaterials,ContractError,deepFreeze} from '#contracts';
+import {validateType,validateMaterialSources,validateStaticMaterials,ContractError,deepFreeze} from 'hanaworlds-contracts';
 import {decodeRaster,dominantColour,meanTextureColour,ImageMaterialError,IMAGE_LIMITS} from './pixels.mjs';
 export {ImageMaterialError} from './pixels.mjs';
 

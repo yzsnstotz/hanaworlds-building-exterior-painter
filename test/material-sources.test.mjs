@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {root,contracts,contractPackage,fixture,pixels,makeFacts,hash} from './material-sources-fixtures.mjs';
 import {ADMITTED_CONTRACTS} from '../tools/admitted-contracts.mjs';
-const api=await import(pathToFileURL(resolve(root,'src/index.mjs')));
+const api=await import(pathToFileURL(resolve(root,process.env.PAINTER_TEST_PACKAGE?'dist/index.mjs':'src/index.mjs')));
 const forbidden=new Proxy({}, {get(){throw new Error('pure consumer accessed an external port');}});
 function painter(){return new api.ExteriorPainterV2({llm:forbidden,attachments:forbidden,localFacts:forbidden});}
 test('current-world public consumer measures actual pixels and supplied base:* texture bytes',async()=>{

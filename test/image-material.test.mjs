@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import * as api from '../src/index.mjs';
+import { Painter as api } from './painter-under-test.mjs';
 import {pixels,makeFacts} from './material-sources-fixtures.mjs';
 const forbidden = new Proxy({}, {get(){throw new Error('tool touched model/world');}});
 const painter = () => new api.ExteriorPainterV2({llm:forbidden,attachments:forbidden,localFacts:forbidden});

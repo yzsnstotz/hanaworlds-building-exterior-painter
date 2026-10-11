@@ -2,7 +2,7 @@ import Schema from '@deepseek-ai/schemastery';
 import { ExteriorPainterV2, INVARIANTS } from './service.mjs';
 import { IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
 export { ExteriorPainterV2, INVARIANTS } from './service.mjs';
-export { contractHandshake } from '#contracts';
+export { contractHandshake } from 'hanaworlds-contracts';
 export { PROPOSAL_OPERATION, PROPOSAL_WIRE } from './proposal.mjs';
 export { REGION_PROPOSAL_TOOL, REGION_OPERATION, REGION_WIRE, REGION_CAPABILITY, admitRegionProposal,
  regionBuildPlan, protocolHandshake } from './region.mjs';

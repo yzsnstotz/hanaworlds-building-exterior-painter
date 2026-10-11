@@ -1,5 +1,5 @@
 // Minimal in-process C-painter facts stand-in. No peer imports and no world access.
-import { validateType } from '#contracts';
+import { validateType } from 'hanaworlds-contracts';
 export function mockFacts({buildFacts,regionFacts}) {
  const state={buildFacts:structuredClone(buildFacts),regionFacts:structuredClone(regionFacts),reads:0};
  const port={async read(body,operation){

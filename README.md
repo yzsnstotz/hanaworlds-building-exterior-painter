@@ -14,15 +14,29 @@ Confirmed placement and entrance rules stay bound to that inspection. Image
 attachment references become message data only. Skills own model calls and media
 resolution; the helpers do not reinstate the archived CreateBuildPlan service.
 
-Contracts are published as an exact tag:
+The development SDK is supplied only in devDependencies at the exact published tag:
 `git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0`.
 The lock records the release commit; `verify:contracts` checks the tag, installed
-version, lock, npm dependency identity and unchanged public handshake.
+version, development lock identity, admitted release SHA and unchanged public handshake.
+Production imports resolve `dist/index.mjs`, which compiles the required contract
+validators/schema from that same development supply. No contract package, fixture,
+source directory, runtime `#contracts`, filesystem read or SDK singleton is needed.
+`dist/build-source.json` records input/output hashes, tag and SHA; original contract
+LICENSE/NOTICE are retained. Other normal dependencies stay external, including
+the official settings library and sharp. Host/Cordis/React are never bundled.
+
+The only public runtime export remains the root package. There are no Host/Client
+subpaths or published declarations in this module. Developers consuming public
+contract types must install the same admitted SDK as their own development supply;
+type references are not production value imports. Port errors cross providers via
+validated public error data, without comparing SDK exception constructors.
 
 ```sh
 npm ci
 npm run verify:contracts && npm test
 npm run build
+npm run test:package-boundary
+npm pack
 node examples/provider-v2.mjs
 ```
 
@@ -31,6 +45,20 @@ image-material, material-sources, region-v1 (now the v2 contract shapes) and plu
 provider tests. All image inputs are self-contained fixtures; no asset path or
 external model is required. These checks demonstrate component behavior, not a
 live-world or owner acceptance result.
+
+`build`, `prepack` and `test` all include the real-tarball boundary gate. It checks
+all packed runtime artifacts and export targets, then installs the actual tgz in
+a fresh consumer using Node 24 and pnpm 11.28.5 defaults. It loads every public
+runtime entry, validates both proposal operations, registers the image tool and
+decodes actual images using sharp/CIEDE2000 without a runtime SDK. Original product
+gates also run against the installed artifact with a separate development fixture
+oracle. Negative tgz cases must actually fail installation, loading or inspection.
+No dependency policy relaxation, approval whitelist or ignored install scripts
+is used. Set `PAINTER_BOUNDARY_EVIDENCE` only to choose where receipts are kept.
+The nested pack performs the normal source verification/rebuild; an exclusive active receipt with a nonce, exact workspace and live parent ancestry
+terminates only the repeated boundary gate. An externally set legacy marker never
+skips the gate. Exact artifact inventory rejects leftover fixture/source files. Corrupt negative
+packages have no lifecycle build because rebuilding would repair the injected fault.
 
 ## Proposal provider
 

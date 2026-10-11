@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ExteriorPainterV2 } from '../src/index.mjs';
-import { contractFixture, contracts as api } from '../src/contract-package.mjs';
+import { Painter as runtime } from './painter-under-test.mjs';
+const { ExteriorPainterV2 } = runtime;
+import { contractFixture, contracts as api } from '../tools/contract-package.mjs';
 import { mockFacts } from '../examples/mock-facts.mjs';
 const main = contractFixture('main');
 const digest = (kind, value) => api.digestValue(kind, value).sha256;

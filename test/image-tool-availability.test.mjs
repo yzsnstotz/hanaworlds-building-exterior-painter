@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {apply, matchCurrentImageMaterials, ImageMaterialError} from '../src/index.mjs';
+import { Painter as runtime } from './painter-under-test.mjs';
+const {apply, matchCurrentImageMaterials, ImageMaterialError} = runtime;
 import {makeFacts, pixels} from './material-sources-fixtures.mjs';
 
 function registeredTool() {

@@ -6,7 +6,7 @@ import {
   ContractError, digestValue, validateType, validateStaticMaterials,
   comparePosition, compareUTF16, validateWitnessCoherence, canonicalJSON,
   safetyProfileFromConfirmedIntent, requireSiteRuleChecks,
-} from '#contracts';
+} from 'hanaworlds-contracts';
 
 export const PAINTER_ID = 'building-exterior';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
