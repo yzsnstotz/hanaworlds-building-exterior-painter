@@ -231,11 +231,123 @@ test('unknown facts never mask or replace a real verdict', async () => {
   // Geometry that fails even if every unknown fact were favourable stays BUILD_INVALID.
   for (const proposal of [hut({ door: false }), hut({ face: '+Z' })])
     await refused(variant({ siteRules: entrance, region: airUnknown, proposal }), 'BUILD_INVALID', 'INVALID_GEOMETRY');
-  // Air known to collide: a known fact, so no usable doorway is invalid geometry.
+  // Empty material known to be non-passable: no usable doorway is invalid geometry.
   const solidAir = hutWith(nodes => { nodes.air.passable = false; });
   await refused(variant({ siteRules: entrance, region: solidAir, proposal: hut() }), 'BUILD_INVALID', 'INVALID_GEOMETRY');
-  // A wall node with unknown collision cannot prove the interior is enclosed.
-  // (passable:false alone already proves a node blocks, so both facts are unknown here.)
+  // A wall with unknown passable cannot prove the interior is enclosed.
   const wallUnknown = hutWith(nodes => { unknown(nodes['fixture:stone'], 'passable'); });
   await refused(variant({ siteRules: entrance, region: wallUnknown, proposal: hut() }), 'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+});
+
+// painter-02: a world source with opaque refs and no engine-specific metadata.
+const EMPTY_REF = 'source:void-17';
+const WALL_REF = 'source:solid-23';
+function neutralHut({ siteRules = rules.ruleSets.entrance, edit = () => {} } = {}) {
+  const proposal = hut();
+  proposal.materials.gap.materialRef = EMPTY_REF;
+  proposal.materials.wall.materialRef = WALL_REF;
+  return variant({ siteRules, proposal, region: r => {
+    const emptyTags = { ...r.catalogue.materials[r.catalogue.emptyMaterialRef], extension: {} };
+    const wallTags = { ...r.catalogue.materials['fixture:stone'], extension: {} };
+    r.catalogue.emptyMaterialRef = EMPTY_REF;
+    r.catalogue.materials = { [EMPTY_REF]: emptyTags, [WALL_REF]: wallTags };
+    edit(emptyTags, wallTags);
+    r.targetFacts.catalogueDigest = digest('catalogue', r.catalogue);
+    hutRegion(r);
+    for (const cell of r.targetFacts.occupiedCells) cell.materialRef = WALL_REF;
+    r.regionInspection.targetFacts = clone(r.targetFacts);
+  } });
+}
+
+test('painter-02: opaque emptyMaterialRef supplies doorway, cavity and BUILD without nodeboxes', async () => {
+  const v = neutralHut();
+  assert.equal(Object.hasOwn(v.request.catalogue.materials, 'air'), false);
+  const build = await accepted(v);
+  assert.equal(build.materials.gap.materialRef, EMPTY_REF);
+  assert.equal(build.materials.wall.materialRef, WALL_REF);
+  const witness = build.witnesses.find(w => w.predicate === 'ENTRANCE_CONNECTIVITY');
+  assert.deepEqual(witness.facts.path, [[2, 1, 3], [2, 1, 4]]);
+});
+
+test('painter-02: contradictory engine fields in opaque extensions do not override neutral tags', async () => {
+  const edit = (emptyTags, wallTags) => {
+    emptyTags.extension = { walkable: true, collisionBoxes: [[-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]],
+      liquidType: 'source', damagePerSecond: 1000, drawType: 'nodebox' };
+    wallTags.extension = { walkable: false, collisionBoxes: [], liquidType: 'source', damagePerSecond: 1000 };
+  };
+  const actual = await accepted(neutralHut({ edit }));
+  const expected = await accepted(neutralHut());
+  // Extensions remain digest-bound even though they have no planning semantics.
+  for (const field of ['materials', 'operations', 'declaredBounds']) assert.deepEqual(actual[field], expected[field]);
+  assert.deepEqual(actual.witnesses.map(w => w.facts), expected.witnesses.map(w => w.facts));
+});
+
+test('painter-02: entrance planner never interprets engine-specific fields', () => {
+  const { request } = neutralHut();
+  const geometry = Painter.planGeometry(request);
+  const expected = Painter.planEntrances({ request, geometry, entranceFacing: '-Z' });
+  const forbiddenFields = new Set(['walkable', 'collisionBoxes', 'liquidType', 'damagePerSecond']);
+  for (const [ref, tags] of Object.entries(request.catalogue.materials)) {
+    tags.extension = new Proxy({}, { get(_, field) {
+      assert.fail(`planner interpreted extension.${String(field)}`);
+    } });
+    request.catalogue.materials[ref] = new Proxy(tags, { get(target, field, receiver) {
+      assert.equal(forbiddenFields.has(field), false, `planner read ${String(field)}`);
+      return Reflect.get(target, field, receiver);
+    } });
+  }
+  assert.deepEqual(Painter.planEntrances({ request, geometry, entranceFacing: '-Z' }), expected);
+  // Also exercise favourableCatalogue: an unknown wall remains a refusal even
+  // without a default collision box or any engine metadata.
+  unknown(request.catalogue.materials[WALL_REF], 'passable');
+  assert.throws(() => Painter.planEntrances({ request, geometry, entranceFacing: '-Z' }),
+    e => e.code === 'TARGET_FACTS_INCOMPLETE' && e.reason === 'REQUIRED_FACT_UNKNOWN');
+});
+
+test('painter-02: every unknown neutral empty tag refuses entrance with opaque refs', async () => {
+  for (const field of ['passable', 'liquid', 'hazardPerSecond']) {
+    const { request } = neutralHut();
+    const geometry = Painter.planGeometry(request);
+    unknown(request.catalogue.materials[EMPTY_REF], field);
+    assert.throws(() => Painter.planEntrances({ request, geometry, entranceFacing: '-Z' }),
+      e => e.code === 'TARGET_FACTS_INCOMPLETE' && e.reason === 'REQUIRED_FACT_UNKNOWN', field);
+  }
+  await refused(neutralHut({ edit: (_, wallTags) => unknown(wallTags, 'passable') }),
+    'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
+});
+
+test('painter-02: known non-passable, liquid or hazardous empty tags fail strict entrance rules', () => {
+  for (const patch of [{ passable: false }, { liquid: true }, { hazardPerSecond: 1 }]) {
+    const { request } = neutralHut();
+    const geometry = Painter.planGeometry(request);
+    Object.assign(request.catalogue.materials[EMPTY_REF], patch);
+    assert.throws(() => Painter.planEntrances({ request, geometry, entranceFacing: '-Z' }),
+      e => e.code === 'BUILD_INVALID' && e.reason === 'INVALID_GEOMETRY');
+  }
+});
+
+test('painter-02: confirmed liquid and hazard allowance applies to entrance and written effects', async () => {
+  const siteRules = { ...rules.ruleSets.entrance, hazardPolicy: { forbidLiquid: false, maximumDamagePerSecond: 2 } };
+  const v = neutralHut({ siteRules, edit: (emptyTags, wallTags) => {
+    Object.assign(emptyTags, { liquid: true, hazardPerSecond: 2 });
+    Object.assign(wallTags, { liquid: true, hazardPerSecond: 2 });
+  } });
+  const build = await accepted(v);
+  const hazard = build.witnesses.find(w => w.predicate === 'HAZARD');
+  assert.equal(hazard.facts.forbidLiquid, false);
+  assert.equal(hazard.facts.maximumDamagePerSecond, 2);
+});
+
+test('painter-02: written material hazard checks require known neutral tags without an entrance', () => {
+  for (const patch of [{ liquid: true }, { hazardPerSecond: 1 }, { liquid: null }, { hazardPerSecond: null }]) {
+    const { request } = neutralHut({ siteRules: rules.ruleSets.strict });
+    const geometry = Painter.planGeometry(request);
+    const wallTags = request.catalogue.materials[WALL_REF];
+    for (const [field, value] of Object.entries(patch)) {
+      if (value === null) unknown(wallTags, field); else wallTags[field] = value;
+    }
+    assert.throws(() => Painter.assembleBuild({ request, geometry, documentId: 'neutral-hut',
+      trusted: Painter.trustedFromRegion(request.regionInspection), entrances: [] }),
+      e => e.code === 'UNSUPPORTED_MATERIAL' && e.reason === 'REQUIRED_FACT_UNKNOWN');
+  }
 });
