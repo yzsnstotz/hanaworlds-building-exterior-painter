@@ -1,16 +1,5 @@
-// verify:contracts — the contracts package this Painter resolves is a release
-// inside the declared range and is advertised unchanged.
-//   node tools/verify-contracts.mjs                    identity only
-//   node tools/verify-contracts.mjs --package <tgz>    also byte-compare with a package tarball
-// Identity: in a source checkout the package.json dependency is the range spec in
-// tools/admitted-contracts.mjs (no commit pin) and `npm ls` reports the resolved
-// package as satisfying it (npm's own semver); the contracts handshake names the
-// resolved package and passes the package's own same-major predicate
-// (checkContractsVersion) and checkContractHandshake; the
-// Painter service advertises it unchanged. With --package, every file of the
-// tarball's package/ is present with identical bytes in the resolved package
-// directory and no other file is.
-// Prints one JSON receipt; exit 0 only when every check holds.
+// Verify exact released-tag dependency, lock and installed identity plus the unchanged handshake.
+// Optional --package <tgz> byte-compares the resolved contracts package.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -31,12 +20,13 @@ const tarball = arg > 0 ? resolve(process.argv[arg + 1] ?? '') : null;
 const pkg = contractPackage(), dir = contractPackageDir();
 const resolved = `${pkg.name}@${pkg.version}`;
 const forbidden = new Proxy({}, { get() { throw new Error('verify:contracts touched an external port'); } });
-const advertised = new ExteriorPainterV2({ llm: forbidden, attachments: forbidden, localFacts: forbidden }).handshake();
-const receipt = { range: `${ADMITTED_CONTRACTS.name}@${ADMITTED_CONTRACTS.range}`, resolvedDir: dir, resolved,
+const advertised = new ExteriorPainterV2({ localFacts: forbidden }).handshake();
+const receipt = { release: `${ADMITTED_CONTRACTS.name}@${ADMITTED_CONTRACTS.version}`, resolvedDir: dir, resolved,
   handshake: contracts.contractHandshake.contracts, checks: {} };
 const check = (name, fn) => { try { fn(); receipt.checks[name] = 'PASS'; } catch (e) { receipt.checks[name] = `FAIL: ${e.message.split('\n')[0]}`; } };
 
 check('resolved package is hanaworlds-contracts', () => assert.equal(pkg.name, ADMITTED_CONTRACTS.name));
+check('resolved version is the baseline release', () => assert.equal(pkg.version, ADMITTED_CONTRACTS.version));
 check('contracts handshake names the resolved package', () => assert.equal(receipt.handshake, resolved));
 check('contracts version decides by major (checkContractsVersion)', () => assert.equal(contracts.checkContractsVersion(receipt.handshake).result, 'CONTRACTS_MAJOR_MATCH'));
 check('contracts accept their own handshake', () => contracts.checkContractHandshake(contracts.contractHandshake));
@@ -46,9 +36,20 @@ if (existsSync(join(root, 'package-lock.json'))) {
   const own = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const locked = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8')).packages['node_modules/hanaworlds-contracts'];
   receipt.dependency = { spec: own.dependencies?.[ADMITTED_CONTRACTS.name] ?? null, lockVersion: locked?.version ?? null, lockResolved: locked?.resolved ?? null };
-  check('package.json dependency is the range spec (no commit pin)', () => assert.equal(receipt.dependency.spec, ADMITTED_CONTRACTS.spec));
+  check('package.json dependency is the exact released tag', () => assert.equal(receipt.dependency.spec, ADMITTED_CONTRACTS.spec));
+  const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
+  check('lock root dependency is the exact released tag', () => assert.equal(lock.packages[''].dependencies[ADMITTED_CONTRACTS.name], ADMITTED_CONTRACTS.spec));
+  check('lock commit matches the published release tag', () => {
+    const refs = execFileSync('git', ['ls-remote', '--tags', `${ADMITTED_CONTRACTS.origin}.git`,
+      `refs/tags/v${ADMITTED_CONTRACTS.version}`, `refs/tags/v${ADMITTED_CONTRACTS.version}^{}`],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim().split('\n').map(line => line.split(/\s+/));
+    const tag = refs.find(([, ref]) => ref.endsWith('^{}')) ?? refs.find(([, ref]) => ref === `refs/tags/v${ADMITTED_CONTRACTS.version}`);
+    assert.ok(tag, 'published release tag missing');
+    receipt.releaseCommit = tag[0];
+    assert.equal(receipt.dependency.lockResolved?.split('#').at(-1), tag[0]);
+  });
   check('package-lock version is the resolved package', () => assert.equal(receipt.dependency.lockVersion, pkg.version));
-  check('npm ls: resolved package satisfies the range', () => {
+  check('npm ls: resolved package satisfies the release spec', () => {
     let out;
     try { out = execFileSync('npm', ['ls', ADMITTED_CONTRACTS.name, '--json'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
     catch (e) { out = e.stdout; receipt.npmLs = JSON.parse(out || '{}'); throw new Error(`npm ls exit ${e.status}`); }

@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {root,contracts,contractPackage,fixture,pixels,makeFacts,hash} from './material-sources-fixtures.mjs';
@@ -14,23 +13,23 @@ test('current-world public consumer measures actual pixels and supplied base:* t
  const red=await pixels(),blue=await pixels([0,0,255]);
  const facts=makeFacts([{name:'base:blue',bytes:blue},{name:'base:red',bytes:red}]);
  const r=await p.matchCurrentImageMaterials({imageBytes:red,...facts});
- assert.deepEqual(r.dominant.rgb,[255,0,0]);assert.deepEqual(r.material,{nodeName:'base:red',param2:0});
+ assert.deepEqual(r.dominant.rgb,[255,0,0]);assert.deepEqual(r.material,{materialRef:'base:red',orientation:0});
  assert.equal(r.match.distance,0);assert.equal(r.match.texture.bytesDigest,hash(red));
  assert.equal(r.sourceRevision,facts.materialSources.snapshot.sourceRevision);
  assert.equal(r.catalogueDigest,facts.materialSources.snapshot.catalogueDigest);
- assert.equal(r.sourceBasis,'SERVER_ASSET_ONLY');assert.equal(r.modelCalls,0);assert.equal(r.worldWrites,0);
+ assert.equal(r.sourceBasis,'WORLD_SOURCE_ASSET_ONLY');assert.equal(r.modelCalls,0);assert.equal(r.worldWrites,0);
  assert.ok(Object.isFrozen(r));assert.ok(Object.isFrozen(r.match.rgb));
- const imageTools=p.describe().tools.filter(t=>typeof t.method==='string');assert.equal(imageTools.length,1);assert.equal(imageTools[0].method,'matchCurrentImageMaterials');assert.ok(!p.describe().tools.some(t=>t.method==='matchImageMaterials'));
+ const imageTools=p.describe().tools.filter(t=>typeof t.method==='string');assert.equal(imageTools.length,1);assert.equal(imageTools[0].name,'hanaworlds_image_material');
 });
-test('deterministic node/param2 ties and changed sourceRevision never reuse an old colour',async()=>{
+test('deterministic materialRef/orientation ties and changed sourceRevision never reuse an old colour',async()=>{
  const p=painter();assert.equal(typeof p.matchCurrentImageMaterials,'function');
  const red=await pixels(),blue=await pixels([0,0,255]);
  const f=makeFacts([{name:'base:z',bytes:red},{name:'base:a',bytes:red,params:[3,1]}]);
- const a=await p.matchCurrentImageMaterials({imageBytes:red,...f});assert.deepEqual(a.material,{nodeName:'base:a',param2:1});
+ const a=await p.matchCurrentImageMaterials({imageBytes:red,...f});assert.deepEqual(a.material,{materialRef:'base:a',orientation:1});
  assert.deepEqual(await p.matchCurrentImageMaterials({imageBytes:red,...f}),a);
  const changed=makeFacts([{name:'base:z',bytes:red},{name:'base:a',bytes:blue,params:[3,1]}]);
  const b=await p.matchCurrentImageMaterials({imageBytes:red,...changed});
- assert.equal(b.material.nodeName,'base:z');assert.notEqual(b.sourceRevision,a.sourceRevision);
+ assert.equal(b.material.materialRef,'base:z');assert.notEqual(b.sourceRevision,a.sourceRevision);
  assert.equal(b.catalogueDigest,a.catalogueDigest);
  // Provider mutates its original bytes immediately after invocation: copied admission survives.
  const pending=p.matchCurrentImageMaterials({imageBytes:new Uint8Array(red),...changed});
@@ -41,7 +40,7 @@ test('fresh connection, Catalogue, source revision and typed bytes are mandatory
  const p=painter();assert.equal(typeof p.matchCurrentImageMaterials,'function');
  const imageBytes=await pixels(),f=makeFacts([{name:'base:red',bytes:imageBytes}]);
  await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...f,currentConnection:{...f.currentConnection,connectionIncarnationRef:'other'}}),e=>e.code==='CURRENT_WORLD_MISMATCH');
- const catalogue=structuredClone(f.catalogue);catalogue.gameRevision='changed';
+ const catalogue=structuredClone(f.catalogue);catalogue.engineRevisions['fixture-game']='changed';
  await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...f,catalogue}),e=>e.code==='CATALOGUE_MISMATCH');
  const wrong=structuredClone(f.materialSources);wrong.snapshot.sourceRevision='0'.repeat(64);
  await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...f,materialSources:wrong}),e=>e.code==='NON_CANONICAL_AMBIGUITY');
@@ -51,12 +50,12 @@ test('fresh connection, Catalogue, source revision and typed bytes are mandatory
 test('KNOWN texture cannot override static UNKNOWN; texture UNKNOWN has no fallback palette',async()=>{
  const p=painter();assert.equal(typeof p.matchCurrentImageMaterials,'function');const imageBytes=await pixels();
  const unknownStatic=makeFacts([{name:'base:unsafe',bytes:imageBytes,staticUnknown:true}]);
- assert.throws(()=>contracts.validateStaticMaterials({hint:{nodeName:'base:unsafe',param2:0}},unknownStatic.catalogue),e=>e.code==='UNSUPPORTED_MUTATION_SEMANTICS');
- await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...unknownStatic}),e=>e.code==='MATERIAL_SOURCES_UNAVAILABLE');
+ assert.throws(()=>contracts.validateStaticMaterials({hint:{materialRef:'base:unsafe',orientation:0}},unknownStatic.catalogue),e=>e.code==='UNSUPPORTED_MUTATION_SEMANTICS');
+ await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...unknownStatic}),e=>e.code==='CAPABILITY_UNAVAILABLE');
  const unknownTexture=makeFacts([{name:'mcl_colorblocks:concrete_red',unknown:true}]);
- await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...unknownTexture}),e=>e.code==='MATERIAL_SOURCES_UNAVAILABLE');
+ await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...unknownTexture}),e=>e.code==='CAPABILITY_UNAVAILABLE');
  const mixed=makeFacts([{name:'base:unsafe',bytes:imageBytes,staticUnknown:true},{name:'base:blue',bytes:await pixels([0,0,255])}]);
- const r=await p.matchCurrentImageMaterials({imageBytes,...mixed});assert.equal(r.material.nodeName,'base:blue');
+ const r=await p.matchCurrentImageMaterials({imageBytes,...mixed});assert.equal(r.material.materialRef,'base:blue');
  assert.equal(r.sources.staticIneligibleVariants,1);assert.equal(r.sources.measuredLegalVariants,1);
 });
 test('actual image and known texture decoding refuse corrupt or misdeclared pixels',async()=>{
@@ -69,12 +68,12 @@ test('actual image and known texture decoding refuse corrupt or misdeclared pixe
  const mismatch=makeFacts([{name:'base:bad',bytes:imageBytes,mediaType:'image/jpeg'}]);
  await assert.rejects(p.matchCurrentImageMaterials({imageBytes,...mismatch}),e=>e.code==='MATERIAL_TEXTURE_UNAVAILABLE');
 });
-test('actual preserved texture bytes are measured under explicit public fixture binding',async()=>{
+test('supplied texture bytes are measured under explicit public fixture binding',async()=>{
  const p=painter();assert.equal(typeof p.matchCurrentImageMaterials,'function');
- const imageBytes=readFileSync(process.env.PAINTER_IMAGE_TEXTURE);
+ const imageBytes=await pixels([80,90,100]);
  const f=makeFacts([{name:'base:actual-texture-fixture',bytes:imageBytes}]);
  const r=await p.matchCurrentImageMaterials({imageBytes,...f});
- assert.equal(r.material.nodeName,'base:actual-texture-fixture');assert.equal(r.match.texture.bytesDigest,hash(imageBytes));
+ assert.equal(r.material.materialRef,'base:actual-texture-fixture');assert.equal(r.match.texture.bytesDigest,hash(imageBytes));
  assert.ok(r.match.rgb.every(c=>c>0&&c<255));assert.ok(!Object.hasOwn(r,'palette'));
 });
 test('resolved contracts handshake and media-bearing proposal contract are available',async()=>{

@@ -1,4 +1,4 @@
-// Actual source/installed Painter against hanaworlds-contracts major 1 SiteRules.
+// Actual source/installed Painter against hanaworlds-contracts major 2 SiteRules.
 // FIXTURE boundary: the contract's public `main` and `skill-site-rules` fixtures
 // (rule values are test inputs, not product values) applied to the per-box
 // ValidateBuildProposal path with every digest rebound through the public
@@ -26,7 +26,7 @@ function hutRegion(r) {
   const [ox, , oz] = [0, 0, 3];
   const occupied = [], empty = [];
   for (let x = 0; x <= 4; x++) for (let z = 0; z <= 4; z++) {
-    occupied.push({ position: [ox + x, 0, oz + z], nodeName: 'fixture:stone', param2: 0 });
+    occupied.push({ position: [ox + x, 0, oz + z], materialRef: 'fixture:stone', orientation: 0 });
     for (let y = 1; y <= 3; y++) empty.push([ox + x, y, oz + z]);
   }
   const tf = r.targetFacts;
@@ -47,7 +47,7 @@ function hut({ door = true, face = '-Z', doorHeight = 2 } = {}) {
   ];
   const at = { '-Z': [2, 0], '+Z': [2, 4], '-X': [0, 2], '+X': [4, 2] }[face];
   if (door) boxes.push({ min: [at[0], 1, at[1]], max: [at[0], doorHeight, at[1]], materialRef: 'gap' });
-  return { decision: 'BUILD', materials: { wall: { nodeName: 'fixture:stone', param2: 0 }, gap: { nodeName: 'air', param2: 0 } }, boxes };
+  return { decision: 'BUILD', materials: { wall: { materialRef: 'fixture:stone', orientation: 0 }, gap: { materialRef: 'air', orientation: 0 } }, boxes };
 }
 
 /**
@@ -106,7 +106,7 @@ test('public skill-site-rules accept sets: confirmed strict/permissive rules pla
   for (const name of rules.perCell.accept.filter(n => !rules.ruleSets[n].requireEntranceConnectivity)) {
     const build = await accepted(variant({ siteRules: rules.ruleSets[name] }));
     assert.deepEqual(build.witnesses.map(w => w.predicate), ['COVERAGE', 'BODY_CLEARANCE', 'HAZARD'], name);
-    assert.equal(build.contractVersion, 'BUILD/V4');
+    assert.equal(build.contractVersion, 'BUILD/V5');
   }
 });
 
@@ -175,39 +175,16 @@ test('confirmed portal ref with no portal producer is a named refusal', async ()
 test('stated light rule: CAPABILITY_UNAVAILABLE by capability name at Painter admission and at witness recheck', async () => {
   const light = variant({ siteRules: rules.ruleSets.light });
   await refused(light, 'CAPABILITY_UNAVAILABLE', 'REQUIRED_FACT_UNKNOWN');
-  assert.deepEqual(rules.perCell.reject.find(c => c.rules === 'light').capability, 'painter/v5:light-rule');
+  assert.deepEqual(rules.perCell.reject.find(c => c.rules === 'light').capability, 'painter/v6:light-rule');
   // Painter's own admission (independent of the contract request check) ...
   assert.throws(() => Painter.boundRules(light.request), e => e.code === 'CAPABILITY_UNAVAILABLE' && e.reason === 'REQUIRED_FACT_UNKNOWN');
   // ... and its witness recheck before releasing a BUILD.
   const ok = variant(), body = ok.request;
-  const geometry = Painter.planGeometry({ proposal: Painter.parseProposal(api.canonicalJSON(body.proposal)), catalogue: body.catalogue, targetFacts: body.targetFacts });
+  const geometry = Painter.planGeometry({ proposal: body.proposal, catalogue: body.catalogue, targetFacts: body.targetFacts });
   assert.throws(() => Painter.assembleBuild({ request: light.request, geometry, documentId: 'x',
     trusted: Painter.trustedFromRegion(body.regionInspection), entrances: [] }), e => e.code === 'CAPABILITY_UNAVAILABLE');
   // The same rules with optionalLightRule null pass: only the unsupported capability is refused.
   await accepted(variant({ siteRules: { ...rules.ruleSets.light, optionalLightRule: null } }));
-});
-
-test('image CreateBuildPlan path: SafetyProfile only from confirmed rules and light refused before any model call', async () => {
-  const create = v => {
-    const r = clone(v.request); delete r.proposal; r.requestId = 'create-1';
-    return { request: r, facts: clone(v.facts.requestFacts) };
-  };
-  for (const [v, code] of [
-    [variant({ siteRules: rules.ruleSets.light }), 'CAPABILITY_UNAVAILABLE'],
-    [variant({ tamper: { hazardPolicy: { forbidLiquid: false, maximumDamagePerSecond: 0 } } }), 'INTENT_UNCONFIRMED'],
-  ]) {
-    const c = create(v); c.request.referenceBrief.media = [];
-    // media is required for CreateBuildPlan; give one so the refusal must come from the site rules
-    c.request.referenceBrief.media = [{ attachmentRef: 'fixture-attachment-1', storedBytesDigest: 'a'.repeat(64),
-      projectionVariantId: null, projectionBytesDigest: null, mediaType: 'image/png', bytes: 1024, width: 16, height: 16 }];
-    c.request.referenceBriefDigest = c.request.intent.referenceBriefDigest = digest('reference-brief', c.request.referenceBrief);
-    c.request.intentDigest = digest('intent', c.request.intent);
-    c.facts.currentBriefDigest = c.request.referenceBriefDigest;
-    const painter = new Painter.ExteriorPainterV2({ localFacts: { async read() { return clone(c.facts); } },
-      llm: forbidden(), attachments: forbidden() });
-    const response = await painter.call('CreateBuildPlan', c.request);
-    assert.equal(response.error?.code, code, JSON.stringify(response.error));
-  }
 });
 
 test('Painter output is what the public witness checks bind: tampered entrance/body witnesses are refused', async () => {
@@ -231,13 +208,13 @@ test('Painter output is what the public witness checks bind: tampered entrance/b
  * capability field is listed in unknownFields, as the contract's domain rule requires. */
 const unknown = (node, field) => { node[field] = null; node.unknownFields = [...new Set([...node.unknownFields, field])].sort(); };
 const hutWith = edit => r => {
-  edit(r.catalogue.nodes);
+  edit(r.catalogue.materials);
   r.targetFacts.catalogueDigest = digest('catalogue', r.catalogue);
   hutRegion(r);
 };
-const airUnknown = hutWith(nodes => unknown(nodes.air, 'collisionBoxes'));
+const airUnknown = hutWith(nodes => unknown(nodes.air, 'passable'));
 
-test('entrance needs proven passable air: unknown air collisionBoxes is named REQUIRED_FACT_UNKNOWN, not invalid geometry', async () => {
+test('entrance needs proven passable air: unknown air passable is named REQUIRED_FACT_UNKNOWN, not invalid geometry', async () => {
   const entrance = rules.ruleSets.entrance;
   for (const height of [1, 2]) { // independent of the confirmed clearance height
     const siteRules = { ...entrance, entranceClearance: { ...entrance.entranceClearance, height } };
@@ -255,10 +232,10 @@ test('unknown facts never mask or replace a real verdict', async () => {
   for (const proposal of [hut({ door: false }), hut({ face: '+Z' })])
     await refused(variant({ siteRules: entrance, region: airUnknown, proposal }), 'BUILD_INVALID', 'INVALID_GEOMETRY');
   // Air known to collide: a known fact, so no usable doorway is invalid geometry.
-  const solidAir = hutWith(nodes => { nodes.air.collisionBoxes = [[-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]]; });
+  const solidAir = hutWith(nodes => { nodes.air.passable = false; });
   await refused(variant({ siteRules: entrance, region: solidAir, proposal: hut() }), 'BUILD_INVALID', 'INVALID_GEOMETRY');
   // A wall node with unknown collision cannot prove the interior is enclosed.
-  // (walkable:true alone already proves a node blocks, so both facts are unknown here.)
-  const wallUnknown = hutWith(nodes => { unknown(nodes['fixture:stone'], 'collisionBoxes'); unknown(nodes['fixture:stone'], 'walkable'); });
+  // (passable:false alone already proves a node blocks, so both facts are unknown here.)
+  const wallUnknown = hutWith(nodes => { unknown(nodes['fixture:stone'], 'passable'); });
   await refused(variant({ siteRules: entrance, region: wallUnknown, proposal: hut() }), 'TARGET_FACTS_INCOMPLETE', 'REQUIRED_FACT_UNKNOWN');
 });

@@ -1,11 +1,13 @@
-// Deterministic public text proposal entry. No model, media, compiler or world service.
+// painter/v6 ValidateBuildProposal: a skill-proposed, player-confirmed BuildProposal
+// becomes BUILD/V5. Deterministic: no model, media, compiler or world service.
 import { ContractError, publicError, admitRequest, validateRequest, validateResponse,
   decodeRawJSON, canonicalJSON,
   validateBuildProposalResponse } from '#contracts';
-import { parseProposal, planGeometry, planEntrances, assembleBuild, trustedFromRegion } from './planner.mjs';
+import { planGeometry, planEntrances, assembleBuild, trustedFromRegion } from './planner.mjs';
 import { readCurrentFacts } from './local-context.mjs';
 export const PROPOSAL_OPERATION = 'ValidateBuildProposal';
-const WIRE = 'painter/v5';
+export const PROPOSAL_WIRE = 'painter/v6';
+const WIRE = PROPOSAL_WIRE;
 const envelope = (id, error) => validateResponse(WIRE, PROPOSAL_OPERATION,
   { contractVersion: WIRE, requestId: id, result: null, error: publicError(error) });
 function requestId(raw) {
@@ -21,7 +23,7 @@ export class BuildProposalValidator {
   // Host reads source/current brief and actual current transport/selection.
   // Pure contract correlation cannot itself establish live world facts.
   async fresh(body, signal, initial) {
-    return readCurrentFacts(this.getLocalFacts, body, PROPOSAL_OPERATION, signal, initial);
+    return readCurrentFacts(this.getLocalFacts, body, signal, initial);
   }
   async call(raw, { signal } = {}) {
     let body;
@@ -52,8 +54,7 @@ export class BuildProposalValidator {
       record.response = (async () => {
         let response;
         try {
-          const proposal = parseProposal(canonicalJSON(body.proposal));
-          const geometry = planGeometry({ proposal, catalogue: body.catalogue, targetFacts: body.targetFacts });
+          const geometry = planGeometry({ proposal: body.proposal, catalogue: body.catalogue, targetFacts: body.targetFacts });
           // Entrance rules run only when the confirmed site rules require one.
           const entrances = planEntrances({ request: body, geometry, entranceFacing: body.regionInspection.entranceFacing });
           const { build, buildDigest } = assembleBuild({ request: body, geometry,

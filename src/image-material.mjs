@@ -1,35 +1,49 @@
-import measuredPalette from './material-palette.json' with {type:'json'};
-import {validateType,validateStaticMaterials,digestValue,canonicalJSON,compareUTF16,deepFreeze} from '#contracts';
-import {offeredMaterials} from './planner.mjs';
-import {decodeRaster,dominantColour,sha256,ImageMaterialError,IMAGE_LIMITS} from './pixels.mjs';
-const palette=deepFreeze(measuredPalette);
-export {ImageMaterialError} from './pixels.mjs';
-export const IMAGE_MATERIAL_TOOL=deepFreeze({name:'MatchImageMaterials',method:'matchImageMaterials',
- input:'Host actual imageBytes:Uint8Array + current public Catalogue; no URLs, paths or model colour fields',
- output:'dominant colour and material hint only; existing ValidateBuildProposal remains mandatory',
- limits:IMAGE_LIMITS,paletteSource:palette.source,modelCalls:0,worldWrites:0,
+// Pure tool over image bytes and world-source material colours. No world-specific index.
+import { diff, rgbaToLab } from 'color-diff';
+import { validateType, validateStaticMaterials, digestValue, compareUTF16, deepFreeze, ContractError } from '#contracts';
+import { decodeRaster, dominantColour, ImageMaterialError, IMAGE_LIMITS } from './pixels.mjs';
+export { ImageMaterialError } from './pixels.mjs';
+export const IMAGE_MATERIAL_TOOL=deepFreeze({
+ name:'hanaworlds_image_material',method:'matchImageMaterials',
+ input:'imageBytes: Uint8Array + fresh Catalogue + materialColours: [{materialRef, orientation, rgb:[R,G,B]}] from world source',
+ output:'dominant colour and nearest legal materialRef/orientation; proposal validation remains mandatory',
+ limits:IMAGE_LIMITS,distanceRule:'CIEDE2000 (color-diff 1.4.0); exact ties UTF16 materialRef then numeric orientation',
  dominantRule:'16x16x16 sRGB bins, alpha-byte weight; equal weight lowest packed bin; winning-bin linear-light mean',
- distanceRule:'Euclidean Oklab; exact distance tie UTF16 nodeName then smallest allowed param2',
- currentWorldTextureBinding:'UNKNOWN; supplied Catalogue legality is checked, measured source palette is explicitly labelled'});
-export async function matchImageMaterials({imageBytes,catalogue:input}={}) {
-  const catalogue=validateType('Catalogue',input);
-  const decoded=await decodeRaster(imageBytes),dominant=dominantColour(decoded.data);
-  const index=new Map(palette.entries.map(e=>[e.nodeName,e]));
-  const legal=offeredMaterials(catalogue);
-  const candidates=legal.filter(m=>index.has(m.nodeName)).sort((a,b)=>compareUTF16(a.nodeName,b.nodeName));
-  let best=null,bestDistance=Infinity;
-  for(const candidate of candidates){
-    const entry=index.get(candidate.nodeName),param2=Math.min(...candidate.allowedParam2);
-    const material={nodeName:candidate.nodeName,param2};
-    validateStaticMaterials({hint:material},catalogue);
-    const distance=entry.oklab.reduce((s,c,i)=>s+(c-dominant.oklab[i])**2,0);
-    if(distance<bestDistance){bestDistance=distance;best={material,entry};}
+ modelCalls:0,worldWrites:0,
+});
+const unavailable=message=>{throw new ImageMaterialError('CAPABILITY_UNAVAILABLE',message);};
+const lab=([R,G,B])=>rgbaToLab({R,G,B});
+export async function matchImageMaterials({imageBytes,catalogue:input,materialColours}={}) {
+ // Copy all supplied colours and legal material facts before any await.
+ const catalogue=validateType('Catalogue',input);
+ if(!Array.isArray(materialColours)||materialColours.length===0)unavailable('World-source material colours are required.');
+ const colours=structuredClone(materialColours),candidates=[],seen=new Map();let staticIneligibleVariants=0;
+ for(const row of colours){
+  if(!row || typeof row!=='object' || Object.keys(row).length!==3 ||
+   !['materialRef','orientation','rgb'].every(k=>Object.hasOwn(row,k)) ||
+   !Array.isArray(row.rgb)||row.rgb.length!==3||!([0,1,2].every(i=>Object.hasOwn(row.rgb,i)&&Number.isFinite(row.rgb[i])&&row.rgb[i]>=0&&row.rgb[i]<=255)))
+   unavailable('World-source colours must be explicit sRGB triples bound to neutral MaterialSpec values.');
+  const material=validateType('MaterialSpec',{materialRef:row.materialRef,orientation:row.orientation});
+  const id=JSON.stringify([material.materialRef,material.orientation]);
+  if(seen.has(id))unavailable('A material orientation has duplicate colour facts.');seen.set(id,true);
+  try{validateStaticMaterials({hint:material},catalogue);}
+  catch(error){
+   if(!(error instanceof ContractError)||error.code!=='UNSUPPORTED_MUTATION_SEMANTICS')throw error;
+   staticIneligibleVariants++;continue;
   }
-  if(!best)throw new ImageMaterialError('NO_LEGAL_MATERIAL','No static legal Catalogue material has a measured colour in this index; unknown stays unknown.');
-  return deepFreeze({image:decoded.image,dominant,material:best.material,
-    match:{rgb:best.entry.rgb,distance:Math.sqrt(bestDistance),texture:best.entry.texture,textureSha256:best.entry.textureSha256},
-    catalogueDigest:digestValue('catalogue',catalogue).sha256,
-    palette:{sha256:sha256(Buffer.from(canonicalJSON(palette))),source:palette.source,
-      indexedLegalMaterials:candidates.length,legalMaterialsWithUnknownColour:legal.length-candidates.length},
-    modelCalls:0,worldWrites:0});
+  candidates.push({material,rgb:row.rgb});
+ }
+ candidates.sort((a,b)=>compareUTF16(a.material.materialRef,b.material.materialRef)||a.material.orientation-b.material.orientation);
+ if(candidates.length===0)unavailable('No supplied colour belongs to a proven placeable material orientation.');
+ const decoded=await decodeRaster(imageBytes),dominant=dominantColour(decoded.data),dominantLab=lab(dominant.rgb);
+ let best=null,bestDistance=Infinity;
+ for(const candidate of candidates){
+  const distance=diff(dominantLab,lab(candidate.rgb));
+  if(distance<bestDistance){bestDistance=distance;best=candidate;}
+ }
+ return deepFreeze({image:decoded.image,dominant,material:{...best.material},
+  match:{rgb:best.rgb,distance:bestDistance,algorithm:'CIEDE2000'},
+  catalogueDigest:digestValue('catalogue',catalogue).sha256,
+  sources:{suppliedColours:colours.length,measuredLegalVariants:candidates.length,staticIneligibleVariants},
+  modelCalls:0,worldWrites:0});
 }
