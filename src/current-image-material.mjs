@@ -15,6 +15,8 @@ export const IMAGE_MATERIAL_TOOL=deepFreeze({
 });
 
 export async function matchCurrentImageMaterials({imageBytes,materialSources,catalogue:input,currentConnection}={}) {
+ if(materialSources==null)throw new ImageMaterialError('CAPABILITY_UNAVAILABLE',
+  'Current world-source material facts are unavailable; supply ReadMaterialSources before matching.');
  // Capture and validate all public facts synchronously before any decoding await.
  const catalogue=validateType('Catalogue',input);
  const admitted=validateMaterialSources(materialSources,catalogue,currentConnection);
@@ -31,9 +33,9 @@ export async function matchCurrentImageMaterials({imageBytes,materialSources,cat
   }
   candidates.push({material,texture:row.texture});
  }
- const decoded=await decodeRaster(imageBytes),dominant=dominantColour(decoded.data);
  if(candidates.length===0)throw new ImageMaterialError('CAPABILITY_UNAVAILABLE',
   `No KNOWN static-legal texture variant in current source ${snapshot.sourceRevision}; ${unknownVariants} texture UNKNOWN, ${staticIneligibleVariants} static-ineligible. Unknown facts remain unknown.`);
+ const decoded=await decodeRaster(imageBytes),dominant=dominantColour(decoded.data);
  // Only per-invocation deduplication, owned by this validated sourceRevision.
  const lab=([R,G,B])=>rgbaToLab({R,G,B});
  const dominantLab=lab(dominant.rgb);
