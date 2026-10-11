@@ -73,6 +73,13 @@ region-voxels/v2 blocks unchanged, including materialRef/orientation palette row
 null runs are UNSPECIFIED and only explicit emptyMaterialRef entries carve.
 Loading, world protection, transactions and Undo remain downstream duties.
 
+The region tool describes `origin`/`size` as current-world grid coordinates under
+`geometryProfile: voxel-grid/v1`. Each palette row is `{materialRef, orientation}`;
+carve selects the Catalogue's `emptyMaterialRef` with a source-declared orientation.
+The published projection retains its `WORLD_NODE` coordinate-space wire value.
+The provider example supplies opaque region refs and nonzero orientations, with
+a minimal local-facts mock; it exercises fill, explicit carve and UNSPECIFIED cells.
+
 Public errors retain mutationState NONE and transactionRef null. Contract failures
 include SCHEMA_INVALID, INTENT_UNCONFIRMED, TARGET_FACTS_STALE,
 SAFETY_INVARIANT_FAILED, CAPABILITY_UNAVAILABLE and named geometry/material/current-context refusals.

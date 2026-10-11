@@ -5,7 +5,19 @@ import {createHash} from 'node:crypto';
 import { apply, buildMessages } from '../src/index.mjs';
 import { contractFixture, contracts } from '../src/contract-package.mjs';
 import { mockFacts } from './mock-facts.mjs';
-const main=contractFixture('main'),region=contractFixture('region').proposalRequest;
+const main=contractFixture('main'),region=structuredClone(contractFixture('region').proposalRequest);
+// Region example: opaque source refs and declared nonzero orientations, including
+// the empty material. Source extensions are unnecessary for Painter's palette.
+const remap=new Map(Object.keys(region.catalogue.materials).map((ref,i)=>[ref,{materialRef:`example-material-${i}`,orientation:i+1}]));
+const cells=contracts.expandRegionBlock(region.proposal.block);
+region.catalogue.materials=Object.fromEntries(Object.entries(region.catalogue.materials).map(([ref,tags])=>{
+ const material=remap.get(ref);
+ return [material.materialRef,{...tags,orientations:[material.orientation],extension:{}}];
+}));
+region.catalogue.emptyMaterialRef=remap.get(region.catalogue.emptyMaterialRef).materialRef;
+region.catalogueDigest=contracts.digestValue('catalogue',region.catalogue).sha256;
+region.proposal.block=contracts.encodeRegionBlock({origin:region.proposal.block.origin,size:region.proposal.block.size,
+ palette:cells.palette.map(p=>remap.get(p.materialRef)),indices:cells.indices});
 const regionFacts={currentContext:region.localContext,sessionRef:region.sessionRef,currentTurnRevision:region.turnRevision,
  currentBriefDigest:region.referenceBriefDigest,requestState:'ACTIVE',replay:'NEW',priorRequestDigest:null};
 const mock=mockFacts({buildFacts:main.facts,regionFacts});
