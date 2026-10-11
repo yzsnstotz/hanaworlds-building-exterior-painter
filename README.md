@@ -3,6 +3,17 @@
 C-painter v2 provider: validates confirmed text/image building proposals, calculates
 geometry/materials and returns a BUILD plan. It calls no model and writes no world.
 
+`promptText(context)` and `buildMessages(context)` in `src/model.mjs` are pure
+skill-facing helpers. Their input is the published `BuildProposalContext`, before
+a proposal exists. They carry the world-source Frame (axes, origin, handedness,
+grid unit and revision), geometry profile, neutral material tags, legal
+orientations and `emptyMaterialRef`. Opaque material extensions are excluded.
+Proposal coordinates are component-wise offsets from the inspection's sampled
+minimum, matching the validator's translation; no up/horizontal axis is inferred.
+Confirmed placement and entrance rules stay bound to that inspection. Image
+attachment references become message data only. Skills own model calls and media
+resolution; the helpers do not reinstate the archived CreateBuildPlan service.
+
 Contracts are published as an exact tag:
 `git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0`.
 The lock records the release commit; `verify:contracts` checks the tag, installed
@@ -64,7 +75,9 @@ Loading, world protection, transactions and Undo remain downstream duties.
 
 Public errors retain mutationState NONE and transactionRef null. Contract failures
 include SCHEMA_INVALID, INTENT_UNCONFIRMED, TARGET_FACTS_STALE,
-SAFETY_INVARIANT_FAILED and named geometry/material/current-context refusals.
+SAFETY_INVARIANT_FAILED, CAPABILITY_UNAVAILABLE and named geometry/material/current-context refusals.
+The five card-required refusals are tested through object, JSON string and byte
+requests with the published v2 response schema; no error is renamed or flattened.
 Missing local facts raises CAPABILITY_UNAVAILABLE. Unsupported CreateBuildPlan
 raises UNSUPPORTED_OPERATION. The public contract defines the exact error fields.
 
