@@ -98,8 +98,12 @@ sharp 0.35.3 decodes actual PNG/JPEG/WebP bytes. The dominant colour uses
 alpha-weighted 16-bin sRGB channels and a linear-light mean. color-diff 1.4.0
 provides CIEDE2000; ties use UTF16 materialRef then numeric neutral orientation.
 Source texture colours use an alpha-weighted linear-light mean. Inputs are copied
-before decoding awaits. Missing legal colour candidates raise
-CAPABILITY_UNAVAILABLE; image errors preserve IMAGE_REQUIRED, IMAGE_DECODE_FAILED,
+before decoding awaits. An omitted, undefined or null `materialSources`, or a
+validated source with no legal colour candidates, raises CAPABILITY_UNAVAILABLE
+before image decoding. The tool remains registered without a source, and each
+call must supply current facts; a previous call never supplies a fallback.
+Supplied malformed or stale source facts retain their published contract errors.
+With eligible source materials, image errors preserve IMAGE_REQUIRED, IMAGE_DECODE_FAILED,
 IMAGE_LIMIT_EXCEEDED or NO_VISIBLE_PIXELS. Every result records zero modelCalls
 and worldWrites and is a hint requiring proposal validation.
 

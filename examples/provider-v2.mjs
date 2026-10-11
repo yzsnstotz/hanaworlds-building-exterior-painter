@@ -2,14 +2,17 @@
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import {createHash} from 'node:crypto';
-import { ExteriorPainterV2, buildMessages } from '../src/index.mjs';
+import { apply, buildMessages } from '../src/index.mjs';
 import { contractFixture, contracts } from '../src/contract-package.mjs';
 import { mockFacts } from './mock-facts.mjs';
 const main=contractFixture('main'),region=contractFixture('region').proposalRequest;
 const regionFacts={currentContext:region.localContext,sessionRef:region.sessionRef,currentTurnRevision:region.turnRevision,
  currentBriefDigest:region.referenceBriefDigest,requestState:'ACTIVE',replay:'NEW',priorRequestDigest:null};
 const mock=mockFacts({buildFacts:main.facts,regionFacts});
-const painter=new ExteriorPainterV2({localFacts:mock.port});
+// Minimal Cordis registry: both services are registered even without image facts.
+const services=new Map([['hanaworldsPainterLocalFacts',mock.port]]);
+const painter=apply({get:name=>services.get(name),provide:(name,value)=>services.set(name,value)});
+const imageTool=services.get('hanaworlds_image_material');
 // A skill can build its input from the published context before proposing boxes.
 // These helpers neither invoke a model nor read attachments/world state.
 const prompt=buildMessages(main.facts.sourceContext);
@@ -39,7 +42,9 @@ const mockSource={async readMaterialSources(worldRef){
 }};
 const materialSources=await mockSource.readMaterialSources(currentConnection.worldRef);
 contracts.validateMaterialSources(materialSources,catalogue,currentConnection);
-const hint=await painter.matchCurrentImageMaterials({imageBytes,catalogue,currentConnection,materialSources});
+await assert.rejects(imageTool.execute({imageBytes,catalogue,currentConnection}),
+ error=>error.code==='CAPABILITY_UNAVAILABLE' && error.mutationState==='NONE');
+const hint=await imageTool.execute({imageBytes,catalogue,currentConnection,materialSources});
 assert.equal(hint.match.distance,0);
 console.log(JSON.stringify({build:build.result.build.contractVersion,region:regionBuild.result.build.contractVersion,
  material:hint.material,mockReads:mock.state.reads,modelCalls:0,worldWrites:0},null,2));
