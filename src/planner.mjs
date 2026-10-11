@@ -1,73 +1,16 @@
-// Pure P3 picture-blocks planning: a validated model proposal plus bound facts
-// becomes BUILD/V4 geometry. Nothing here reads a world, a Session or a model.
+// Pure P3 picture-blocks planning: a validated proposal plus bound facts
+// becomes BUILD/V5 geometry. Nothing here reads a world, a Session or a model.
+// Materials are opaque world-source refs with a neutral orientation; every
+// capability (passable, liquid, hazard) is read from the bound Catalogue tags.
 import {
-  ContractError, decodeRawJSON, digestValue, validateType, validateStaticMaterials,
+  ContractError, digestValue, validateType, validateStaticMaterials,
   comparePosition, compareUTF16, validateWitnessCoherence, canonicalJSON,
   safetyProfileFromConfirmedIntent, requireSiteRuleChecks,
 } from '#contracts';
 
-export const PAINTER_ID = 'picture-blocks';
+export const PAINTER_ID = 'building-exterior';
 const fail = (code, phase, reason) => { throw new ContractError(code, phase, reason); };
 const key = position => position.join(',');
-const isPosition = value => Array.isArray(value) && value.length === 3 && value.every(Number.isSafeInteger);
-const exact = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value) &&
-  Object.keys(value).length === keys.length && keys.every(k => Object.hasOwn(value, k));
-
-/** Local-frame view of the inspected or planned target: its size in grid cells
- * and every sampled cell that a new structure must not occupy. */
-export function describeRegion(targetFacts) {
-  const { min, max } = targetFacts.sampledBounds;
-  const size = max.map((v, i) => v - min[i] + 1);
-  const local = p => p.map((v, i) => v - min[i]);
-  return {
-    size,
-    occupied: targetFacts.occupiedCells.map(c => ({ position: local(c.position), nodeName: c.nodeName })),
-    unknown: targetFacts.unknownCells.map(c => local(c.position)),
-  };
-}
-
-/** Catalogue nodes a structure may use: the static mutable subset admitted by
- * validateStaticMaterials. Unknown or stateful definitions are never offered. */
-export function offeredMaterials(catalogue) {
-  return Object.keys(catalogue.nodes).sort(compareUTF16).filter(name => {
-    const c = catalogue.nodes[name];
-    return c.hasCallbacks === false && c.hasPersistentState === false &&
-      Array.isArray(c.allowedParam2) && c.allowedParam2.length > 0 && c.definitionRevision !== null;
-  }).map(name => ({ nodeName: name, allowedParam2: [...catalogue.nodes[name].allowedParam2],
-    walkable: catalogue.nodes[name].walkable }));
-}
-
-/** Strictly parse the model's text answer. The answer is one JSON object,
- * optionally inside a single ```json fence; anything else is BUILD_INVALID. */
-export function parseProposal(text) {
-  if (typeof text !== 'string') fail('BUILD_INVALID', 'validate', 'INVALID_SHAPE');
-  const trimmed = text.trim();
-  const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/.exec(trimmed);
-  const body = fenced ? fenced[1] : trimmed;
-  let value;
-  try { value = decodeRawJSON(new TextEncoder().encode(body)); }
-  catch { fail('BUILD_INVALID', 'validate', 'INVALID_SHAPE'); }
-  if (exact(value, ['decision', 'clarification'])) {
-    if (value.decision !== 'CLARIFY' || !exact(value.clarification, ['code', 'question']) ||
-        !['AMBIGUOUS_INTENT', 'AMBIGUOUS_GEOMETRY', 'IMAGE_REQUIRED'].includes(value.clarification.code) ||
-        typeof value.clarification.question !== 'string' || !value.clarification.question.trim())
-      fail('BUILD_INVALID', 'validate', 'INVALID_SHAPE');
-    return { decision: 'CLARIFY', code: value.clarification.code, question: value.clarification.question.trim() };
-  }
-  if (!exact(value, ['decision', 'materials', 'boxes']) || value.decision !== 'BUILD' ||
-      value.materials === null || typeof value.materials !== 'object' || Array.isArray(value.materials) ||
-      !Array.isArray(value.boxes) || value.boxes.length === 0)
-    fail('BUILD_INVALID', 'validate', 'INVALID_SHAPE');
-  for (const [ref, spec] of Object.entries(value.materials))
-    if (!ref || !exact(spec, ['nodeName', 'param2']) || typeof spec.nodeName !== 'string' ||
-        !Number.isInteger(spec.param2) || spec.param2 < 0 || spec.param2 > 255)
-      fail('BUILD_INVALID', 'validate', 'INVALID_SHAPE');
-  for (const box of value.boxes)
-    if (!exact(box, ['min', 'max', 'materialRef']) || !isPosition(box.min) || !isPosition(box.max) ||
-        typeof box.materialRef !== 'string')
-      fail('BUILD_INVALID', 'validate', 'INVALID_SHAPE');
-  return { decision: 'BUILD', materials: value.materials, boxes: value.boxes };
-}
 
 function* cellsOf(box) {
   for (let x = box.min[0]; x <= box.max[0]; x++)
@@ -76,10 +19,10 @@ function* cellsOf(box) {
 }
 
 /**
- * Validate a BUILD proposal against the bound catalogue and target facts and
- * return world-frame operations plus exact final effects. Every written cell
- * must be a sampled known-empty cell: a new exterior never replaces existing
- * occupancy and never writes an unknown cell.
+ * Validate a contract-admitted BuildProposal against the bound catalogue and
+ * target facts and return world-frame operations plus exact final effects.
+ * Every written cell must be a sampled known-empty cell: a new exterior never
+ * replaces existing occupancy and never writes an unknown cell.
  */
 export function planGeometry({ proposal, catalogue, targetFacts }) {
   const { min: origin, max: limit } = targetFacts.sampledBounds;
@@ -108,7 +51,8 @@ export function planGeometry({ proposal, catalogue, targetFacts }) {
     if (occupied.has(k)) fail('BUILD_INVALID', 'validate', 'INVALID_GEOMETRY');
     if (!empty.has(k)) fail('TARGET_FACTS_INCOMPLETE', 'validate', 'REQUIRED_FACT_UNKNOWN');
     const spec = materials[op.materialRef];
-    final.set(k, { position: cell, nodeName: spec.nodeName, param2: spec.param2 }); // last writer wins
+    final.set(k, { geometryProfile: targetFacts.geometryProfile, position: cell,
+      materialRef: spec.materialRef, orientation: spec.orientation }); // last writer wins
   }
   const effects = [...final.values()].sort((a, b) => comparePosition(a.position, b.position));
   const declaredBounds = {
@@ -118,14 +62,13 @@ export function planGeometry({ proposal, catalogue, targetFacts }) {
   return { materials, operations, effects, declaredBounds };
 }
 
-/** Whether a final-state node can be part of an entrance clearance box: explicitly
- * non-walkable, no collision box and within the bound hazard policy. Any
- * unknown (null) capability is not passable. */
-function passable(capability, hazardPolicy) {
-  return !!capability && capability.walkable === false && Array.isArray(capability.collisionBoxes) &&
-    capability.collisionBoxes.length === 0 && capability.liquidType !== null && capability.damagePerSecond !== null &&
-    (!hazardPolicy.forbidLiquid || capability.liquidType === 'none') &&
-    capability.damagePerSecond <= hazardPolicy.maximumDamagePerSecond;
+/** Whether a final-state material can be part of an entrance clearance box: its
+ * world-source tags say passable, and its liquid/hazard tags are known and within
+ * the bound hazard policy. Any unknown (null) tag is not passable. */
+function passable(tags, hazardPolicy) {
+  return !!tags && tags.passable === true && tags.liquid !== null && tags.hazardPerSecond !== null &&
+    (!hazardPolicy.forbidLiquid || tags.liquid === false) &&
+    tags.hazardPerSecond <= hazardPolicy.maximumDamagePerSecond;
 }
 
 /**
@@ -159,9 +102,9 @@ function clearanceSpan(clearance) {
 
 /** Final-state cells whose whole clearance box (anchored at the minimum
  * corner) is `empty`; key -> position. */
-function usableCells(finalNode, span, empty) {
+function usableCells(finalMaterial, span, empty) {
   const usable = new Map();
-  for (const k of finalNode.keys()) {
+  for (const k of finalMaterial.keys()) {
     const p = k.split(',').map(Number);
     let clear = true;
     for (let dx = 0; clear && dx < span[0]; dx++) for (let dy = 0; clear && dy < span[1]; dy++)
@@ -177,14 +120,14 @@ function usableCells(finalNode, span, empty) {
  * capabilities, the confirmed hazard policy and the confirmed design
  * clearance (ClearanceCells; a building design value, not a body guarantee). A
  * usable position is a sampled cell whose whole clearance box (anchored at its
- * minimum corner) is verified empty air that the hazard policy allows. The
+ * minimum corner) is verified empty material that the hazard policy allows. The
  * declared use space is the usable cells of an enclosed cavity (see below).
  * Entrances: each confirmed portal, or, with no confirmed portal, the doorway on
  * the `entranceFacing` side (portalRef null; see checkEntranceFacing). Each
  * must reach the use space by a six-neighbor path over usable positions.
  * Returns [] and checks nothing when the confirmed rules require no entrance.
- * Passage needs proven facts: an unknown capability is never passable (air) and
- * never seals a cavity (other nodes). A refusal that only unknown capabilities
+ * Passage needs proven facts: an unknown capability is never passable (empty material) and
+ * never seals a cavity (other materials). A refusal that only unknown capabilities
  * cause is TARGET_FACTS_INCOMPLETE/REQUIRED_FACT_UNKNOWN; BUILD_INVALID means the
  * geometry fails even with every unknown resolved in its favour.
  */
@@ -204,16 +147,14 @@ export function planEntrances(args) {
   }
 }
 
-/** The bound Catalogue with each unknown (null) capability resolved in the
- * entrance's favour: `air` passable, every other node blocking. Known values are
- * kept. Used only by planEntrances to attribute a refusal. */
+/** The bound Catalogue with each unknown (null) tag resolved in the entrance's
+ * favour: the empty material passable and harmless, every other material
+ * blocking. Known values are kept. Used only by planEntrances to attribute a refusal. */
 function favourableCatalogue(catalogue) {
-  const box = [[-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]];
-  return { ...catalogue, nodes: Object.fromEntries(Object.entries(catalogue.nodes).map(([name, c]) => [name,
-    name === 'air'
-      ? { ...c, walkable: c.walkable ?? false, collisionBoxes: c.collisionBoxes ?? [],
-          liquidType: c.liquidType ?? 'none', damagePerSecond: c.damagePerSecond ?? 0 }
-      : { ...c, walkable: c.walkable ?? true, collisionBoxes: c.collisionBoxes ?? box }])) };
+  return { ...catalogue, materials: Object.fromEntries(Object.entries(catalogue.materials).map(([ref, t]) => [ref,
+    ref === catalogue.emptyMaterialRef
+      ? { ...t, passable: t.passable ?? true, liquid: t.liquid ?? false, hazardPerSecond: t.hazardPerSecond ?? 0 }
+      : { ...t, passable: t.passable ?? false }])) };
 }
 
 function entrancesFrom({ request, geometry, entranceFacing = null }) {
@@ -222,22 +163,20 @@ function entrancesFrom({ request, geometry, entranceFacing = null }) {
   if (!rules.requireEntrance) return [];
   const refs = rules.portalRefs;
   const span = clearanceSpan(rules.clearance);
-  // Final state of every sampled known cell: empty cells are 'air', occupied
-  // cells keep their node, written effects replace either. Unknown and
-  // unsampled cells are absent.
-  const finalNode = new Map(targetFacts.knownEmptyCells.map(p => [key(p), 'air']));
-  for (const c of targetFacts.occupiedCells) finalNode.set(key(c.position), c.nodeName);
-  for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
-  // Use and path cells must be verified EMPTY and passable ("walkable=false
-  // plants are not empty"): final node 'air' whose catalogue capability passes.
-  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, rules.hazardPolicy);
-  // Only a proven collision seals a cavity side. A non-colliding non-air node
-  // (plant, vine, liquid) or a node with unknown collision lets sky through.
-  const blocks = k => {
-    const c = catalogue.nodes[finalNode.get(k)];
-    return !!c && (c.walkable === true || (Array.isArray(c.collisionBoxes) && c.collisionBoxes.length > 0));
-  };
-  const usable = usableCells(finalNode, span, empty);
+  // Final state of every sampled known cell: empty cells hold the Catalogue's
+  // emptyMaterialRef, occupied cells keep their material, written effects
+  // replace either. Unknown and unsampled cells are absent.
+  const emptyRef = catalogue.emptyMaterialRef;
+  const finalMaterial = new Map(targetFacts.knownEmptyCells.map(p => [key(p), emptyRef]));
+  for (const c of targetFacts.occupiedCells) finalMaterial.set(key(c.position), c.materialRef);
+  for (const e of geometry.effects) finalMaterial.set(key(e.position), e.materialRef);
+  // Use and path cells must be verified EMPTY and passable (a passable plant is
+  // not empty): final material is the empty material and its tags pass.
+  const empty = k => finalMaterial.get(k) === emptyRef && passable(catalogue.materials[emptyRef], rules.hazardPolicy);
+  // Only a proven non-passable material seals a cavity side. A passable
+  // non-empty material (plant, vine, liquid) or an unknown tag lets sky through.
+  const blocks = k => catalogue.materials[finalMaterial.get(k)]?.passable === false;
+  const usable = usableCells(finalMaterial, span, empty);
   const steps = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
   // A confirmed portal must exist in the bound facts (no portal producer today
   // means a named refusal). Without one, the entrance is the doorway on the
@@ -264,7 +203,7 @@ function entrancesFrom({ request, geometry, entranceFacing = null }) {
       for (const d of steps) {
         const n = key([p[0] + d[0], p[1] + d[1], p[2] + d[2]]);
         if (sealed.has(n) || visited.has(n)) continue;
-        if (!finalNode.has(n)) { enclosed = false; continue; } // unknown or outside the sampled facts
+        if (!finalMaterial.has(n)) { enclosed = false; continue; } // unknown or outside the sampled facts
         if (blocks(n)) continue;
         visited.add(n); component.push(n);
       }
@@ -312,7 +251,7 @@ function doorwayEntrance({ request, geometry, entranceFacing, span }) {
 /**
  * The trusted assembleBuild input for a first new building: the frame and
  * evidence of the Adapter-produced RegionInspection relayed by Canvas
- * (painter/v5). It carries no player geometry: real bodies are checked inside
+ * (painter/v6). It carries no player geometry: real bodies are checked inside
  * the engine. Nothing is defaulted; a missing part is a typed rejection.
  */
 export function trustedFromRegion(regionInspection) {
@@ -327,7 +266,7 @@ const HORIZONTAL_FACES = new Set(['+X', '-X', '+Z', '-Z']);
  * HW-A028 painter side: a first building's entrance faces the anchor player.
  * Run only when the confirmed rules require an entrance and no portal is
  * confirmed (planEntrances). A doorway is a usable cell (full confirmed
- * clearance over verified empty air, the same rule as planEntrances) on a side face of the structure's footprint
+ * clearance over verified empty material, the same rule as planEntrances) on a side face of the structure's footprint
  * that is 6-adjacent to a usable cell strictly inside the footprint. When the
  * structure has a usable interior, it must have a doorway on the face whose
  * outward normal is `entranceFacing`, and no doorway on any other side face.
@@ -339,10 +278,11 @@ export function checkEntranceFacing({ request, geometry, entranceFacing }) {
   const { catalogue, targetFacts } = request;
   const rules = boundRules(request);
   const span = clearanceSpan(rules.clearance);
-  const finalNode = new Map(targetFacts.knownEmptyCells.map(p => [key(p), 'air']));
-  for (const e of geometry.effects) finalNode.set(key(e.position), e.nodeName);
-  const empty = k => finalNode.get(k) === 'air' && passable(catalogue.nodes.air, rules.hazardPolicy);
-  const usable = new Set(usableCells(finalNode, span, empty).keys());
+  const emptyRef = catalogue.emptyMaterialRef;
+  const finalMaterial = new Map(targetFacts.knownEmptyCells.map(p => [key(p), emptyRef]));
+  for (const e of geometry.effects) finalMaterial.set(key(e.position), e.materialRef);
+  const empty = k => finalMaterial.get(k) === emptyRef && passable(catalogue.materials[emptyRef], rules.hazardPolicy);
+  const usable = new Set(usableCells(finalMaterial, span, empty).keys());
   const { min, max } = geometry.declaredBounds;
   const inY = p => p[1] >= min[1] && p[1] <= max[1];
   const strictlyInside = p => inY(p) && p[0] > min[0] && p[0] < max[0] && p[2] > min[2] && p[2] < max[2];
@@ -366,7 +306,7 @@ export function checkEntranceFacing({ request, geometry, entranceFacing }) {
 /**
  * Assemble the complete BuildProjection. `trusted` must come from a public,
  * provider-verified source: the exact coordinate Frame whose digest equals
- * targetFacts.frameDigest and Adapter evidence (painter/v5: trustedFromRegion).
+ * targetFacts.frameDigest and Adapter evidence (painter/v6: trustedFromRegion).
  * Missing trusted facts are a typed rejection, never a default.
  */
 export function assembleBuild({ request, geometry, documentId, trusted,
@@ -378,7 +318,7 @@ export function assembleBuild({ request, geometry, documentId, trusted,
   if (digestValue('frame', trusted.frame).sha256 !== targetFacts.frameDigest)
     fail('TARGET_FACTS_STALE', 'validate', 'REVISION_CHANGED');
   const catalogueDigest = digestValue('catalogue', catalogue).sha256;
-  const finalEffects = { profileVersion: 'final-effects/v2', frameDigest: targetFacts.frameDigest,
+  const finalEffects = { profileVersion: 'final-effects/v3', frameDigest: targetFacts.frameDigest,
     catalogueDigest, effects: geometry.effects };
   const bound = {
     finalEffectsDigest: digestValue('final-effects', finalEffects).sha256,
@@ -389,10 +329,10 @@ export function assembleBuild({ request, geometry, documentId, trusted,
   const written = new Set(positions.map(key));
   const evidence = trusted.evidence;
   const hazardOk = geometry.effects.every(e => {
-    const c = catalogue.nodes[e.nodeName];
-    return c.liquidType !== null && c.damagePerSecond !== null &&
-      (!rules.hazardPolicy.forbidLiquid || c.liquidType === 'none') &&
-      c.damagePerSecond <= rules.hazardPolicy.maximumDamagePerSecond;
+    const t = catalogue.materials[e.materialRef];
+    return t.liquid !== null && t.hazardPerSecond !== null &&
+      (!rules.hazardPolicy.forbidLiquid || t.liquid === false) &&
+      t.hazardPerSecond <= rules.hazardPolicy.maximumDamagePerSecond;
   });
   if (!hazardOk) fail('UNSUPPORTED_MATERIAL', 'validate', 'REQUIRED_FACT_UNKNOWN');
   const hazardCells = new Map(positions.map(p => [key(p), p]));
@@ -412,7 +352,7 @@ export function assembleBuild({ request, geometry, documentId, trusted,
         path: entrance.path, clearance: rules.clearance } })),
   ].sort((a, b) => compareUTF16(a.witnessId, b.witnessId));
   const build = validateType('BuildProjection', {
-    contractVersion: 'BUILD/V4', documentId, coordinateFrame: trusted.frame, catalogueDigest,
+    contractVersion: 'BUILD/V5', geometryProfile: targetFacts.geometryProfile, documentId, coordinateFrame: trusted.frame, catalogueDigest,
     targetFactsDigest: request.targetFactsDigest, safetyProfileDigest: request.safetyProfileDigest,
     materials: geometry.materials, operations: geometry.operations,
     declaredBounds: geometry.declaredBounds, witnesses,

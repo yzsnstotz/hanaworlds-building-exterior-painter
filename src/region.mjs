@@ -1,15 +1,15 @@
-// painter-region/v2 ValidateRegionProposal: a skill-confirmed region-voxels/v1
+// painter-region/v3 ValidateRegionProposal: a skill-confirmed region-voxels/v2
 // block becomes a RegionBuildProjection for Brush. Pure: nothing here reads a
 // world, a Session or a model, and nothing writes. Block decoding (origin/size
-// overflow, axis order, canonical runs, explicit air carve, null = UNSPECIFIED)
+// overflow, axis order, canonical runs, explicit empty-material carve, null = UNSPECIFIED)
 // and palette legality are the public contract's; Painter adds the business
 // coherence of intent, brief (with media), world and connection.
 import { ContractError, validateRegionProposalRequest, regionBlockBox, digestValue, validateType } from '#contracts';
 
 const fail = (code, reason) => { throw new ContractError(code, 'validate', reason); };
-export const REGION_WIRE = 'painter-region/v2';
+export const REGION_WIRE = 'painter-region/v3';
 export const REGION_OPERATION = 'ValidateRegionProposal';
-export const REGION_CAPABILITY = 'painter-region/v2:validate-region-proposal';
+export const REGION_CAPABILITY = 'painter-region/v3:validate-region-proposal';
 
 /** Contract admission plus Painter coherence; returns the frozen request. */
 export function admitRegionProposal(input) {
@@ -28,7 +28,7 @@ export function admitRegionProposal(input) {
 /** RegionBuildPlan: the proposal block unchanged, bound to world and Catalogue. */
 export function regionBuildPlan(request) {
   const build = validateType('RegionBuildProjection', {
-    contractVersion: 'region-build/v1', documentId: `region-${request.invocationId}`, coordinateSpace: 'WORLD_NODE',
+    contractVersion: 'region-build/v2', documentId: `region-${request.invocationId}`, coordinateSpace: 'WORLD_NODE',
     worldRef: request.worldRef, catalogueDigest: request.catalogueDigest, block: request.proposal.block,
     declaredBounds: regionBlockBox(request.proposal.block),
   });
@@ -40,7 +40,7 @@ export function regionBuildPlan(request) {
 export function protocolHandshake(packageVersion) {
   return validateType('ProtocolHandshake', {
     profileVersion: 'protocol-handshake/v1', component: 'hanaworlds-building-exterior-painter',
-    protocols: [{ protocol: 'painter', major: 5, minor: 0 }, { protocol: 'painter-region', major: 2, minor: 0 }],
+    protocols: [{ protocol: 'painter', major: 6, minor: 0 }, { protocol: 'painter-region', major: 3, minor: 0 }],
     capabilities: [REGION_CAPABILITY],
     provenance: { packageName: 'hanaworlds-building-exterior-painter', packageVersion, sourceRevision: null, artifactDigest: null },
   });
@@ -54,15 +54,15 @@ export const REGION_PROPOSAL_TOOL = Object.freeze({
   wire: REGION_WIRE,
   capability: REGION_CAPABILITY,
   inputType: 'RegionProposal',
-  purpose: 'Batch fill or carve one region-voxels/v1 block (terrain, levelling, digging, large volumes); returns the block unchanged as a region BUILD for Brush, Canvas then commits it as one transaction with one whole-region Undo.',
+  purpose: 'Batch fill or carve one region-voxels/v2 block (terrain, levelling, digging, large volumes); returns the block unchanged as a region BUILD for Brush, Canvas then commits it as one transaction with one whole-region Undo.',
   typicalScale: 'Many cells changing together, from hundreds to very large areas. Small structures and single-cell touch-ups usually use the per-box ValidateBuildProposal path.',
   scaleUnit: 'cells',
   preconditions: Object.freeze([
-    'Block in world node coordinates, X_FASTEST_THEN_Y_THEN_Z, canonical runs; null = UNSPECIFIED (never written, never carve); carve is explicit air param2 0.',
-    'Every palette entry (air included) is a known static node with an allowed param2 in the current Catalogue.',
+    'Block in world grid coordinates, X_FASTEST_THEN_Y_THEN_Z, canonical runs; null = UNSPECIFIED (never written, never carve); carve uses the Catalogue emptyMaterialRef with a declared neutral orientation.',
+    'Every palette entry (empty material included) is a known placeable material with a declared orientation in the current Catalogue.',
     'Same Session, turn, confirmed intent, reference brief (including verified image media), world and connection as the current Host facts.',
     'Whether cells are loaded and known is checked by Adapter/Canvas before writing (unknown is refused there), not by Painter.',
   ]),
-  emits: 'RegionBuildPlan (region-build/v1); no world, Canvas, Adapter or Brush call',
+  emits: 'RegionBuildPlan (region-build/v2); no world, Canvas, Adapter or Brush call',
   modelCalls: 0, worldWrites: 0,
 });

@@ -1,6 +1,7 @@
 import sharp from 'sharp';
+import {rgbaToLab} from 'color-diff';
 import {createHash} from 'node:crypto';
-import {srgbChannelToLinear,linearToSrgb,rgbToOklab} from './colour.mjs';
+import {srgbChannelToLinear,linearToSrgb} from './colour.mjs';
 export const IMAGE_LIMITS=Object.freeze({maxBytes:33554432,maxPixels:16777216,formats:Object.freeze(['png','jpeg','webp'])});
 export class ImageMaterialError extends Error {
   constructor(code,message){super(message);this.name='ImageMaterialError';this.code=code;this.mutationState='NONE';}
@@ -32,7 +33,7 @@ export async function decodeRaster(imageBytes) {
 function colourFromSum(sum,weight) {
   if(weight===0)fail('NO_VISIBLE_PIXELS','No non-transparent pixels have a colour.');
   const floatingRgb=sum.map(v=>linearToSrgb(v/weight));
-  return {rgb:floatingRgb.map(v=>Math.max(0,Math.min(255,Math.round(v)))),oklab:rgbToOklab(...floatingRgb),alphaWeight:weight};
+  return {rgb:floatingRgb.map(v=>Math.max(0,Math.min(255,Math.round(v)))),lab:rgbaToLab({R:floatingRgb[0],G:floatingRgb[1],B:floatingRgb[2]}),alphaWeight:weight};
 }
 // Reuses original palette_build.py's alpha-weighted LINEAR-light texture mean.
 export function meanTextureColour(data) {

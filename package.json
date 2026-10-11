@@ -1,10 +1,10 @@
 {
   "name": "hanaworlds-building-exterior-painter",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "license": "MIT",
-  "description": "HanaWorlds local-world Painter: confirmed proposals to BUILD/V4 without world mutation",
+  "description": "HanaWorlds C-painter v2: confirmed proposals to neutral BUILD plans and CIEDE2000 image material matching",
   "repository": {
     "type": "git",
     "url": "https://github.com/yzsnstotz/hanaworlds-building-exterior-painter.git"
@@ -25,7 +25,8 @@
     "cordis.patch.yml",
     "GADGET.md",
     "LICENSE_AUDIT.md",
-    "NOTICE"
+    "NOTICE",
+    "examples"
   ],
   "dsh": {
     "bundle": {
@@ -33,20 +34,22 @@
     }
   },
   "scripts": {
-    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/model.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs && node --check src/image-material.mjs && node --check src/pixels.mjs && node --check src/colour.mjs && node --check src/current-image-material.mjs && node --check src/region.mjs && node --check src/region-proposal.mjs && node --check src/contract-package.mjs",
-    "test": "node --test test/local-world.test.mjs test/site-rules-v1.test.mjs test/confirmed-placement.test.mjs",
+    "build": "node --check src/index.mjs && node --check src/service.mjs && node --check src/planner.mjs && node --check src/proposal.mjs && node --check src/local-context.mjs && node --check src/image-material.mjs && node --check src/pixels.mjs && node --check src/colour.mjs && node --check src/current-image-material.mjs && node --check src/region.mjs && node --check src/region-proposal.mjs && node --check src/contract-package.mjs",
+    "test": "node --test test/*.test.mjs",
     "test:confirmed-placement": "node --test test/confirmed-placement.test.mjs",
     "test:site-rules": "node --test test/site-rules-v1.test.mjs",
     "test:local-world": "node --test test/local-world.test.mjs",
     "test:image-material": "node --test test/image-material.test.mjs",
     "test:material-sources": "node --test test/material-sources.test.mjs",
     "test:region": "node --test test/region-v1.test.mjs",
-    "verify:contracts": "node tools/verify-contracts.mjs"
+    "verify:contracts": "node tools/verify-contracts.mjs",
+    "example": "node examples/provider-v2.mjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.2",
     "canonicalize": "5.1.0",
-    "hanaworlds-contracts": "git+https://github.com/yzsnstotz/hanaworlds-contracts.git#semver:^1.1.0",
+    "color-diff": "1.4.0",
+    "hanaworlds-contracts": "git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0",
     "sharp": "0.35.3"
   }
 }
