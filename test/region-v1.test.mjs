@@ -45,6 +45,47 @@ async function rejected(f, code, request = f.request, options) {
 const block = (palette, indices, size = [4, 1, 1], origin = [0, 0, 0]) => api.encodeRegionBlock({ origin, size, palette, indices });
 const AIR = { materialRef: 'air', orientation: 0 }, STONE = { materialRef: 'fixture:stone', orientation: 0 };
 
+test('region tool explains geometry and opaque material palette without engine-specific instructions', () => {
+  const tool = setup().painter.describe().tools.find(t => t.name === op);
+  const instructions = tool.preconditions.join('\n');
+  assert.match(instructions, /geometryProfile/);
+  assert.match(instructions, /materialRef/);
+  assert.match(instructions, /orientation/);
+  assert.match(instructions, /emptyMaterialRef/);
+  assert.doesNotMatch(instructions, /\b(?:air|param2|node)\b/i);
+});
+
+test('world-source emptyMaterialRef and nonzero orientations survive object, JSON and byte region proposals', async () => {
+  const empty = { materialRef: 'opaque-empty-83', orientation: 7 };
+  const fill = { materialRef: 'opaque-fill-21', orientation: 11 };
+  const mutate = r => {
+    const emptyTags = clone(r.catalogue.materials[r.catalogue.emptyMaterialRef]);
+    const fillTags = clone(r.catalogue.materials[STONE.materialRef]);
+    r.catalogue.emptyMaterialRef = empty.materialRef;
+    r.catalogue.materials = {
+      [empty.materialRef]: { ...emptyTags, orientations: [empty.orientation], extension: {} },
+      [fill.materialRef]: { ...fillTags, orientations: [fill.orientation], extension: {} },
+    };
+    r.proposal.block = block([fill, empty], [0, -1, 1, -1], [2, 1, 2], [-9, 4, 13]);
+  };
+  for (const encode of [r => r, JSON.stringify, r => new TextEncoder().encode(JSON.stringify(r))]) {
+    const f = setup({ mutate });
+    const response = await f.painter.call(op, encode(f.request));
+    assert.equal(response.error, null, JSON.stringify(response.error));
+    api.validateRegionProposalResponse(f.request, response);
+    assert.equal(api.canonicalJSON(response.result.build.block), api.canonicalJSON(f.request.proposal.block));
+    assert.deepEqual(response.result.build.declaredBounds, { min: [-9, 4, 13], max: [-8, 4, 14] });
+    const cells = api.expandRegionBlock(response.result.build.block);
+    assert.deepEqual(Array.from(cells.indices, index => index === -1 ? null : clone(cells.palette[index])), [fill, null, empty, null]);
+    assert.equal(f.state.reads, 2);
+  }
+  const illegal = setup({ mutate });
+  illegal.request.proposal.block = clone(illegal.request.proposal.block);
+  illegal.request.proposal.block.palette.find(p => p.materialRef === empty.materialRef).orientation = 0;
+  await rejected(illegal, 'UNSUPPORTED_MUTATION_SEMANTICS');
+  assert.equal(illegal.state.reads, 0);
+});
+
 test('fill + explicit air carve + unspecified: original Painter channel returns the block unchanged as region-build/v2', async () => {
   const f = setup();
   const response = await f.painter.call(op, JSON.stringify(f.request));

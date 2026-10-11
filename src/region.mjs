@@ -58,8 +58,8 @@ export const REGION_PROPOSAL_TOOL = Object.freeze({
   typicalScale: 'Many cells changing together, from hundreds to very large areas. Small structures and single-cell touch-ups usually use the per-box ValidateBuildProposal path.',
   scaleUnit: 'cells',
   preconditions: Object.freeze([
-    'Block in world grid coordinates, X_FASTEST_THEN_Y_THEN_Z, canonical runs; null = UNSPECIFIED (never written, never carve); carve uses the Catalogue emptyMaterialRef with a declared neutral orientation.',
-    'Every palette entry (empty material included) is a known placeable material with a declared orientation in the current Catalogue.',
+    'Block origin/size use current-world grid coordinates under geometryProfile voxel-grid/v1, X_FASTEST_THEN_Y_THEN_Z and canonical runs; null = UNSPECIFIED (never written, never carve); carve explicitly references the world-source Catalogue emptyMaterialRef and one of its declared orientations.',
+    'Every palette entry is {materialRef, orientation}: an opaque materialRef from the current world-source Catalogue, known and placeable, with orientation declared by that material (including emptyMaterialRef).',
     'Same Session, turn, confirmed intent, reference brief (including verified image media), world and connection as the current Host facts.',
     'Whether cells are loaded and known is checked by Adapter/Canvas before writing (unknown is refused there), not by Painter.',
   ]),
