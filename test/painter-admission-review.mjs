@@ -26,3 +26,24 @@ test('typed image root is closed and data descriptors are never evaluated',async
  Object.defineProperty(input,'catalogue',{enumerable:true,get(){getterCalls++;throw new Error('must not evaluate getter');}});
  await assert.rejects(tool.execute(input));assert.equal(getterCalls,0);
 });
+test('Q262 texture Bytes rejects an ordinary array with the complete admission error',async()=>{
+ const api=await runtime(),row=example('image-success'),{tool}=register(api);
+ const valid=typed(row.request);
+ assert.ok(valid.imageBytes instanceof Uint8Array);
+ assert.ok(valid.materialSources.textures[0].bytes instanceof Uint8Array);
+ assert.deepEqual(await tool.execute(valid),row.expected,'valid typed control');
+
+ const malformed=structuredClone(valid);
+ // Restore document byte lists before this mutation, never afterwards: typed()
+ // would hide the Array-only regression by converting it back to Uint8Array.
+ malformed.materialSources.textures[0].bytes=Array.from(malformed.materialSources.textures[0].bytes);
+ assert.ok(Array.isArray(malformed.materialSources.textures[0].bytes));
+ assert.ok(malformed.imageBytes instanceof Uint8Array);
+ const rejection=await tool.execute(malformed).then(()=>null,error=>error);
+ // Check recovery even when the current runtime throws the wrong error.
+ assert.deepEqual(await tool.execute(valid),row.expected,'same tool recovers after malformed texture bytes');
+ assert.ok(rejection,'ordinary texture byte arrays must be rejected');
+ const expected=doc.operationErrors.hanaworlds_image_material.own.find(c=>c.id==='image-owned-admission-5');
+ assert.ok(expected,'the existing complete typed admission error is required');
+ assert.deepEqual(rejection.publicError,expected.value,'reject at typed admission, before hashing');
+});
