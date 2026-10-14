@@ -82,7 +82,7 @@ function schemaCheck(schema,value,path=[]){
   if(path.at(-1)==='contractVersion'||path.at(-1)==='profileVersion')fail('UNSUPPORTED_VERSION','VERSION_UNSUPPORTED','decode');shape();
  }
  if(schema.enum&&!schema.enum.some(v=>equal(value,v)))shape();
- if(schema['x-in-process']&&value instanceof Uint8Array)return;
+ if(schema['x-in-process']){if(!(value instanceof Uint8Array))shape();return;}
  if(schema.type){const good=schema.type==='null'?value===null:schema.type==='array'?Array.isArray(value):schema.type==='object'?value!==null&&typeof value==='object'&&!Array.isArray(value):schema.type==='integer'?Number.isSafeInteger(value):schema.type==='number'?typeof value==='number'&&Number.isFinite(value):typeof value===schema.type;if(!good){if(schema.type==='integer'&&path.some(k=>['origin','min','max','size','position'].includes(k)))geometry();shape();}}
  if(typeof value==='string'){
   if(schema.minLength!==undefined&&value.length<schema.minLength)shape();if(schema.pattern&&!new RegExp(schema.pattern).test(value))shape();
