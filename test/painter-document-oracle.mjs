@@ -12,10 +12,15 @@ const blocks = [...documentText.matchAll(/```json\n([\s\S]*?)\n```/g)];
 assert.ok(blocks.length, 'The reviewed complete C-painter JSON body is required.');
 export const documentJSON = blocks.at(-1)[1];
 export const documentSHA = createHash('sha256').update(documentJSON).digest('hex');
-assert.equal(documentSHA, '774f645db6a02d44afd1352e116b792f89f3a2c7afe72f082d8b6b6fe9f8c8ad', 'Use the complete unchanged D122 body.');
+assert.equal(documentSHA, '52fb910a4a0f688b65a7e66fad036c716415ee7c83634621059f6e33242827d0', 'Use the complete reviewed Q241 own body.');
+const baselineJSON = blocks.map(b=>b[1]).find(b=>createHash('sha256').update(b).digest('hex')==='774f645db6a02d44afd1352e116b792f89f3a2c7afe72f082d8b6b6fe9f8c8ad');
+assert.ok(baselineJSON, 'Original complete D122 body must remain byte-for-byte.');
+export const baselineDoc = JSON.parse(baselineJSON);
 export const doc = JSON.parse(documentJSON);
 assert.equal(doc.format, 'c-painter-candidate/v3');
-assert.equal(Object.keys(doc.definitions).length, 145);
+assert.equal(Object.keys(baselineDoc.definitions).length,145);
+assert.deepEqual(doc.legacyDefinitions,baselineDoc.definitions);
+assert.equal(Object.keys(doc.definitions).length,192);
 
 function inspectRefs(value) {
   if (!value || typeof value !== 'object') return;

@@ -1,17 +1,17 @@
+import './painter-confirmation-review.mjs';
 import './painter-intent-versions-review.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runtime,register,doc,callExample,encodings,typed,assertError } from './painter-review-harness.mjs';
+import { runtime,register,registerCase,doc,callExample,encodings,typed,assertError } from './painter-review-harness.mjs';
 for(const row of doc.examples) test('full documented result/refusal: '+row.id,async()=>{
  const api=await runtime();
  if(row.operation==='hanaworlds_image_material'){
   if(row.expectedError)await assert.rejects(callExample(api,row),e=>{assertError(e,row.expectedError);return true;});
   else assert.deepEqual(await callExample(api,row),row.expected);
  }else for(const raw of encodings(row.request)){
-  let reads=0;
-  const {painter}=register(api,{facts:row.facts,read:async()=>{reads++;return structuredClone(row.facts);}});
-  assert.deepEqual(await painter.call(row.operation,raw),row.expected);
-  if(row.expected.result!==null){assert.equal(reads,2);assert.deepEqual(await painter.call(row.operation,raw),row.expected);assert.equal(reads,4);}
+  const run=registerCase(api,row);
+  assert.deepEqual(await run.painter.call(row.operation,raw,{signal:run.signal}),row.expected);
+  if(row.expected.result!==null){assert.equal(run.reads,2);assert.deepEqual(await run.painter.call(row.operation,raw),row.expected);assert.equal(run.reads,4);}
  }
 });
 for(const row of doc.ownedBusinessCases)test('safety refusal retains all fields: '+row.id,async()=>{

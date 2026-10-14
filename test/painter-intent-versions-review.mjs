@@ -1,4 +1,4 @@
-// New acceptance is a document requirement, not authority to invent v6 payloads.
+// Q241: Painter authors its own carrier projections; PM supplies candidate values, not source authority.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -19,12 +19,11 @@ function branches(schema,seen=new Set()) {
  return [schema];
 }
 for(const operation of ['ValidateBuildProposal','ValidateRegionProposal'])for(const field of ['intent','referenceBrief'])
- test(`document gap: ${operation} ${field} has complete v5 and v6 branches`,()=>{
-  const schema=doc.definitions[operation+'Request'].properties[field];
-  const variants=branches(schema);
+ test(`document closure: ${operation} ${field} has complete v5 and v6 branches`,()=>{
+  const variants=branches(doc.definitions[operation+'Request']).flatMap(s=>branches(s.properties[field]));
   for(const version of [5,6]){
    const matching=variants.filter(s=>major(s.properties?.contractVersion?.const)===version);
-   assert.equal(matching.length,1,`CONTRACT_GAP: ${operation}.${field} complete v${version} branch is required; do not relabel v5`);
+   assert.equal(matching.length,1,`OWNED_CONTRACT: ${operation}.${field} complete v${version} branch is required; do not relabel v5`);
    const branch=matching[0];
    assert.equal(branch.type,'object');assert.equal(branch.additionalProperties,false);
    assert.ok(branch.required.includes('contractVersion'));
@@ -35,8 +34,8 @@ for(const operation of ['ValidateBuildProposal','ValidateRegionProposal'])for(co
  test(`document sample coverage: ${operation} v${version} complete success and refusal`,()=>{
   const rows=doc.examples.filter(r=>r.operation===operation&&major(r.request?.intent?.contractVersion)===version&&major(r.request?.referenceBrief?.contractVersion)===version);
   const success=rows.filter(r=>r.expected?.result!=null),refusal=rows.filter(r=>r.expected?.error!=null);
-  assert.ok(success.length>0,`CONTRACT_GAP: ${operation} v${version} full success request/facts/response missing`);
-  assert.ok(refusal.length>0,`CONTRACT_GAP: ${operation} v${version} full refusal and correlation missing`);
+  assert.ok(success.length>0,`OWNED_CONTRACT: ${operation} v${version} full success request/facts/response missing`);
+  assert.ok(refusal.length>0,`OWNED_CONTRACT: ${operation} v${version} full refusal and correlation missing`);
   for(const row of rows){
    if(row.requestAdmitted)assertShape(row.requestType,row.request);
    assertShape(row.responseType,row.expected);
@@ -56,14 +55,14 @@ test('retained v5 intent/brief canonical UTF8 byte domains match every admitted 
   assert.equal(v5Digest('intent',row.request.intent),row.request.intentDigest);
  }
 });
-test('document gap: Region facts can carry complete confirmed intent and brief',()=>{
+test('document closure: Region facts can carry complete confirmed intent and brief',()=>{
  // Only traverse existing documented fields; add no guessed persistence port or property.
  const reached=new Set();
  const walk=s=>{if(!s||typeof s!=='object')return;
   if(s.$ref){const name=s.$ref.slice(14);if(reached.has(name))return;reached.add(name);walk(doc.definitions[name]);}
   for(const value of Object.values(s))if(typeof value==='object')walk(value);
  };
- walk(doc.definitions.LocalRequestFacts);
- assert.ok(reached.has('IntentProjection')&&reached.has('BriefProjection'),
-  'CONTRACT_GAP: Region LocalRequestFacts only supplies turn/brief digest/localContext; full confirmation/intent/brief readback is not documented');
+ walk(doc.definitions.RegionProposalProviderFactsV6);
+ assert.ok(reached.has('IntentProjectionV6')&&reached.has('BriefProjectionV6')&&reached.has('ConfirmationCarrierV6'),
+  'OWNED_CONTRACT: v6 Region facts must carry complete confirmation/intent/brief; legacy LocalRequestFacts stays unchanged');
 });

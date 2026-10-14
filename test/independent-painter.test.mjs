@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { doc, assertOwnSource } from './painter-review-harness.mjs';
-import { assertShape } from './painter-document-oracle.mjs';
+import { baselineDoc, assertShape } from './painter-document-oracle.mjs';
 import './painter-registration-review.mjs';
 import './painter-proposals-review.mjs';
 import './painter-helpers-review.mjs';
@@ -12,7 +12,9 @@ import './painter-admission-review.mjs';
 import './painter-currentness-review.mjs';
 
 test('document admission retains complete D122 closure and real gates',()=>{
- assert.equal(Object.keys(doc.definitions).length,145);
+ assert.equal(Object.keys(baselineDoc.definitions).length,145);
+ assert.deepEqual(doc.legacyDefinitions,baselineDoc.definitions);
+ assert.equal(Object.keys(doc.definitions).length,192);
  assert.equal(doc.contractRevision.major,3);
  assert.equal(doc.contractRevision.status,'APPEND_READY');
  assert.equal(doc.consumption.authorizationClosed,false);

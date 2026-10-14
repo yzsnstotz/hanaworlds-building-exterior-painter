@@ -62,3 +62,24 @@ export function mutated(row) {
  }
  return input;
 }
+// Execute authored before/release schedules through the original public seam.
+// It never turns the document carrier into evidence of a real persistent source.
+export function registerCase(api,row) {
+ let current=row,reads=0,faults=true,reg;
+ const controller=new AbortController();
+ reg=register(api,{facts:row.facts,read:async()=>{
+  const at=++reads;
+  const facts=structuredClone(faults&&current.readFacts?current.readFacts[Math.min(at-1,current.readFacts.length-1)]:current.facts);
+  await Promise.resolve();
+  if(faults&&at===current.replaceProviderAfterAwaitAtRead){
+   const replacement={read:async()=>structuredClone(current.facts)};
+   reg.ctx.get=name=>name==='hanaworldsPainterLocalFacts'?replacement:reg.provided.get(name);
+  }
+  if(faults&&at===current.abortAfterAwaitAtRead)controller.abort();
+  return facts;
+ }});
+ const originalGet=reg.ctx.get;
+ return {...reg,signal:controller.signal,get reads(){return reads;},
+  recover(success){current=success;faults=false;reads=0;reg.ctx.get=originalGet;},
+ };
+}
