@@ -1,3 +1,4 @@
+import './painter-intent-versions-review.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runtime,register,doc,callExample,encodings,typed,assertError } from './painter-review-harness.mjs';
