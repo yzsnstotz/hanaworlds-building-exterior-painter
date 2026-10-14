@@ -43,3 +43,34 @@ for(const operation of ['ValidateBuildProposal','ValidateRegionProposal'])test('
   contractVersion:row.request.contractVersion,requestId:row.request.requestId,result:null,error,
  });
 });
+
+for(const row of doc.q247ObservedCases)test('Q247 original public path all fields/reads/recovery: '+row.id,async()=>{
+ const api=await runtime();
+ if(row.operation==='hanaworlds_image_material'){
+  const run=register(api);
+  await assert.rejects(run.tool.execute(typed(row.request)),e=>{assertError(e,row.expectedError);return true;});
+  assert.deepEqual(await run.tool.execute(typed(row.recovery.request)),row.recovery.expected);
+ }else for(const raw of encodings(row.request)){
+  const run=registerCase(api,row);
+  assert.deepEqual(await run.painter.call(row.operation,raw),row.expected);
+  assert.equal(run.reads,row.expectedReads);
+  run.recover(row.recovery);
+  assert.deepEqual(await run.painter.call(row.operation,row.recovery.request),row.recovery.expected);
+  assert.equal(run.reads,2);
+  assert.deepEqual(await run.painter.call(row.operation,row.recovery.request),row.recovery.expected);
+  assert.equal(run.reads,4);
+ }
+});
+for(const operation of ['ValidateBuildProposal','ValidateRegionProposal'])for(const readAt of [1,2])
+ test(`Q247 own tuple is not a new source permission ${operation} read${readAt}`,async()=>{
+  const api=await runtime(),row=example(operation==='ValidateBuildProposal'?'build-success':'region-success');
+  for(const added of Object.values(doc.q247ErrorAdditions).flat()){
+   const original={publicError:structuredClone(added.value)};let reads=0,fail=true;
+   const {painter}=register(api,{facts:row.facts,read:async()=>{
+    if(fail&&++reads===readAt)throw original;return structuredClone(row.facts);
+   }});
+   await assert.rejects(painter.call(operation,row.request),error=>error===original);
+   assert.equal(reads,readAt);fail=false;
+   assert.deepEqual(await painter.call(operation,row.request),row.expected);
+  }
+ });

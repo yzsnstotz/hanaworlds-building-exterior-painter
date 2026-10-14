@@ -60,7 +60,14 @@ for(const operation of ['ValidateBuildProposal','ValidateRegionProposal'])for(co
    assert.deepEqual(body,row.request);assert.equal(actualOperation,operation);
    return structuredClone(invalid&&++reads===readAt?changed:row.facts);
   }});
-  assertOwnedRefusal(await painter.call(operation,row.request),row);assert.equal(reads,readAt);
+  const response=await painter.call(operation,row.request);
+  assertOwnedRefusal(response,row);
+  if(['turn','brief','session'].includes(label)){
+   const path={turn:'turn',brief:'brief',session:'session'}[label];
+   const observed=doc.q247ObservedCases.find(r=>r.id===`q247-path-${operation}-current-${path}-${readAt}`);
+   assert.deepEqual(response,observed.expected,'full original currentness response, never code-only or invented reason');
+  }
+  assert.equal(reads,readAt);
   invalid=false;assert.deepEqual(await painter.call(operation,row.request),row.expected);
  });
 function rebindContext(context){
