@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import { doc,runtime,registerCase,encodings } from './painter-review-harness.mjs';
-import {baselineDoc,q241Doc,assertShape} from './painter-document-oracle.mjs';
+import {baselineDoc,q241Doc,q247Doc,assertShape} from './painter-document-oracle.mjs';
 import {canonical,v5Digest} from './painter-intent-versions-review.mjs';
 const supply=JSON.parse(readFileSync(new URL('../../pm-supply/Q-241/WORKSHOP-V6-CARRIER-SUPPLY.json',import.meta.url)));
 const requests=JSON.parse(readFileSync(new URL('../../pm-supply/Q-241/WORKSHOP-COMPLETE-REQUESTS.json',import.meta.url)));
@@ -307,13 +307,13 @@ test('Q247 only adds exact witnessed own tuples; source grammar and the prior cl
   const key=op==='hanaworlds_image_material'?'ownAdmission':'own';
   const before=q241Doc.operationErrors[op][key],after=doc.operationErrors[op][key];
   assert.deepEqual(after.slice(0,before.length),before);
-  assert.deepEqual(after.slice(before.length).map(r=>r.value),values);
+  assert.deepEqual(after.slice(before.length,before.length+values.length).map(r=>r.value),values);
   assert.deepEqual(doc.q247ErrorAdditions[op].map(r=>r.value),values);
   const unchanged={...doc.operationErrors[op],[key]:before};
   if(op==='hanaworlds_image_material'){delete unchanged.own;assert.deepEqual(doc.operationErrors[op].own,after);}
   assert.deepEqual(unchanged,q241Doc.operationErrors[op]);
   const type=op==='hanaworlds_image_material'?'ImageMaterialOwnAdmissionError':op+'Error';
-  assert.equal(doc.definitions[type].anyOf.length,q241Doc.definitions[type].anyOf.length+values.length);
+  assert.equal(doc.definitions[type].anyOf.length,q241Doc.definitions[type].anyOf.length+values.length+(q256Values[op]?.length??0));
   for(const value of values){
    assertShape(type,value);
    // Newly owned branches never authorize their seven fields as provider errors.
@@ -349,5 +349,67 @@ test('Q247 captured originals have full admission/read/recovery values and prese
    assert.deepEqual(row.originalException,row.expectedError);
    assert.deepEqual(row.recoveryObserved,row.recovery.expected);assert.equal(row.recoveryReads,0);
   }
+ }
+});
+
+// Exact frozen original values: no constructor defaults or code-wide tuple expansion.
+const q256Values={
+ ValidateBuildProposal:[
+  {code:'NON_CANONICAL_AMBIGUITY',phase:'validate',retryability:'NEVER',mutationState:'NONE',transactionRef:null,causeCode:null,reason:'PAYLOAD_CHANGED'},
+  {code:'MEDIA_DIGEST_MISMATCH',phase:'validate',retryability:'AFTER_NEW_FACTS',mutationState:'NONE',transactionRef:null,causeCode:null,reason:'PAYLOAD_CHANGED'},
+ ],
+ ValidateRegionProposal:[
+  {code:'NON_CANONICAL_AMBIGUITY',phase:'validate',retryability:'NEVER',mutationState:'NONE',transactionRef:null,causeCode:null,reason:'PAYLOAD_CHANGED'},
+  {code:'MEDIA_DIGEST_MISMATCH',phase:'validate',retryability:'AFTER_NEW_FACTS',mutationState:'NONE',transactionRef:null,causeCode:null,reason:'PAYLOAD_CHANGED'},
+ ],
+};
+test('Q256 preserves D148 whole closure and adds only four exact witnessed own branches',()=>{
+ assert.equal(Object.keys(doc.definitions).length,192);
+ for(const key of Object.keys(q247Doc).filter(k=>!['definitions','operationErrors'].includes(k)))assert.deepEqual(doc[key],q247Doc[key],key+' preserved');
+ for(const [name,schema] of Object.entries(q247Doc.definitions)){
+  if(!['ValidateBuildProposalError','ValidateRegionProposalError'].includes(name))assert.deepEqual(doc.definitions[name],schema,name);
+  else assert.deepEqual(doc.definitions[name].anyOf.slice(0,schema.anyOf.length),schema.anyOf);
+ }
+ assert.deepEqual(doc.sourceErrorAdmission,q247Doc.sourceErrorAdmission);
+ assert.deepEqual(doc.definitions.SourcePublicError,q247Doc.definitions.SourcePublicError);
+ assert.deepEqual(doc.operationErrors.hanaworlds_image_material,q247Doc.operationErrors.hanaworlds_image_material);
+ for(const [op,values] of Object.entries(q256Values)){
+  const before=q247Doc.operationErrors[op].own,after=doc.operationErrors[op].own;
+  assert.deepEqual({...doc.operationErrors[op],own:before},q247Doc.operationErrors[op]);
+  assert.deepEqual(after.slice(0,before.length),before);
+  assert.deepEqual(after.slice(before.length).map(r=>r.value),values);
+  assert.deepEqual(doc.q256ErrorAdditions[op].map(r=>r.value),values);
+  const type=op+'Error',schema=q247Doc.definitions[type];
+  assert.equal(doc.definitions[type].anyOf.length,schema.anyOf.length+2);
+  const expectedBranches=values.map(v=>({type:'object',properties:Object.fromEntries(Object.entries(v).map(([k,x])=>[k,{const:x}])),required:Object.keys(v),additionalProperties:false}));
+  assert.deepEqual(doc.definitions[type].anyOf.slice(schema.anyOf.length),expectedBranches);
+  for(const value of values){
+   assertShape(type,value);assert.throws(()=>assertShape('SourcePublicError',value));
+   for(const invalid of [
+    {...value,code:'__UNKNOWN_CODE__'}, {...value,phase:'decode'}, {...value,reason:'REVISION_CHANGED'},
+    {...value,retryability:value.retryability==='NEVER'?'AFTER_NEW_FACTS':'NEVER'},
+    {...value,mutationState:'UNKNOWN'}, {...value,transactionRef:'invented'},
+    {...value,causeCode:'invented'}, {...value,sourceIdentity:'invented'},
+   ])assert.throws(()=>assertShape(type,invalid));
+  }
+ }
+});
+test('Q256 twelve original paths bind full values/read stages/recovery without source authority',()=>{
+ assert.equal(doc.q256DigestCases.length,12);assert.equal(doc.q256Review.repairBudget,0);
+ const identifiers=['ValidateBuildProposal-intentDigest','ValidateBuildProposal-referenceBriefDigest','ValidateBuildProposal-targetFactsDigest','ValidateBuildProposal-safetyProfileDigest','ValidateRegionProposal-intentDigest','ValidateRegionProposal-referenceBriefDigest','ValidateRegionProposal-catalogueDigest','ValidateBuildProposal-coherent-bad-brief-digest','ValidateRegionProposal-coherent-bad-brief-digest','region-noncanonical-adjacent-runs','region-noncanonical-palette-order','original-site-rule-old-intent-digest'];
+ assert.deepEqual(doc.q256DigestCases.map(r=>r.id),identifiers);
+ const shapeError={code:'SCHEMA_INVALID',phase:'validate',retryability:'AFTER_NEW_FACTS',mutationState:'NONE',transactionRef:null,causeCode:null,reason:'INVALID_SHAPE'};
+ for(const row of doc.q256DigestCases){
+  assert.equal(row.sourceArtifactSHA,'3a3bbc332b4ec7eea051fc069b0b15a58074cb47de9902d0b6997abbc7d799d2');
+  assertShape(row.requestType,row.request);assertShape(row.factsType,row.facts);assertShape(row.responseType,row.expected);
+  assert.equal(row.originalException,null);assert.equal(row.expected.result,null);
+  assert.equal(row.expected.contractVersion,row.request.contractVersion);assert.equal(row.expected.requestId,row.request.requestId);
+  const isShape=row.id==='ValidateRegionProposal-referenceBriefDigest'||row.id.startsWith('region-noncanonical-');
+  const isMedia=row.id==='ValidateBuildProposal-referenceBriefDigest'||row.id.endsWith('coherent-bad-brief-digest');
+  assert.deepEqual(row.expected.error,isShape?shapeError:q256Values[row.operation][isMedia?1:0]);
+  assert.equal(row.expectedReads,row.operation==='ValidateBuildProposal'?1:0);
+  assertShape(row.requestType,row.recovery.request);assertShape(row.factsType,row.recovery.facts);assertShape(row.responseType,row.recovery.expected);
+  assert.deepEqual(row.recoveryObserved,row.recovery.expected);assert.deepEqual(row.replayObserved,row.recovery.expected);
+  assert.equal(row.recovery.expected.error,null);assert.equal(row.recoveryReads,2);assert.equal(row.replayReads,4);
  }
 });

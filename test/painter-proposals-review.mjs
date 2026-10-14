@@ -2,7 +2,7 @@ import './painter-confirmation-review.mjs';
 import './painter-intent-versions-review.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runtime,register,registerCase,doc,callExample,encodings,typed,assertError } from './painter-review-harness.mjs';
+import { runtime,register,registerCase,doc,example,callExample,encodings,typed,assertError } from './painter-review-harness.mjs';
 for(const row of doc.examples) test('full documented result/refusal: '+row.id,async()=>{
  const api=await runtime();
  if(row.operation==='hanaworlds_image_material'){
@@ -64,7 +64,7 @@ for(const row of doc.q247ObservedCases)test('Q247 original public path all field
 for(const operation of ['ValidateBuildProposal','ValidateRegionProposal'])for(const readAt of [1,2])
  test(`Q247 own tuple is not a new source permission ${operation} read${readAt}`,async()=>{
   const api=await runtime(),row=example(operation==='ValidateBuildProposal'?'build-success':'region-success');
-  for(const added of Object.values(doc.q247ErrorAdditions).flat()){
+  for(const added of [...Object.values(doc.q247ErrorAdditions).flat(),...Object.values(doc.q256ErrorAdditions).flat()]){
    const original={publicError:structuredClone(added.value)};let reads=0,fail=true;
    const {painter}=register(api,{facts:row.facts,read:async()=>{
     if(fail&&++reads===readAt)throw original;return structuredClone(row.facts);
@@ -74,3 +74,22 @@ for(const operation of ['ValidateBuildProposal','ValidateRegionProposal'])for(co
    assert.deepEqual(await painter.call(operation,row.request),row.expected);
   }
  });
+
+for(const row of doc.q256DigestCases)test('Q256 original digest/shape path full return/reads/recovery: '+row.id,async()=>{
+ const api=await runtime();
+ for(const raw of encodings(row.request)){
+  let recovering=false,recoveryReads=0;const seen=[];
+  const run=register(api,{facts:row.facts,read:async(body,operation)=>{
+   assert.equal(operation,row.operation);
+   if(recovering){recoveryReads++;assert.deepEqual(body,row.recovery.request);return structuredClone(row.recovery.facts);}
+   seen.push(structuredClone(body));assert.deepEqual(body,row.request);return structuredClone(row.facts);
+  }});
+  assert.deepEqual(await run.painter.call(row.operation,raw),row.expected);
+  assert.equal(seen.length,row.expectedReads);
+  recovering=true;
+  assert.deepEqual(await run.painter.call(row.operation,row.recovery.request),row.recovery.expected);
+  assert.equal(recoveryReads,2);
+  assert.deepEqual(await run.painter.call(row.operation,row.recovery.request),row.recovery.expected);
+  assert.equal(recoveryReads,4);
+ }
+});
