@@ -1,5 +1,7 @@
 // C-painter v2 provider. Plans only from confirmed proposals and supplied facts.
-import { ContractError, contractHandshake } from 'hanaworlds-contracts';
+import { ContractError, contractHandshake } from './contract.mjs';
+import documentData from './painter-document-data.mjs';
+import { IMAGE_LIMITS } from './pixels.mjs';
 import { PAINTER_ID } from './planner.mjs';
 import { BuildProposalValidator, PROPOSAL_OPERATION, PROPOSAL_WIRE } from './proposal.mjs';
 import { matchCurrentImageMaterials, IMAGE_MATERIAL_TOOL } from './current-image-material.mjs';
@@ -17,21 +19,17 @@ export const INVARIANTS = Object.freeze([
  'Image colours use sharp and CIEDE2000 over validated ReadMaterialSources texture bytes; missing facts are refused.',
 ]);
 export class ExteriorPainterV2 {
- constructor({localFacts}={}) {
+ constructor({localFacts,maxBytes,maxPixels,formats}={}) {
   this.localFacts=localFacts;
+  this.imageLimits=Object.freeze({maxBytes:maxBytes??IMAGE_LIMITS.maxBytes,maxPixels:maxPixels??IMAGE_LIMITS.maxPixels,formats:Object.freeze([...(formats??IMAGE_LIMITS.formats)])});
   this.proposals=new BuildProposalValidator(()=>this.localFacts);
   this.regions=new RegionProposalValidator(()=>this.localFacts);
   Object.defineProperty(this,'contractHandshake',{value:contractHandshake,enumerable:true});
  }
  handshake(){return contractHandshake;}
  protocolHandshake(){return protocolHandshake(PACKAGE_VERSION);}
- matchCurrentImageMaterials(input){return matchCurrentImageMaterials(input);}
- describe(){return {
-  painterId:PAINTER_ID,wire:WIRE,operations:[PROPOSAL_OPERATION,REGION_OPERATION],
-  consumes:['painter/v6','painter-region/v3','ReferenceBrief/v5'],factProfiles:['target-facts/v5','material-sources/v2'],
-  emits:['BUILD/V5','region-build/v2'],settings:{},invariants:INVARIANTS,modelCalls:0,worldWrites:0,
-  tools:[IMAGE_MATERIAL_TOOL,REGION_PROPOSAL_TOOL],services:{localFacts:!!this.localFacts},
- };}
+ matchCurrentImageMaterials(input){return matchCurrentImageMaterials(input,this.imageLimits);}
+ describe(){return structuredClone(documentData.describeObservation);}
  async call(operation,raw,{signal}={}) {
   if(operation===PROPOSAL_OPERATION)return this.proposals.call(raw,{signal});
   if(operation===REGION_OPERATION)return this.regions.call(raw,{signal});

@@ -1,7 +1,7 @@
 // Pure skill-facing prompt assembly over the published BuildProposalContext.
 // This module has no model route, attachment reader or world port.
 import { validateType, validateRegionInspection, validateDigestBinding, digestValue,
-  canonicalJSON, confirmedPlacementOf, requirePlacementSource, ContractError } from 'hanaworlds-contracts';
+  canonicalJSON, confirmedPlacementOf, requirePlacementSource, ContractError } from './contract.mjs';
 import { boundRules } from './planner.mjs';
 
 const SYSTEM = [

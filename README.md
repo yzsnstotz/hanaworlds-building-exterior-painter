@@ -1,6 +1,6 @@
 # HanaWorlds Building Exterior Painter
 
-C-painter v2 provider: validates confirmed text/image building proposals, calculates
+C-painter v3 provider: validates confirmed text/image building proposals, calculates
 geometry/materials and returns a BUILD plan. It calls no model and writes no world.
 
 `promptText(context)` and `buildMessages(context)` in `src/model.mjs` are pure
@@ -14,22 +14,22 @@ Confirmed placement and entrance rules stay bound to that inspection. Image
 attachment references become message data only. Skills own model calls and media
 resolution; the helpers do not reinstate the archived CreateBuildPlan service.
 
-The development SDK is supplied only in devDependencies at the exact published tag:
-`git+https://github.com/yzsnstotz/hanaworlds-contracts.git#v2.0.0`.
-The lock records the release commit; `verify:contracts` checks the tag, installed
-version, development lock identity, admitted release SHA and unchanged public handshake.
-Production imports resolve `dist/index.mjs`, which compiles the required contract
-validators/schema from that same development supply. No contract package, fixture,
-source directory, runtime `#contracts`, filesystem read or SDK singleton is needed.
-`dist/build-source.json` records input/output hashes, tag and SHA; original contract
-LICENSE/NOTICE are retained. Other normal dependencies stay external, including
-the official settings library and sharp. Host/Cordis/React are never bundled.
+The runtime owns the 192 projections from the complete C-painter v3 document
+approved in D-148. `verify:contracts` checks the full reviewed document SHA and
+all compiled projection bytes. Neither development nor production installs a
+contract SDK. The runtime compiles owned validators/schema and records actual
+source/output hashes plus the document identity in `dist/build-source.json`.
+Normal settings, sharp, color-diff and canonicalize stay external dependencies.
+Host/Cordis/React are never bundled. Historical schema/fixture notices remain
+attributed; regression input JSON is development-only and excluded from packing.
 
-The only public runtime export remains the root package. There are no Host/Client
-subpaths or published declarations in this module. Developers consuming public
-contract types must install the same admitted SDK as their own development supply;
-type references are not production value imports. Port errors cross providers via
-validated public error data, without comparing SDK exception constructors.
+The only public runtime export remains the root package. Public input/output
+shapes are documented in C-painter; consumers do not need a contract package.
+Both coherent session/v5 + ReferenceBrief/v5 and session/v6 + ReferenceBrief/v6
+are accepted. Mixed pairs and the wrong digest byte domain are refused. V6
+confirmation, complete retained/current contexts and currentConfirmation travel
+through the existing caller-supplied facts seam; Painter does not acquire a new
+source service, storage permission, model route or world writer.
 
 ```sh
 npm ci
@@ -47,7 +47,7 @@ packing, without modifying user configuration. No shell runtime alias or manual
 cache export is needed. Node is excluded from the production dependency graph.
 
 The default suite includes local-world, confirmed placement, site rules,
-image-material, material-sources, region-v1 (now the v2 contract shapes) and plugin
+image-material, material-sources, region-v1 (the retained original wire shapes) and plugin
 provider tests. All image inputs are self-contained fixtures; no asset path or
 external model is required. These checks demonstrate component behavior, not a
 live-world or owner acceptance result.
@@ -56,9 +56,8 @@ live-world or owner acceptance result.
 all packed runtime artifacts and export targets, then installs the actual tgz in
 a fresh consumer using Node 24 and pnpm 11.28.5 defaults. It loads every public
 runtime entry, validates both proposal operations, registers the image tool and
-decodes actual images using sharp/CIEDE2000 without a runtime SDK. Original product
-gates also run against the installed artifact with a separate development fixture
-oracle. Negative tgz cases must actually fail installation, loading or inspection.
+decodes actual images using sharp/CIEDE2000 without a runtime SDK. All locked full-value tests and original component
+gates also run against the installed artifact with retained development fixtures. Negative tgz cases must actually fail installation, loading or inspection.
 No dependency policy relaxation, approval whitelist or ignored install scripts
 is used. Receipts and fresh consumers default to a unique OS temporary directory outside
 the source tree. `PAINTER_BOUNDARY_EVIDENCE` can choose another directory outside
@@ -116,11 +115,14 @@ The published projection retains its `WORLD_NODE` coordinate-space wire value.
 The provider example supplies opaque region refs and nonzero orientations, with
 a minimal local-facts mock; it exercises fill, explicit carve and UNSPECIFIED cells.
 
-Public errors retain mutationState NONE and transactionRef null. Contract failures
+Owned planning errors retain mutationState NONE and transactionRef null.
+The exact documented carried source errors retain all seven fields including
+UNKNOWN/transaction/cause/retry/phase; unrecognized or opaque errors retain the
+original exception identity. Own error branches do not grant source permissions. Contract failures
 include SCHEMA_INVALID, INTENT_UNCONFIRMED, TARGET_FACTS_STALE,
 SAFETY_INVARIANT_FAILED, CAPABILITY_UNAVAILABLE and named geometry/material/current-context refusals.
 The five card-required refusals are tested through object, JSON string and byte
-requests with the published v2 response schema; no error is renamed or flattened.
+requests with the published v3 response projection; no error is renamed or flattened.
 Missing local facts raises CAPABILITY_UNAVAILABLE. Unsupported CreateBuildPlan
 raises UNSUPPORTED_OPERATION. The public contract defines the exact error fields.
 
@@ -162,3 +164,18 @@ facts port for testing stale/cancelled states; it never establishes live facts.
 Historical panels, web pages, gates, acceptance documents and the self-invoked
 LLM CreateBuildPlan provider are retained in `archive/pre-v2/`, excluded from the
 package and active tests. Use commit 0950e39 for their runnable historical checkout.
+
+## Image budgets
+
+`Config({})` retains maxBytes=33554432, maxPixels=16777216 and
+formats=['png','jpeg','webp']. Optional maxBytes/maxPixels are positive safe
+integers; formats is a nonempty unique subset of those formats. Settings affect
+only one Painter instance and its registered image tool. Main images and KNOWN
+textures use the same effective budget; visible tool limits show those values.
+Actual typed byte inputs are copied before asynchronous sharp decoding. Missing
+sources, unknown keys and malformed/stale facts are rejected with the complete
+original documented errors. No missing colour or world-specific palette is inferred.
+
+Component and installed-artifact evidence does not claim persistent human
+confirmation, independent source readback, live-world/UI or owner acceptance.
+Those existing product gates remain separate.

@@ -3,7 +3,7 @@
 | Name | Version | License | Source | Use |
 |---|---|---|---|---|
 | Painter source | 0.8.0 | MIT | this repository | C-painter provider and tool |
-| hanaworlds-contracts | 2.0.0 (v2.0.0 tag, commit 3377ea81513d9a9446dccd4b626b4bfc183dc711) | MIT | https://github.com/yzsnstotz/hanaworlds-contracts | development SDK/fixtures; needed errors, validators, digests, safety and schema compiled into Painter |
+| hanaworlds-contracts | 2.0.0 (v2.0.0 tag, commit 3377ea81513d9a9446dccd4b626b4bfc183dc711) | MIT | https://github.com/yzsnstotz/hanaworlds-contracts | historical document schema and unchanged regression fixture attribution only; no SDK dependency or implementation compiled |
 | @deepseek-ai/schemastery | 3.18.2 | MIT | https://github.com/deepseek-ai/deepseek-harness | plugin settings schema (D-3) |
 | @deepseek-ai/cosmokit | 1.8.5 | MIT | https://github.com/deepseek-ai/deepseek-harness | schemastery transitive dependency |
 | @standard-schema/spec | 1.1.0 | MIT | https://github.com/standard-schema/standard-schema | schemastery transitive dependency |
@@ -11,11 +11,13 @@
 | color-diff | 1.4.0 | BSD-3-Clause | https://github.com/markusn/color-diff ; https://www.npmjs.com/package/color-diff | mature CIEDE2000 distance and RGB/Lab conversion for dominant image colour and validated ReadMaterialSources texture colours (D-16) |
 | canonicalize | 5.1.0 | Apache-2.0 | https://github.com/erdtman/canonicalize | public contract digest/replay canonicalization |
 
-The contract SDK is a development dependency only. esbuild 0.25.12 (MIT,
-https://github.com/evanw/esbuild) compiles the required runtime closure into
-`dist/index.mjs`; the original contract LICENSE and NOTICE stay in `dist/licenses`.
-The build records tag, SHA, input hashes and generated output hashes in
-`dist/build-source.json`. acorn 8.15.0 (MIT, https://github.com/acornjs/acorn)
+The retired contract SDK is absent from every dependency section and the lock.
+Painter compiles its own approved C-painter document projections and owned code
+with esbuild 0.25.12 (MIT, https://github.com/evanw/esbuild). Historical schema
+and fixture LICENSE/NOTICE attribution is retained; fixtures are excluded from
+runtime builds and packed artifacts. `dist/build-source.json` records the
+approved document SHA, contributing source hashes and generated output hashes.
+acorn 8.15.0 (MIT, https://github.com/acornjs/acorn)
 inspects packed module loading; pnpm 11.28.5 (MIT, https://github.com/pnpm/pnpm)
 verifies isolated production installation under its default strict policy. These
 tools, plus node 24.13.1 (MIT, https://github.com/aredridel/node-bin-gen;

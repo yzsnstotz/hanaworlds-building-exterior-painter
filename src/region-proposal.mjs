@@ -1,9 +1,10 @@
+import {types} from 'node:util';
 // painter-region/v3 on the same Painter service and the same Host business
 // port as text/image proposals: current facts are read before planning and
 // again before release; same exact replay rule; no model, media fetch,
 // compiler or world call.
 import { ContractError, publicError, validateResponse, validateType, validateCurrentRequest,
-  validateRegionProposalResponse, decodeRawJSON, admitRequest, canonicalJSON } from 'hanaworlds-contracts';
+  validateRegionProposalResponse, decodeRawJSON, admitRequest, canonicalJSON, validateConfirmationFacts } from './contract.mjs';
 import { admitRegionProposal, regionBuildPlan, REGION_WIRE, REGION_OPERATION } from './region.mjs';
 
 import { readProviderFacts } from './local-context.mjs';
@@ -12,10 +13,12 @@ const fail = (code, reason) => { throw new ContractError(code, 'validate', reaso
 const envelope = (id, error) => validateResponse(REGION_WIRE, REGION_OPERATION,
   { contractVersion: REGION_WIRE, requestId: id, result: null, error: publicError(error) });
 function requestId(raw) {
+  if(types.isProxy(raw))return null;
   try {
     const decoded = typeof raw === 'string' || raw instanceof Uint8Array
       ? decodeRawJSON(typeof raw === 'string' ? new TextEncoder().encode(raw) : raw) : raw;
-    return typeof decoded?.requestId === 'string' && decoded.requestId.length ? decoded.requestId : null;
+    const id=decoded&&Object.getOwnPropertyDescriptor(decoded,'requestId');
+    return id&&Object.hasOwn(id,'value')&&typeof id.value==='string'&&id.value.length?id.value:null;
   } catch { return null; }
 }
 
@@ -31,17 +34,20 @@ export class RegionProposalValidator {
     const observed = await readProviderFacts(provider, body, REGION_OPERATION, { signal });
     if (signal?.aborted) fail('REQUEST_CANCELLED', 'REVISION_CHANGED');
     if (this.getLocalFacts() !== provider) fail('CURRENT_WORLD_MISMATCH', 'REVISION_CHANGED');
-    const facts = validateType('LocalRequestFacts', observed);
-    return { provider, facts, admission: validateCurrentRequest(REGION_WIRE, REGION_OPERATION, body, facts) };
+    const v6=body.intent.contractVersion==='session/v6';
+    const facts = validateType(v6?'RegionProposalProviderFactsV6':'LocalRequestFacts', observed);
+    if(v6)validateConfirmationFacts(body,facts,false);
+    return { provider, facts, admission: validateCurrentRequest(REGION_WIRE, REGION_OPERATION, body, v6?facts.requestFacts:facts) };
   }
   async call(raw, { signal } = {}) {
     let body;
     try {
+      if(types.isProxy(raw))throw new ContractError('SCHEMA_INVALID','decode','INVALID_SHAPE');
       body = admitRegionProposal(typeof raw === 'string' || raw instanceof Uint8Array
         ? admitRequest(REGION_WIRE, REGION_OPERATION, typeof raw === 'string' ? new TextEncoder().encode(raw) : raw) : raw);
     } catch (error) {
       const id = requestId(raw);
-      if (id === null || !(error instanceof ContractError)) throw error;
+      if (id === null || types.isProxy(error) || !(error instanceof ContractError)) throw error;
       return envelope(id, error);
     }
     try {
@@ -71,7 +77,7 @@ export class RegionProposalValidator {
         throw error;
       }
     } catch (error) {
-      if (!(error instanceof ContractError)) throw error;
+      if (types.isProxy(error) || !(error instanceof ContractError)) throw error;
       return envelope(body.requestId, error);
     }
   }

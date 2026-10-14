@@ -8,19 +8,19 @@ export class ImageMaterialError extends Error {
 }
 const fail=(code,message)=>{throw new ImageMaterialError(code,message);};
 export const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
-export async function decodeRaster(imageBytes) {
+export async function decodeRaster(imageBytes,limits=IMAGE_LIMITS) {
   if(!(imageBytes instanceof Uint8Array)||imageBytes.length===0)
     fail('IMAGE_REQUIRED','Actual non-empty image Uint8Array bytes are required.');
-  if(imageBytes.length>IMAGE_LIMITS.maxBytes)fail('IMAGE_LIMIT_EXCEEDED','Image exceeds the visible maxBytes limit.');
+  if(imageBytes.length>limits.maxBytes)fail('IMAGE_LIMIT_EXCEEDED','Image exceeds the visible maxBytes limit.');
   const bytes=Buffer.from(imageBytes); // immutable snapshot before decoding awaits
   const png=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
   const jpeg=bytes[0]===255&&bytes[1]===216;
   const webp=bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP';
   if(!png&&!jpeg&&!webp)fail('IMAGE_DECODE_FAILED','Only PNG/JPEG/WebP raster bytes are accepted.');
   try {
-    const image=sharp(bytes,{failOn:'error',limitInputPixels:IMAGE_LIMITS.maxPixels});
+    const image=sharp(bytes,{failOn:'error',limitInputPixels:limits.maxPixels});
     const meta=await image.metadata();
-    if(!IMAGE_LIMITS.formats.includes(meta.format)||(meta.pages??1)!==1)
+    if(!limits.formats.includes(meta.format)||(meta.pages??1)!==1)
       fail('IMAGE_DECODE_FAILED','A single PNG/JPEG/WebP frame is required.');
     const {data,info}=await image.rotate().toColourspace('srgb').ensureAlpha().raw({depth:'uchar'}).toBuffer({resolveWithObject:true});
     if(info.channels!==4)fail('IMAGE_DECODE_FAILED','Decoded sRGB RGBA pixels are required.');

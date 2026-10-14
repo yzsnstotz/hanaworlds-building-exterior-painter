@@ -1,6 +1,7 @@
 // Pure current-world texture consumer. No peer reads, palette fallback or cache.
 import {diff,rgbaToLab} from 'color-diff';
-import {validateType,validateMaterialSources,validateStaticMaterials,ContractError,deepFreeze} from 'hanaworlds-contracts';
+import {types} from 'node:util';
+import {validateType,validateMaterialSources,validateStaticMaterials,ContractError,deepFreeze,snapshotData} from './contract.mjs';
 import {decodeRaster,dominantColour,meanTextureColour,ImageMaterialError,IMAGE_LIMITS} from './pixels.mjs';
 export {ImageMaterialError} from './pixels.mjs';
 
@@ -14,7 +15,19 @@ export const IMAGE_MATERIAL_TOOL=deepFreeze({
  modelCalls:0,worldWrites:0,
 });
 
-export async function matchCurrentImageMaterials({imageBytes,materialSources,catalogue:input,currentConnection}={}) {
+export async function matchCurrentImageMaterials(raw={},limits=IMAGE_LIMITS) {
+ if(types.isProxy(raw))throw new ContractError('SCHEMA_INVALID','decode','INVALID_SHAPE');
+ if(raw===null||typeof raw!=='object'||Array.isArray(raw)||![Object.prototype,null].includes(Object.getPrototypeOf(raw)))throw new ContractError('SCHEMA_INVALID','decode','INVALID_SHAPE');
+ const data={};
+ for(const key of Reflect.ownKeys(raw)){
+  if(typeof key!=='string')throw new ContractError('SCHEMA_INVALID','decode','INVALID_SHAPE');
+  const descriptor=Object.getOwnPropertyDescriptor(raw,key);
+  if(!Object.hasOwn(descriptor,'value')||!descriptor.enumerable)throw new ContractError('SCHEMA_INVALID','decode','INVALID_SHAPE');
+  if(!['imageBytes','materialSources','catalogue','currentConnection'].includes(key))throw new ContractError('UNKNOWN_REQUIRED_FIELD','decode','UNKNOWN_FIELD');
+  if(descriptor.value===undefined&&['imageBytes','materialSources'].includes(key))continue;
+  data[key]=snapshotData(descriptor.value,{bytes:true});
+ }
+ const {imageBytes,materialSources,catalogue:input,currentConnection}=data;
  if(materialSources==null)throw new ImageMaterialError('CAPABILITY_UNAVAILABLE',
   'Current world-source material facts are unavailable; supply ReadMaterialSources before matching.');
  // Capture and validate all public facts synchronously before any decoding await.
@@ -35,7 +48,7 @@ export async function matchCurrentImageMaterials({imageBytes,materialSources,cat
  }
  if(candidates.length===0)throw new ImageMaterialError('CAPABILITY_UNAVAILABLE',
   `No KNOWN static-legal texture variant in current source ${snapshot.sourceRevision}; ${unknownVariants} texture UNKNOWN, ${staticIneligibleVariants} static-ineligible. Unknown facts remain unknown.`);
- const decoded=await decodeRaster(imageBytes),dominant=dominantColour(decoded.data);
+ const decoded=await decodeRaster(imageBytes,limits),dominant=dominantColour(decoded.data);
  // Only per-invocation deduplication, owned by this validated sourceRevision.
  const lab=([R,G,B])=>rgbaToLab({R,G,B});
  const dominantLab=lab(dominant.rgb);
@@ -44,7 +57,7 @@ export async function matchCurrentImageMaterials({imageBytes,materialSources,cat
   const texture=candidate.texture;let colour=measured.get(texture.bytesDigest);
   if(!colour){
    try{
-    const raster=await decodeRaster(blobs.get(texture.bytesDigest));
+    const raster=await decodeRaster(blobs.get(texture.bytesDigest),limits);
     if(`image/${raster.image.format}`!==texture.mediaType)throw new ImageMaterialError('IMAGE_DECODE_FAILED','Texture format does not match declared mediaType.');
     colour=meanTextureColour(raster.data);measured.set(texture.bytesDigest,colour);
    }catch(error){

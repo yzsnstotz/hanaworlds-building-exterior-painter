@@ -18,7 +18,7 @@ registerHooks({ resolve(specifier, context, next) {
 }});
 const api = await import(data.packageName);
 for (const file of data.entries.filter(f => /\.[cm]?js$/.test(f))) await import(pathToFileURL(resolve(dir, 'node_modules', data.packageName, file)).href);
-await assert.rejects(import('hanaworlds-contracts'), { code: 'ERR_MODULE_NOT_FOUND' });
+await assert.rejects(import(data.absentRetiredPackage), { code: 'ERR_MODULE_NOT_FOUND' });
 const clone = structuredClone;
 const facts = async (body, operation) => operation === 'ValidateBuildProposal' ? clone(data.main.facts) : {
  currentContext: clone(body.localContext), sessionRef: body.sessionRef, currentTurnRevision: body.turnRevision,

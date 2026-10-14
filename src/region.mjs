@@ -4,7 +4,7 @@
 // overflow, axis order, canonical runs, explicit empty-material carve, null = UNSPECIFIED)
 // and palette legality are the public contract's; Painter adds the business
 // coherence of intent, brief (with media), world and connection.
-import { ContractError, validateRegionProposalRequest, regionBlockBox, digestValue, validateType } from 'hanaworlds-contracts';
+import { ContractError, validateRegionProposalRequest, regionBlockBox, digestValue, validateType } from './contract.mjs';
 
 const fail = (code, reason) => { throw new ContractError(code, 'validate', reason); };
 export const REGION_WIRE = 'painter-region/v3';

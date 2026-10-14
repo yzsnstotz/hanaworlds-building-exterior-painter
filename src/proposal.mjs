@@ -1,8 +1,9 @@
+import {types} from 'node:util';
 // painter/v6 ValidateBuildProposal: a skill-proposed, player-confirmed BuildProposal
 // becomes BUILD/V5. Deterministic: no model, media, compiler or world service.
 import { ContractError, publicError, admitRequest, validateRequest, validateResponse,
   decodeRawJSON, canonicalJSON,
-  validateBuildProposalResponse } from 'hanaworlds-contracts';
+  validateBuildProposalResponse } from './contract.mjs';
 import { planGeometry, planEntrances, assembleBuild, trustedFromRegion } from './planner.mjs';
 import { readCurrentFacts } from './local-context.mjs';
 export const PROPOSAL_OPERATION = 'ValidateBuildProposal';
@@ -11,10 +12,12 @@ const WIRE = PROPOSAL_WIRE;
 const envelope = (id, error) => validateResponse(WIRE, PROPOSAL_OPERATION,
   { contractVersion: WIRE, requestId: id, result: null, error: publicError(error) });
 function requestId(raw) {
+  if(types.isProxy(raw))return null;
   try {
     const decoded = typeof raw === 'string' || raw instanceof Uint8Array
       ? decodeRawJSON(typeof raw === 'string' ? new TextEncoder().encode(raw) : raw) : raw;
-    return typeof decoded?.requestId === 'string' && decoded.requestId.length ? decoded.requestId : null;
+    const id=decoded&&Object.getOwnPropertyDescriptor(decoded,'requestId');
+    return id&&Object.hasOwn(id,'value')&&typeof id.value==='string'&&id.value.length?id.value:null;
   } catch { return null; }
 }
 
@@ -28,12 +31,13 @@ export class BuildProposalValidator {
   async call(raw, { signal } = {}) {
     let body;
     try {
+      if(types.isProxy(raw))throw new ContractError('SCHEMA_INVALID','decode','INVALID_SHAPE');
       body = typeof raw === 'string' || raw instanceof Uint8Array
         ? admitRequest(WIRE, PROPOSAL_OPERATION, typeof raw === 'string' ? new TextEncoder().encode(raw) : raw)
         : validateRequest(WIRE, PROPOSAL_OPERATION, raw);
     } catch (error) {
       const id = requestId(raw);
-      if (id === null || !(error instanceof ContractError)) throw error;
+      if (id === null || types.isProxy(error) || !(error instanceof ContractError)) throw error;
       return envelope(id, error);
     }
     try {
@@ -62,7 +66,7 @@ export class BuildProposalValidator {
           response = { contractVersion: WIRE, requestId: body.requestId,
             result: { invocationId: body.invocationId, build, buildDigest }, error: null };
         } catch (error) {
-          if (!(error instanceof ContractError)) throw error;
+          if (types.isProxy(error) || !(error instanceof ContractError)) throw error;
           response = envelope(body.requestId, error);
         }
         await this.fresh(body, signal, initial);
@@ -75,7 +79,7 @@ export class BuildProposalValidator {
         throw error;
       }
     } catch (error) {
-      if (!(error instanceof ContractError)) throw error;
+      if (types.isProxy(error) || !(error instanceof ContractError)) throw error;
       return envelope(body.requestId, error);
     }
   }

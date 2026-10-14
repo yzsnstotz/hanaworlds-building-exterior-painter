@@ -29,8 +29,7 @@ const tgz = join(evidence, packed[0].filename);
 mkdirSync(join(evidence, 'unpacked'));
 const inspected = inspectTarball(tgz, join(evidence, 'unpacked'));
 writeFileSync(join(evidence, 'artifact-inspection.json'), JSON.stringify({ ...inspected, tarball: { path: tgz, sha256: sha(readFileSync(tgz)) } }, null, 2) + '\n');
-// Provenance is checked against the actual admitted development input bytes,
-// while the isolated production consumer below never sees this SDK.
+// Provenance checks actual owned source bytes. The consumer never sees build/test inputs.
 assert.equal(inspected.provenance.generator.scriptSha256, sha(readFileSync(join(root, 'tools/build.mjs'))), 'build generator changed');
 for (const input of inspected.provenance.inputs) assert.equal(sha(readFileSync(join(root, input.path))), input.sha256, `build input changed: ${input.path}`);
 const pnpm = join(root, 'node_modules/pnpm/bin/pnpm.cjs');
@@ -59,7 +58,7 @@ const graph = run(['list', '--prod', '--depth', 'Infinity', '--json'], installed
 assert.doesNotMatch(readFileSync(join(installed, 'pnpm-lock.yaml'), 'utf8'), /hanaworlds-contracts/, 'production lock includes SDK');
 assert.doesNotMatch(graph.stdout, /hanaworlds-contracts|esbuild|acorn|pnpm@|node_modules\/(?:node|node-bin-setup|node-(?:bin-)?[a-z]+-[a-z0-9]+)(?:[\/"\s]|$)/, 'development packages in production graph');
 const bytes = await pixels(); const materialFacts = makeFacts([{ name: 'opaque-red', bytes }]);
-const input = { packageName: inspected.manifest.name, entries: inspected.publicEntries,
+const input = { packageName: inspected.manifest.name, absentRetiredPackage: ADMITTED_CONTRACTS.name, entries: inspected.publicEntries,
  main: contractFixture('main'), region: contractFixture('region'),
  foreignError: new contracts.ContractError('CAPABILITY_UNAVAILABLE', 'validate', 'POLICY_UNAVAILABLE').publicError,
  imageInput: { ...materialFacts, imageBytes: [...bytes] } };
@@ -68,8 +67,7 @@ cpSync(join(root, 'tools/production-consumer.mjs'), join(installed, 'consumer.mj
 const runtime = spawnSync(process.execPath, ['consumer.mjs'], { cwd: installed, env, encoding: 'utf8' });
 writeFileSync(join(installed, 'capabilities.log'), runtime.stdout + runtime.stderr);
 assert.equal(runtime.status, 0, runtime.stdout + runtime.stderr);
-// Retain original product gates against the installed bundle, using the dev SDK
-// only as an independent fixture/oracle in the test process (separate evidence).
+// Retain original installed regression gates with unchanged locally retained fixtures.
 const original = spawnSync(process.execPath, ['--test', ... (await import('./package-boundary.mjs')).files(join(root, 'test')).filter(f => f.endsWith('.test.mjs')).map(f => `test/${f}`)], {
  cwd: root, env: { ...env, PAINTER_TEST_PACKAGE: join(installed, 'node_modules', inspected.manifest.name) }, encoding: 'utf8' });
 writeFileSync(join(evidence, 'original-gates-installed.log'), original.stdout + original.stderr);
@@ -107,7 +105,7 @@ await negative('missing-local-bundle', d => prepend(d, "import './omitted.mjs';\
 await negative('bare-value-contract', d => prepend(d, "import 'hanaworlds-contracts';\n"), /runtime contracts load/, 'load');
 await negative('package-import-value', d => prepend(d, "await import('#contracts');\n"), /runtime contracts load/, 'load');
 await negative('missing-canonicalize', d => editManifest(d, p => { delete p.dependencies.canonicalize; }), /undeclared external canonicalize/, 'load');
-await negative('resolve-resource', d => prepend(d, "import.meta.resolve('hanaworlds-contracts/package.json');\n"), /import.meta/);
+await negative('resolve-resource', d => prepend(d, `import.meta.resolve(${JSON.stringify(ADMITTED_CONTRACTS.name+'/package.json')});\n`), /import.meta/);
 await negative('computed-meta-resolve', d => prepend(d, "const r=import.meta['res'+'olve']; r('hanaworlds-contracts/package.json');\n"), /import.meta/);
 await negative('file-resource', d => prepend(d, "import {readFileSync} from 'node:fs';\nreadFileSync('/dev/schema.json');\n"), /filesystem|resource read/);
 await negative('dynamic-value-load', d => prepend(d, "await import(process.env.SDK_PATH);\n"), /dynamic external resource (?:load|reference)/);

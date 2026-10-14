@@ -1,6 +1,7 @@
+import {types} from 'node:util';
 // Host-internal current business facts for ValidateBuildProposal. No facts from
 // model JSON or call options.
-import { ContractError, validateType, validateCurrentRequest, validateBuildProposalContext } from 'hanaworlds-contracts';
+import { ContractError, validateType, validateCurrentRequest, validateBuildProposalContext } from './contract.mjs';
 const fail = (code, reason) => { throw new ContractError(code, 'validate', reason); };
 const WIRE = 'painter/v6', OPERATION = 'ValidateBuildProposal';
 export async function readCurrentFacts(getLocalFacts, body, signal, initial) {
@@ -12,8 +13,10 @@ export async function readCurrentFacts(getLocalFacts, body, signal, initial) {
   if (signal?.aborted) fail('REQUEST_CANCELLED', 'REVISION_CHANGED');
   if (getLocalFacts() !== provider) fail('CURRENT_WORLD_MISMATCH', 'REVISION_CHANGED');
   const facts = validateType('BuildProposalProviderFacts', observed);
+  // Complete v6 confirmation invalidation precedes legacy scalar correlation.
+  if(body.intent.contractVersion==='session/v6')validateBuildProposalContext(body,facts);
   const admission = validateCurrentRequest(WIRE, OPERATION, body, facts.requestFacts);
-  validateBuildProposalContext(body, facts);
+  if(body.intent.contractVersion!=='session/v6')validateBuildProposalContext(body, facts);
   return { provider, facts, admission };
 }
 
@@ -22,6 +25,7 @@ export async function readCurrentFacts(getLocalFacts, body, signal, initial) {
 export async function readProviderFacts(provider, body, operation, options) {
   try { return await provider.read(body, operation, options); }
   catch (error) {
+    if(types.isProxy(error))throw error;
     const data = error && Object.getOwnPropertyDescriptor(error, 'publicError');
     if (!data || !Object.hasOwn(data, 'value')) throw error;
     let publicData;

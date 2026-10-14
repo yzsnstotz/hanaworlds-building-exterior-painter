@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs';
 import { resolve, relative, dirname, join } from 'node:path';
 import { parse } from 'acorn';
-import { ADMITTED_CONTRACTS } from './admitted-contracts.mjs';
+import { ADMITTED_CONTRACTS, ADMITTED_DOCUMENT } from './admitted-contracts.mjs';
 export const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 export const files = dir => readdirSync(dir, { recursive: true, withFileTypes: true }).filter(e => e.isFile())
  .map(e => relative(dir, join(e.parentPath, e.name))).sort();
@@ -19,11 +19,11 @@ const walk = (node, fn) => { if (!node || typeof node !== 'object') return; if (
 const member = n => n?.type === 'MemberExpression' ? n.computed ? n.property.value : n.property.name : null;
 export function inspectPackage(dir) {
  const manifest = JSON.parse(readFileSync(join(dir, 'package.json'))), inventory = files(dir);
- for (const section of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
+ for (const section of ['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies']) {
   assert.ok(!Object.hasOwn(manifest[section] ?? {}, ADMITTED_CONTRACTS.name), `production ${section} contains contracts`);
   for (const spec of Object.values(manifest[section] ?? {})) assert.doesNotMatch(spec, /^(?:file:|link:|workspace:)|hanaworlds-contracts/, 'nonportable production dependency');
  }
- assert.equal(manifest.devDependencies?.[ADMITTED_CONTRACTS.name], ADMITTED_CONTRACTS.spec, 'exact development supply');
+ assert.ok(!manifest.devDependencies?.[ADMITTED_CONTRACTS.name], 'retired development supply');
  assert.equal(manifest.imports, undefined, 'production package imports must not resolve development supply');
  const declared = new Set(['dependencies', 'peerDependencies', 'optionalDependencies'].flatMap(k => Object.keys(manifest[k] ?? {})));
  const local = (from, spec) => {
@@ -79,10 +79,11 @@ export function inspectPackage(dir) {
  const seen = new Set(); const visit = file => { if (seen.has(file)) return; seen.add(file); for (const dep of edges[file] ?? []) visit(dep); };
  publicEntries.forEach(visit);
  const provenance = JSON.parse(readFileSync(join(dir, 'dist/build-source.json')));
- assert.equal(provenance.supply.spec, ADMITTED_CONTRACTS.spec, 'build tag');
- assert.equal(provenance.supply.commit, ADMITTED_CONTRACTS.commit, 'build source commit');
- assert.equal(provenance.supply.version, ADMITTED_CONTRACTS.version, 'build source version');
- assert.ok(provenance.inputs.some(i => i.path.startsWith('node_modules/hanaworlds-contracts/dist/') && i.bytesInOutput > 0), 'contracts not compiled');
+ assert.equal(provenance.supply.name, ADMITTED_DOCUMENT.name, 'owned document identity');
+ assert.equal(provenance.supply.commit, ADMITTED_DOCUMENT.commit, 'build source commit');
+ assert.equal(provenance.supply.documentSHA256, ADMITTED_DOCUMENT.documentSHA256, 'owned document bytes');
+ assert.ok(provenance.inputs.some(i => i.path === 'src/painter-document-data.mjs' && i.bytesInOutput > 0), 'owned projections not compiled');
+ assert.ok(provenance.inputs.every(i => !i.path.includes('node_modules/hanaworlds-contracts/')), 'retired code compiled');
  assert.ok(provenance.inputs.every(i => !/fixtures\//.test(i.path)), 'development fixtures bundled');
  for (const [file, hash] of Object.entries(provenance.outputs)) assert.equal(sha(readFileSync(join(dir, file))), hash, `generated artifact digest ${file}`);
  assert.deepEqual(inventory.filter(f => /\.(?:[cm]?js)$/.test(f)), Object.keys(provenance.outputs).filter(f => /\.(?:[cm]?js)$/.test(f)).sort(), 'unrecorded runtime artifact');
