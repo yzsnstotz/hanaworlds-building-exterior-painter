@@ -124,7 +124,16 @@ export function digestValue(kind,input){
  const domain=version?documentData.versionCompatibility.digestDomains[version][kind]:documentData.digest.prefixes[kind]+kind+documentData.digest.domainSuffix;
  const canonical=canonicalJSON(value);return {sha256:createHash('sha256').update(domain+canonical,'utf8').digest('hex'),canonical};
 }
-export function validateDigestBinding(kind,value,digest){if(digestValue(kind,value).sha256!==digest)fail('NON_CANONICAL_AMBIGUITY','PAYLOAD_CHANGED');return value;}
+function failDigestBinding(kind){
+ // Digest failures use the approved correlated own tuple, never the generic
+ // constructor default or the image admission tuple with the same code.
+ const code=kind==='reference-brief'?'MEDIA_DIGEST_MISMATCH':'NON_CANONICAL_AMBIGUITY';
+ const retryability=kind==='reference-brief'?'AFTER_NEW_FACTS':'NEVER';
+ const value=documentData.operationErrors.ValidateBuildProposal.own.find(row=>
+  row.value.code===code&&row.value.phase==='validate'&&row.value.reason==='PAYLOAD_CHANGED'&&row.value.retryability===retryability).value;
+ throw new ContractError(value.code,value.phase,value.reason,value);
+}
+export function validateDigestBinding(kind,value,digest){if(digestValue(kind,value).sha256!==digest)failDigestBinding(kind);return value;}
 export function admitRequest(wire,operation,bytes){return validateRequest(wire,operation,decodeRawJSON(bytes));}
 export function validateRequest(wire,operation,input){
  const data=snapshotData(input);if(data===null||typeof data!=='object'||Array.isArray(data))fail('SCHEMA_INVALID','INVALID_SHAPE','decode');
@@ -135,7 +144,7 @@ export function validateRequest(wire,operation,input){
  if(operation==='ValidateBuildProposal')validateType('TargetFacts',body.targetFacts);
  if(operation==='ValidateRegionProposal'){
   checkRegionBlock(body.proposal.block);validateStaticMaterials(Object.fromEntries(body.proposal.block.palette.map((m,i)=>[i,m])),body.catalogue);
-  if(body.referenceBrief.sessionRef!==body.sessionRef)fail('SCHEMA_INVALID');
+  if(body.referenceBrief.sessionRef!==body.sessionRef||body.intent.referenceBriefDigest!==body.referenceBriefDigest)fail('SCHEMA_INVALID');
   if(body.intent.intendedWorldRef!==body.worldRef)fail('CURRENT_WORLD_MISMATCH','REVISION_CHANGED');
   checkIntent(body,false);checkRegionBusiness(body);
  }
@@ -175,8 +184,12 @@ function placementContains(placement,positions){if(!placement)return;
 }
 function checkIntent(body,build){
  const {intent,referenceBrief:brief}=body,confirmed=intent.confirmedIntent;
+ if(intent.contractVersion==='session/v5'){
+  validateDigestBinding('intent',intent,body.intentDigest);
+  validateDigestBinding('reference-brief',brief,body.referenceBriefDigest);
+ }
  if(confirmed.kind!=='BUILD_STRUCTURE'||confirmed.confirmedTurnRevision!==body.turnRevision||intent.intendedWorldRef!==body.worldRef||intent.referenceBriefDigest!==body.referenceBriefDigest||brief.sessionRef!==body.sessionRef||brief.turnRevision!==body.turnRevision||!brief.text.trim()||!confirmed.text.trim()||build&&intent.orderedTargetRefs.length!==0)fail('INTENT_UNCONFIRMED','REQUIRED_FACT_UNKNOWN');
- if(digestValue('intent',intent).sha256!==body.intentDigest||digestValue('reference-brief',brief).sha256!==body.referenceBriefDigest)fail(intent.contractVersion==='session/v5'?'NON_CANONICAL_AMBIGUITY':'INTENT_UNCONFIRMED',intent.contractVersion==='session/v5'?'PAYLOAD_CHANGED':build?'PAYLOAD_CHANGED':'REQUIRED_FACT_UNKNOWN');
+ if(intent.contractVersion==='session/v6'&&(digestValue('intent',intent).sha256!==body.intentDigest||digestValue('reference-brief',brief).sha256!==body.referenceBriefDigest))fail('INTENT_UNCONFIRMED',build?'PAYLOAD_CHANGED':'REQUIRED_FACT_UNKNOWN');
  if(!equal(confirmed.siteRules,brief.controls.siteRules))fail('INTENT_UNCONFIRMED',build?'PAYLOAD_CHANGED':'REQUIRED_FACT_UNKNOWN');
  if(body.localContext.worldRef!==body.worldRef)fail('CURRENT_WORLD_MISMATCH','REVISION_CHANGED');
  if(intent.contractVersion==='session/v6')checkConfirmation(body,build);
@@ -186,6 +199,11 @@ function checkConfirmation(body,build){const carrier=body.confirmation,auth=carr
  if(!equal(carrier.intent,body.intent)||!equal(carrier.referenceBrief,body.referenceBrief)||carrier.intentDigest!==body.intentDigest||carrier.referenceBriefDigest!==body.referenceBriefDigest||auth.sessionRef!==body.sessionRef||auth.turnRevision!==body.turnRevision||!equal(auth.localContext,body.localContext)||!equal(auth.intent,body.intent.confirmedIntent))fail('INTENT_UNCONFIRMED',build?'PAYLOAD_CHANGED':'REQUIRED_FACT_UNKNOWN');
 }
 export function validateCurrentRequest(wire,operation,body,input){
+ if(operation==='ValidateBuildProposal'&&body.intent.contractVersion==='session/v5'){
+  // The original text path obtains facts once before validating its carried
+  // digest bindings, including before scalar brief/context correlation.
+  for(const[k,v,h]of [['intent',body.intent,body.intentDigest],['reference-brief',body.referenceBrief,body.referenceBriefDigest],['target-facts',body.targetFacts,body.targetFactsDigest],['safety-profile',body.safetyProfile,body.safetyProfileDigest]])validateDigestBinding(k,v,h);
+ }
  const facts=validateType('LocalRequestFacts',input);
  if(facts.requestState==='CANCELLED')fail('REQUEST_CANCELLED','REVISION_CHANGED');
  if(facts.requestState==='UNKNOWN')fail('REQUEST_NOT_ACTIVE','REQUIRED_FACT_UNKNOWN');
@@ -221,7 +239,7 @@ export function validateConfirmationFacts(body,facts,build){
 export function validateRegionInspection(input){const value=validateType('RegionInspection',input);if(digestValue('frame',value.frame).sha256!==value.targetFacts.frameDigest||digestValue('target-facts',value.targetFacts).sha256!==value.targetFactsDigest)fail('TARGET_FACTS_STALE','REVISION_CHANGED');return value;}
 function checkHazards(specs,catalogue,policy){for(const spec of specs){const t=catalogue.materials[spec.materialRef];if(t.liquid===null||t.hazardPerSecond===null)fail('UNSUPPORTED_MATERIAL','REQUIRED_FACT_UNKNOWN');if(policy.forbidLiquid&&t.liquid||t.hazardPerSecond>policy.maximumDamagePerSecond)fail('SAFETY_INVARIANT_FAILED','REQUIRED_FACT_UNKNOWN');}}
 function checkRegionBusiness(body){
- if(digestValue('catalogue',body.catalogue).sha256!==body.catalogueDigest)fail('CATALOGUE_MISMATCH','CATALOGUE_UNRESOLVED');
+ validateDigestBinding('catalogue',body.catalogue,body.catalogueDigest);
  if(body.referenceBrief.sessionRef!==body.sessionRef)fail('SCHEMA_INVALID');
  if(body.intent.intendedWorldRef!==body.worldRef)fail('CURRENT_WORLD_MISMATCH','REVISION_CHANGED');
  const rules=body.intent.confirmedIntent.siteRules;requireSiteRuleChecks({optionalLightRule:rules.optionalLightRule,requireEntranceConnectivity:rules.requireEntranceConnectivity});

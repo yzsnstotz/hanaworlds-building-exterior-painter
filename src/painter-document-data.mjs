@@ -1,4 +1,4 @@
-// Owned C-painter v3 projection compiled from the approved D148 document.
+// Owned C-painter v3 projection compiled from the approved D153 document.
 export default {
   "definitions": {
     "AssembleInput": {
@@ -4218,6 +4218,78 @@ export default {
             "reason"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "const": "NON_CANONICAL_AMBIGUITY"
+            },
+            "phase": {
+              "const": "validate"
+            },
+            "retryability": {
+              "const": "NEVER"
+            },
+            "mutationState": {
+              "const": "NONE"
+            },
+            "transactionRef": {
+              "const": null
+            },
+            "causeCode": {
+              "const": null
+            },
+            "reason": {
+              "const": "PAYLOAD_CHANGED"
+            }
+          },
+          "required": [
+            "code",
+            "phase",
+            "retryability",
+            "mutationState",
+            "transactionRef",
+            "causeCode",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "const": "MEDIA_DIGEST_MISMATCH"
+            },
+            "phase": {
+              "const": "validate"
+            },
+            "retryability": {
+              "const": "AFTER_NEW_FACTS"
+            },
+            "mutationState": {
+              "const": "NONE"
+            },
+            "transactionRef": {
+              "const": null
+            },
+            "causeCode": {
+              "const": null
+            },
+            "reason": {
+              "const": "PAYLOAD_CHANGED"
+            }
+          },
+          "required": [
+            "code",
+            "phase",
+            "retryability",
+            "mutationState",
+            "transactionRef",
+            "causeCode",
+            "reason"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -5164,6 +5236,78 @@ export default {
             },
             "reason": {
               "const": "REQUIRED_FACT_UNKNOWN"
+            }
+          },
+          "required": [
+            "code",
+            "phase",
+            "retryability",
+            "mutationState",
+            "transactionRef",
+            "causeCode",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "const": "NON_CANONICAL_AMBIGUITY"
+            },
+            "phase": {
+              "const": "validate"
+            },
+            "retryability": {
+              "const": "NEVER"
+            },
+            "mutationState": {
+              "const": "NONE"
+            },
+            "transactionRef": {
+              "const": null
+            },
+            "causeCode": {
+              "const": null
+            },
+            "reason": {
+              "const": "PAYLOAD_CHANGED"
+            }
+          },
+          "required": [
+            "code",
+            "phase",
+            "retryability",
+            "mutationState",
+            "transactionRef",
+            "causeCode",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "const": "MEDIA_DIGEST_MISMATCH"
+            },
+            "phase": {
+              "const": "validate"
+            },
+            "retryability": {
+              "const": "AFTER_NEW_FACTS"
+            },
+            "mutationState": {
+              "const": "NONE"
+            },
+            "transactionRef": {
+              "const": null
+            },
+            "causeCode": {
+              "const": null
+            },
+            "reason": {
+              "const": "PAYLOAD_CHANGED"
             }
           },
           "required": [
@@ -7802,6 +7946,44 @@ export default {
             "causeCode": null,
             "reason": "REQUIRED_FACT_UNKNOWN"
           }
+        },
+        {
+          "id": "ValidateBuildProposal-q256-NON_CANONICAL_AMBIGUITY",
+          "stage": "validate",
+          "origin": "Preserved own public Painter 3a3bbc332b4ec7eea051fc069b0b15a58074cb47de9902d0b6997abbc7d799d2",
+          "evidenceCases": [
+            "ValidateBuildProposal-intentDigest",
+            "ValidateBuildProposal-targetFactsDigest",
+            "ValidateBuildProposal-safetyProfileDigest",
+            "original-site-rule-old-intent-digest"
+          ],
+          "value": {
+            "code": "NON_CANONICAL_AMBIGUITY",
+            "phase": "validate",
+            "retryability": "NEVER",
+            "mutationState": "NONE",
+            "transactionRef": null,
+            "causeCode": null,
+            "reason": "PAYLOAD_CHANGED"
+          }
+        },
+        {
+          "id": "ValidateBuildProposal-q256-MEDIA_DIGEST_MISMATCH",
+          "stage": "validate",
+          "origin": "Preserved own public Painter 3a3bbc332b4ec7eea051fc069b0b15a58074cb47de9902d0b6997abbc7d799d2",
+          "evidenceCases": [
+            "ValidateBuildProposal-referenceBriefDigest",
+            "ValidateBuildProposal-coherent-bad-brief-digest"
+          ],
+          "value": {
+            "code": "MEDIA_DIGEST_MISMATCH",
+            "phase": "validate",
+            "retryability": "AFTER_NEW_FACTS",
+            "mutationState": "NONE",
+            "transactionRef": null,
+            "causeCode": null,
+            "reason": "PAYLOAD_CHANGED"
+          }
         }
       ],
       "sourceStages": [
@@ -8249,6 +8431,41 @@ export default {
             "transactionRef": null,
             "causeCode": null,
             "reason": "REQUIRED_FACT_UNKNOWN"
+          }
+        },
+        {
+          "id": "ValidateRegionProposal-q256-NON_CANONICAL_AMBIGUITY",
+          "stage": "validate",
+          "origin": "Preserved own public Painter 3a3bbc332b4ec7eea051fc069b0b15a58074cb47de9902d0b6997abbc7d799d2",
+          "evidenceCases": [
+            "ValidateRegionProposal-intentDigest",
+            "ValidateRegionProposal-catalogueDigest"
+          ],
+          "value": {
+            "code": "NON_CANONICAL_AMBIGUITY",
+            "phase": "validate",
+            "retryability": "NEVER",
+            "mutationState": "NONE",
+            "transactionRef": null,
+            "causeCode": null,
+            "reason": "PAYLOAD_CHANGED"
+          }
+        },
+        {
+          "id": "ValidateRegionProposal-q256-MEDIA_DIGEST_MISMATCH",
+          "stage": "validate",
+          "origin": "Preserved own public Painter 3a3bbc332b4ec7eea051fc069b0b15a58074cb47de9902d0b6997abbc7d799d2",
+          "evidenceCases": [
+            "ValidateRegionProposal-coherent-bad-brief-digest"
+          ],
+          "value": {
+            "code": "MEDIA_DIGEST_MISMATCH",
+            "phase": "validate",
+            "retryability": "AFTER_NEW_FACTS",
+            "mutationState": "NONE",
+            "transactionRef": null,
+            "causeCode": null,
+            "reason": "PAYLOAD_CHANGED"
           }
         }
       ],
@@ -9231,5 +9448,5 @@ export default {
     },
     "unknownOperation": "No added operation/authority; unchanged original unsupported rejection"
   },
-  "documentSHA256": "f448ecd52e9e0c98b32a74709cce32a606a36e95e02774743689c6c2ac81d727"
+  "documentSHA256": "6bf499ea4c062e3b18fd190dd8a636e333fb76a596909defddb7edfd04f60f2e"
 };

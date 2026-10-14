@@ -15,7 +15,7 @@ attachment references become message data only. Skills own model calls and media
 resolution; the helpers do not reinstate the archived CreateBuildPlan service.
 
 The runtime owns the 192 projections from the complete C-painter v3 document
-approved in D-148. `verify:contracts` checks the full reviewed document SHA and
+approved in D-153. `verify:contracts` checks the full reviewed document SHA and
 all compiled projection bytes. Neither development nor production installs a
 contract SDK. The runtime compiles owned validators/schema and records actual
 source/output hashes plus the document identity in `dist/build-source.json`.
