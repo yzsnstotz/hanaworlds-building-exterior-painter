@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs';
 import { resolve, relative, dirname, join } from 'node:path';
 import { parse } from 'acorn';
-import { ADMITTED_CONTRACTS, ADMITTED_DOCUMENT } from './admitted-contracts.mjs';
+import { ADMITTED_CONTRACTS, ADMITTED_DOCUMENT,ADMITTED_MODEL_IMAGE_DOCUMENT } from './admitted-contracts.mjs';
 export const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 export const files = dir => readdirSync(dir, { recursive: true, withFileTypes: true }).filter(e => e.isFile())
  .map(e => relative(dir, join(e.parentPath, e.name))).sort();
@@ -83,6 +83,9 @@ export function inspectPackage(dir) {
  assert.equal(provenance.supply.commit, ADMITTED_DOCUMENT.commit, 'build source commit');
  assert.equal(provenance.supply.documentSHA256, ADMITTED_DOCUMENT.documentSHA256, 'owned document bytes');
  assert.ok(provenance.inputs.some(i => i.path === 'src/painter-document-data.mjs' && i.bytesInOutput > 0), 'owned projections not compiled');
+ assert.deepEqual(provenance.modelSupply,ADMITTED_MODEL_IMAGE_DOCUMENT,'complete model supplement provenance');
+ assert.ok(provenance.inputs.some(i=>i.path==='src/image-tool-document-data.mjs'&&i.bytesInOutput>0),'owned model projections not compiled');
+ assert.ok(provenance.inputs.some(i=>i.path==='src/model-image-tool.mjs'&&i.bytesInOutput>0),'native image implementation not compiled');
  assert.ok(provenance.inputs.every(i => !i.path.includes('node_modules/hanaworlds-contracts/')), 'retired code compiled');
  assert.ok(provenance.inputs.every(i => !/fixtures\//.test(i.path)), 'development fixtures bundled');
  for (const [file, hash] of Object.entries(provenance.outputs)) assert.equal(sha(readFileSync(join(dir, file))), hash, `generated artifact digest ${file}`);

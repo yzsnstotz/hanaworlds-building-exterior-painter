@@ -33,3 +33,13 @@ colour measurement. color-diff supplies the distance; no custom Oklab distance
 or world-specific palette is used. No game texture or
 measured game-specific palette is shipped in the runtime package.
 The historical archive retains earlier source/provenance and is not packaged.
+
+The D-186 C-painter model supplement contributes 88 owned consumed schema
+projections, compiled alongside the unchanged 192 original projections. The
+native tool uses existing Host public raw ToolDefinition/Cordis child-plugin
+APIs, referencing deepseek-ai/deepseek-harness commit
+571902028a75c64c1d767f4ae5fd099485f0ddf0 (MIT; Tools 0.2.1-alpha.3 and
+Cordis 4.0.5-alpha.2 public source). No upstream runtime source is copied,
+bundled or imported and no new Host peer dependency is added. The registration
+schema contract substitute and rejected source examples are test-only, excluded
+from production artifacts. Both formal document hashes appear in build provenance.

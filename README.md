@@ -23,6 +23,12 @@ Normal settings, sharp, color-diff and canonicalize stay external dependencies.
 Host/Cordis/React are never bundled. Historical schema/fixture notices remain
 attributed; regression input JSON is development-only and excluded from packing.
 
+The formally published D-186 model supplement is also checked in full, including
+its input/output schemas and 88 consumed projections. Those owned types and the
+native image handler compile into the same root export; `dist/build-source.json`
+records both document identities and contributing bytes. The original 192
+projections and their digest identity remain intact.
+
 The only public runtime export remains the root package. Public input/output
 shapes are documented in C-painter; consumers do not need a contract package.
 Both coherent session/v5 + ReferenceBrief/v5 and session/v6 + ReferenceBrief/v6
@@ -73,6 +79,12 @@ packages have no lifecycle build because rebuilding would repair the injected fa
 `hanaworlds_image_material` as Cordis services via `ctx.provide`. Settings use
 `@deepseek-ai/schemastery`; `Config({})` is empty because there is no model route.
 The tool service exposes the descriptor and `execute(input)`.
+
+For the model channel, the same plugin mounts a Cordis child that injects the
+official `tools` registry and registers the sole native `hanaworlds_image_material`.
+Its effect is removed on unload/hot replacement. The original root `inject=[]`,
+exports and typed services remain available without a native registry; the child
+then waits for it. `ctx.provide` alone does not expose a model tool.
 
 ```js
 const painter = ctx.get('hanaworldsPainterV2PictureBlocks')
@@ -155,6 +167,47 @@ and worldWrites and is a hint requiring proposal validation.
 UNKNOWN or non-placeable materials receive no fallback. Corrupt eligible textures raise
 MATERIAL_TEXTURE_UNAVAILABLE. No cross-call colour cache exists. Host must recheck
 live selection, provider and media association before using a hint.
+
+## Native model image channel
+
+The only model argument is `{attachmentRef: '<current human image reference>'}`.
+The raw input schema closes all other fields. Models cannot provide bytes,
+catalogue, paths, URLs, world/session/connection scope or confirmation as authority.
+The handler forwards the original runtime `exec` (Agent, Core Session and
+AbortSignal by identity) to the current
+`ctx.get('hanaworldsWorkshop').readMaterialSourcesProjection(request, exec)` with
+the original receiver. C-session §13 owns authorization and current attachment,
+Catalogue and Bridge-supplied texture acquisition; Painter reads no peer private
+store and calls no Adapter/Canvas/Bridge source method.
+
+Painter copies the entire initial projection before decoding, including actual
+Uint8Array image and texture bytes. It maps the original four typed fields and
+calls the same instance's `matchCurrentImageMaterials` using its visible budgets.
+It strictly validates the complete original ImageMaterialResult, then re-resolves
+the same Workshop receiver/method and reads the full projection again. Observed
+message/media/localContext/provider/facts/byte changes refuse release with
+CURRENT_WORLD_MISMATCH; missing or replaced supply gives CAPABILITY_UNAVAILABLE.
+These are explicit observations with no automatic retry, cross-call cache or
+synchronous-gap guarantee. Cancellation preserves the original AbortSignal reason
+and stops further release reads. Decode failures also stop release reads.
+
+The handler returns the complete original ImageMaterialResult without a wrapper.
+The canonical renderer sends one text block containing the entire canonical JSON
+value as the model hint. The native description shows effective instance budgets.
+The supported raw output schema uses boolean `additionalProperties:true` for the
+engine revision dictionary and explicit scalar types for enum/const nodes. The
+original strict result validator still checks every revision key/value and all
+range/digest/closed-field rules before release; no result field is removed.
+
+Source exceptions retain their original object, identity, cause, UNKNOWN state,
+transaction and legal diagnostics at the plugin promise boundary. The official
+Tools pipeline displays `Error: <original message>` and `error.message`, with
+optional `{name,code}` info for HarnessError. JSON normalization does not retain
+exception identity, stack/cause or custom fields unless included in that message;
+this plugin neither promises otherwise nor substitutes success/error wrappers.
+Recovery requires a new explicit request on the same registered tool.
+Component/packed-fixture checks do not establish real attachment authority or
+Host/Loader/model/UI/world/owner acceptance; those remain journey gates.
 
 `examples/provider-v2.mjs` demonstrates both operations and image matching using
 published fixtures and a minimal `readMaterialSources` mock with authored texture

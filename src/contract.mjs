@@ -63,15 +63,15 @@ export function decodeRawJSON(bytes){
  }
  const out=value();ws();if(at!==source.length)invalid();return out;
 }
-function schemaCheck(schema,value,path=[]){
- if(schema.$ref)return schemaCheck(definitions[schema.$ref.slice(14)],value,path);
- if(schema.anyOf||schema.oneOf){const errors=[];let count=0;for(const branch of schema.anyOf??schema.oneOf){try{schemaCheck(branch,value,path);count++;}catch(e){errors.push(e);}}
+function schemaCheck(schema,value,path=[],namespace=definitions){
+ if(schema.$ref)return schemaCheck(namespace[schema.$ref.slice(14)],value,path,namespace);
+ if(schema.anyOf||schema.oneOf){const errors=[];let count=0;for(const branch of schema.anyOf??schema.oneOf){try{schemaCheck(branch,value,path,namespace);count++;}catch(e){errors.push(e);}}
   if(count===1||count>0&&schema.anyOf)return;
   // Exact version branches are selected by their own markers before checking.
   if(value&&typeof value==='object'&&!Array.isArray(value)){
-   for(const branch of schema.anyOf??schema.oneOf){const s=branch.$ref?definitions[branch.$ref.slice(14)]:branch;
+   for(const branch of schema.anyOf??schema.oneOf){const s=branch.$ref?namespace[branch.$ref.slice(14)]:branch;
     const marker=s?.properties?.contractVersion?.const;
-    if(marker===value.contractVersion&&marker!==undefined)return schemaCheck(s,value,path);
+    if(marker===value.contractVersion&&marker!==undefined)return schemaCheck(s,value,path,namespace);
    }
   }
   throw errors.find(e=>e.reason==='UNKNOWN_FIELD')??errors.find(e=>e.phase==='decode')??errors[0]??new ContractError('SCHEMA_INVALID','validate','INVALID_SHAPE');
@@ -93,18 +93,24 @@ function schemaCheck(schema,value,path=[]){
  if(Array.isArray(value)){
   if(schema.minItems!==undefined&&value.length<schema.minItems||schema.maxItems!==undefined&&value.length>schema.maxItems)shape();
   if(schema.uniqueItems&&new Set(value.map(canonicalJSON)).size!==value.length)shape();
-  for(let i=0;i<value.length;i++){const item=Array.isArray(schema.items)?schema.items[i]:schema.items;if(item)schemaCheck(item,value[i],[...path,i]);else if(schema.additionalItems===false)shape();}
+  for(let i=0;i<value.length;i++){const item=Array.isArray(schema.items)?schema.items[i]:schema.items;if(item)schemaCheck(item,value[i],[...path,i],namespace);else if(schema.additionalItems===false)shape();}
  }
  if(value!==null&&typeof value==='object'&&!Array.isArray(value)&&!(value instanceof Uint8Array)){
   if(schema.minProperties!==undefined&&Object.keys(value).length<schema.minProperties)shape();
   for(const k of schema.required??[])if(!Object.hasOwn(value,k))fail('SCHEMA_INVALID','INVALID_SHAPE','decode');
   for(const k of Object.keys(value)){
-   if(schema.propertyNames)schemaCheck(schema.propertyNames,k,path);
-   if(schema.properties?.[k])schemaCheck(schema.properties[k],value[k],[...path,k]);
+   if(schema.propertyNames)schemaCheck(schema.propertyNames,k,path,namespace);
+   if(Object.hasOwn(schema.properties??{},k))schemaCheck(schema.properties[k],value[k],[...path,k],namespace);
    else if(schema.additionalProperties===false)fail('UNKNOWN_REQUIRED_FIELD','UNKNOWN_FIELD','decode');
-   else if(schema.additionalProperties&&typeof schema.additionalProperties==='object')schemaCheck(schema.additionalProperties,value[k],[...path,k]);
+   else if(schema.additionalProperties&&typeof schema.additionalProperties==='object')schemaCheck(schema.additionalProperties,value[k],[...path,k],namespace);
   }
  }
+}
+// Separate supplementary namespace preserves every original 192 projection.
+export function validateOwnedProjection(name,input,namespace) {
+ const value=snapshotData(input,{bytes:true});
+ schemaCheck(namespace[name],value,[],namespace);
+ return value;
 }
 export function validateType(name,input){
  const value=snapshotData(input,{bytes:true});
