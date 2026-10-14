@@ -1,0 +1,282 @@
+{
+  "sourceCommit": "571902028a75c64c1d767f4ae5fd099485f0ddf0",
+  "sourceSHA256": "13deffdfd34539e23706b0fde235991da45b2f07c5c18dbbf3ca734c1da0c788",
+  "rejectedCompleteParameters": {
+    "type": "object",
+    "properties": {
+      "attachmentRef": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "attachmentRef"
+    ],
+    "additionalProperties": false
+  },
+  "rejectedCompleteOutputSchema": {
+    "type": "object",
+    "properties": {
+      "image": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "png",
+              "jpeg",
+              "webp"
+            ]
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "pixels": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sha256",
+          "format",
+          "width",
+          "height",
+          "pixels"
+        ],
+        "additionalProperties": false
+      },
+      "dominant": {
+        "type": "object",
+        "properties": {
+          "rgb": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "lab": {
+            "type": "object",
+            "properties": {
+              "L": {
+                "type": "number"
+              },
+              "a": {
+                "type": "number"
+              },
+              "b": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "L",
+              "a",
+              "b"
+            ],
+            "additionalProperties": false
+          },
+          "alphaWeight": {
+            "type": "number"
+          },
+          "bin": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rgb",
+          "lab",
+          "alphaWeight",
+          "bin"
+        ],
+        "additionalProperties": false
+      },
+      "material": {
+        "type": "object",
+        "properties": {
+          "materialRef": {
+            "type": "string"
+          },
+          "orientation": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "materialRef",
+          "orientation"
+        ],
+        "additionalProperties": false
+      },
+      "match": {
+        "type": "object",
+        "properties": {
+          "rgb": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "lab": {
+            "type": "object",
+            "properties": {
+              "L": {
+                "type": "number"
+              },
+              "a": {
+                "type": "number"
+              },
+              "b": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "L",
+              "a",
+              "b"
+            ],
+            "additionalProperties": false
+          },
+          "distance": {
+            "type": "number"
+          },
+          "algorithm": {
+            "const": "CIEDE2000"
+          },
+          "texture": {
+            "type": "object",
+            "properties": {
+              "textureName": {
+                "type": "string"
+              },
+              "sourceKind": {
+                "enum": [
+                  "GAME",
+                  "MOD"
+                ]
+              },
+              "sourceRef": {
+                "type": "string"
+              },
+              "interpretation": {
+                "const": "SIMPLE_UNIFORM_NODE_TILES"
+              },
+              "mediaType": {
+                "enum": [
+                  "image/png",
+                  "image/jpeg",
+                  "image/webp"
+                ]
+              },
+              "bytesDigest": {
+                "type": "string"
+              },
+              "byteLength": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "textureName",
+              "sourceKind",
+              "sourceRef",
+              "interpretation",
+              "mediaType",
+              "bytesDigest",
+              "byteLength"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "rgb",
+          "lab",
+          "distance",
+          "algorithm",
+          "texture"
+        ],
+        "additionalProperties": false
+      },
+      "sourceRevision": {
+        "type": "string"
+      },
+      "catalogueDigest": {
+        "type": "string"
+      },
+      "connection": {
+        "type": "object",
+        "properties": {
+          "worldRef": {
+            "type": "string"
+          },
+          "connectionRef": {
+            "type": "string"
+          },
+          "connectionIncarnationRef": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "worldRef",
+          "connectionRef",
+          "connectionIncarnationRef"
+        ],
+        "additionalProperties": false
+      },
+      "engineRevisions": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/definitions/Revision"
+        }
+      },
+      "sourceBasis": {
+        "const": "WORLD_SOURCE_ASSET_ONLY"
+      },
+      "sources": {
+        "type": "object",
+        "properties": {
+          "unknownVariants": {
+            "type": "integer"
+          },
+          "staticIneligibleVariants": {
+            "type": "integer"
+          },
+          "measuredLegalVariants": {
+            "type": "integer"
+          },
+          "measuredTextures": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unknownVariants",
+          "staticIneligibleVariants",
+          "measuredLegalVariants",
+          "measuredTextures"
+        ],
+        "additionalProperties": false
+      },
+      "modelCalls": {
+        "const": 0
+      },
+      "worldWrites": {
+        "const": 0
+      }
+    },
+    "required": [
+      "image",
+      "dominant",
+      "material",
+      "match",
+      "sourceRevision",
+      "catalogueDigest",
+      "connection",
+      "engineRevisions",
+      "sourceBasis",
+      "sources",
+      "modelCalls",
+      "worldWrites"
+    ],
+    "additionalProperties": false
+  },
+  "review": "D-183"
+}

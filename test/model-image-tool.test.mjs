@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import {Painter as api} from './painter-under-test.mjs';
 import canonicalJSON from 'canonicalize';
 import {doc,example,typed,assertError} from './painter-review-harness.mjs';
+import {assertNativeRegistrationSchemas} from './native-schema-contract.mjs';
 const supply=JSON.parse(readFileSync(new URL('./model-image-supply.json',import.meta.url)));
 const normal=supply.cases.find(row=>row.id==='normal');
 const ownError=(code,phase,reason,retryability='NEVER')=>({code,phase,retryability,
@@ -78,6 +79,7 @@ function mount({row=normal,settings={}}={}) {
  port=receiver;
  const tools={register(definition) {
   assert.equal(definition.name,'hanaworlds_image_material');
+  assertNativeRegistrationSchemas(definition);
   assert.ok(!registered.has(definition.name),'only one native image tool');
   registered.set(definition.name,definition);
   const dispose=()=>registered.delete(definition.name);disposers.push(dispose);return dispose;
@@ -119,6 +121,18 @@ test('formal supply preserves all 24 complete counterpart cases without treating
   assert.equal(row.responseIsObservationNotABI,true);
  }
 });
+
+for(const revision of ['',7,null,{},['revision']]) {
+ test(`native boolean dictionary schema retains strict revision validation: ${JSON.stringify(revision)}`,async()=>{
+  const h=mount(),tool=native(h),value=expectedResult();
+  value.engineRevisions[Object.keys(value.engineRevisions)[0]]=revision;
+  h.painter.matchCurrentImageMaterials=async()=>value;
+  await assert.rejects(tool.execute(normal.supplyRequest,h.exec),error=>{
+   assertOriginal(error,ownError('SCHEMA_INVALID','validate','INVALID_SHAPE','AFTER_NEW_FACTS'));return true;
+  });
+  assert.equal(h.calls.length,1,'invalid own result never reaches release/render');
+ });
+}
 
 test('formal source bytes match the retained typed result and original alpha-byte weight',async()=>{
  assert.deepEqual(await api.matchCurrentImageMaterials(typedFromProjection(projection(normal))),expectedResult());
